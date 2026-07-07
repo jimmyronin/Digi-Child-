@@ -631,7 +631,7 @@ function placeChild() {
     if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
     if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
   } else if (currentId === "party") {
-    a.seat = 0.85;
+    a.seat = 0.50;
     a.z = -1.75;
   }
   
@@ -1462,10 +1462,10 @@ function buildParty() {
   chair(-2.85, -0.5, Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
-  familyMember(g, "mira-15", -1.5, -1.75, 0);
-  familyMember(g, "mira-13", 1.5, -1.75, 0);
-  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2);
-  familyMember(g, "mira-08", -1.5, 0.75, Math.PI);
+  familyMember(g, "mira-15", -1.5, -1.75, 0, 0.50);
+  familyMember(g, "mira-13", 1.5, -1.75, 0, 0.50);
+  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2, 0.50);
+  familyMember(g, "mira-08", -1.5, 0.75, Math.PI, 0.50);
 
   // decorated tree with presents (Kenney holiday kit)
   {
