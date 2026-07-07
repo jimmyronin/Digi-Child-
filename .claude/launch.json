@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "digi-child-ui",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5179", "--bind", "127.0.0.1", "--directory", "ui-prototype"],
+      "port": 5179
+    }
+  ]
+}
