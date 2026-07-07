@@ -640,7 +640,7 @@ function placeChild() {
     }
   }
   
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.26 : 0;
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.05 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
@@ -1424,7 +1424,8 @@ function buildParty() {
     prop(g, "food/glass-wine", px + 0.34, pz + 0.14, { s: 0.42, y: 0.858 });
   }
   // holiday feast (offset so it doesn't hide Mira)
-  prop(g, "food/turkey", -0.75, -0.5, { s: 0.62, y: 0.858 });
+  prop(g, "food/plate-rectangle", -0.75, -0.5, { s: 0.72, y: 0.858 });
+  prop(g, "food/turkey", -0.75, -0.5, { s: 0.62, y: 0.878 });
   prop(g, "food/pie", 0.8, -0.42, { s: 0.52, y: 0.858 });
   prop(g, "food/cake-birthday", -1.9, -0.5, { s: 0.5, y: 0.858 });
   prop(g, "food/loaf-baguette", 1.95, -0.55, { s: 0.45, y: 0.858, ry: 0.6 });
