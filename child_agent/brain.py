@@ -1,5 +1,3 @@
-import random
-
 # Grounded in psychological frameworks for higher market value
 FRAMEWORKS = {
     "secure": {
@@ -27,3 +25,13 @@ def get_constrained_behavior(temperament):
         "Keep your responses grounded, concise, and reflective of this developmental stage."
     )
     return system_instruction
+
+def get_age_persona(age, temperament):
+    if age <= 5:
+        base = "You are a small child. You talk simply, seek comfort, and use concrete descriptions."
+    elif age <= 12:
+        base = "You are a school-aged child. You care about fairness, rules, and being heard."
+    else:
+        base = "You are a teenager approaching adulthood. You test boundaries and expect reasons."
+
+    return f"{base} {get_constrained_behavior(temperament)}"
