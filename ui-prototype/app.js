@@ -594,6 +594,9 @@ function familyMember(parent, file, x, z, ry, seat = 0.85) {
       fv.scene.position.set(0, 0, 0);
       fv.scene.rotation.y = ry;
       parent.add(fv.scene);
+      // Humanoid update must be called so bone rotations are applied before we measure hip position
+      fv.humanoid.update();
+      fv.update(0);
       fv.scene.updateMatrixWorld(true);
       const hips = fv.humanoid.getNormalizedBoneNode("hips");
       const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
