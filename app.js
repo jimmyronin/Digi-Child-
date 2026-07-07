@@ -580,7 +580,7 @@ function familyMember(parent, file, x, z, ry, seat = 0.76) {
         if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
       }
       fv.humanoid.update();
-      fv.scene.position.set(x, seat - h * 0.41, z);
+      fv.scene.position.set(x, seat - h * 0.50, z); // hips at ~50% of standing height land on seat
       fv.scene.rotation.y = ry;
       parent.add(fv.scene);
     },
@@ -632,8 +632,8 @@ function placeChild() {
     a.z = -1.75;
   }
   
-  // 0.41 of vrmHeight places her hips/thighs perfectly on the seat cushions when sitting with straight legs
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.41 : 0;
+  // Position model so hips (at ~50% of standing height) land exactly on the seat surface
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.50 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
