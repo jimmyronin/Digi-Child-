@@ -563,8 +563,8 @@ function familyMember(parent, file, x, z, ry, seat = 0.46) {
       for (const side of ["left", "right"]) {
         const upper = fv.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
         const lower = fv.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
-        if (upper) upper.rotation.x = Math.PI / 2.15;
-        if (lower) lower.rotation.x = -Math.PI / 2.05;
+        if (upper) upper.rotation.x = -Math.PI / 2.15; // Bend thighs forward
+        if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
       }
       fv.humanoid.update();
       fv.scene.position.set(x, seat - h * 0.47, z);
@@ -590,8 +590,8 @@ function setChildPose(pose) {
   for (const side of ["left", "right"]) {
     const upper = vrm.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
     const lower = vrm.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
-    if (upper) upper.rotation.x = sit ? Math.PI / 2.15 : 0;
-    if (lower) lower.rotation.x = sit ? -Math.PI / 2.05 : 0;
+    if (upper) upper.rotation.x = sit ? -Math.PI / 2.15 : 0;
+    if (lower) lower.rotation.x = 0; // Knees straight (not bent) when sitting
   }
 }
 
@@ -1066,7 +1066,7 @@ function buildCar() {
     colliders: [],
     bounds: { minX: -0.45, maxX: -0.45, minZ: 0.42, maxZ: 0.42 },
     spawn: { x: -0.45, z: 0.42, yaw: 0 },
-    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: 0, pose: "sit" },
+    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: Math.PI, pose: "sit" },
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
