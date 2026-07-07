@@ -46,6 +46,13 @@ The UI is built as a first-person 3D game:
 - The parent speaks through the bottom input.
 - The visible child response and hidden state metrics update after interaction.
 - The hidden Parent Governor is represented as a mock adapter for now. Each interaction now also sends the current `location`, and where you parent nudges the scores slightly (e.g. park boosts curiosity).
+- **Mira reacts emotionally to what you say and do.** After each message, the game reads your words and drives a live reaction on the VRoid model:
+  - Kind/loving words ("I'm proud of you", "good girl", "let's play") → she lights up, bounces, and giggles.
+  - Hurtful words ("you're stupid", "I hate you", "bad kid") → she cries: sad face, hands to her face, a hunched sob, and a wailing sound, all while looking up at you.
+  - Physical words ("hit", "slap", "spank") → she screams — a wide-open-mouth shocked flinch and a scream, then settles into crying.
+  - When she's feeling secure and content and has room (home/park), she plays on her own: wandering back and forth, little hops, and occasional giggles.
+  - Reaction sounds are synthesized with the Web Audio API, so they always work with no external files. The party crowd chatter is a streamed royalty-free loop.
+- **Car seat safety:** as a toddler she rides in a child safety seat with a visible 5-point harness (shoulder straps → central buckle); older Mira uses a standard diagonal seat belt.
 
 ### Controls
 

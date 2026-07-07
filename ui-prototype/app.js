@@ -539,6 +539,133 @@ let exprHappy = 0.2;
 let exprSad = 0;
 let exprAngry = 0;
 
+/* ============================================================
+   Child reactions — crying, screaming, giggling, playful idle.
+   Sounds are synthesized with the Web Audio API so they always
+   work (no network, matches the project's offline-first goal).
+   ============================================================ */
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      return null;
+    }
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+let reaction = null; // { type, start, until }
+function triggerReaction(type) {
+  const dur = { scream: 5.0, cry: 5.5, happy: 3.2, upset: 3.2 }[type] || 3;
+  reaction = { type, start: clock.elapsedTime, until: clock.elapsedTime + dur };
+  playChildSound(type);
+}
+
+function playChildSound(type) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  if (type === "cry" || type === "upset") childWail(ctx, now, 5.2, 0.5);
+  else if (type === "scream") {
+    childScream(ctx, now);
+    childWail(ctx, now + 0.75, 4.2, 0.55);
+  } else if (type === "happy") childGiggle(ctx, now);
+}
+
+function childWail(ctx, start, duration, level) {
+  const osc = ctx.createOscillator();
+  osc.type = "sawtooth";
+  const gain = ctx.createGain();
+  const vib = ctx.createOscillator();
+  const vibGain = ctx.createGain();
+  vib.frequency.value = 6.5;
+  vibGain.gain.value = 45;
+  vib.connect(vibGain);
+  vibGain.connect(osc.frequency);
+  gain.gain.setValueAtTime(0.0001, start);
+  const sobs = Math.max(1, Math.floor(duration / 0.9));
+  for (let i = 0; i < sobs; i++) {
+    const s = start + i * 0.9;
+    osc.frequency.setValueAtTime(470 + (i % 2) * 130, s);
+    osc.frequency.linearRampToValueAtTime(660, s + 0.25);
+    osc.frequency.linearRampToValueAtTime(420, s + 0.8);
+    gain.gain.setValueAtTime(0.0001, s);
+    gain.gain.linearRampToValueAtTime(level, s + 0.14);
+    gain.gain.exponentialRampToValueAtTime(0.02, s + 0.82);
+  }
+  const filt = ctx.createBiquadFilter();
+  filt.type = "bandpass";
+  filt.frequency.value = 950;
+  filt.Q.value = 1.1;
+  osc.connect(filt);
+  filt.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  vib.start(start);
+  osc.stop(start + duration + 0.2);
+  vib.stop(start + duration + 0.2);
+}
+
+function childScream(ctx, start) {
+  const osc = ctx.createOscillator();
+  osc.type = "sawtooth";
+  const gain = ctx.createGain();
+  osc.frequency.setValueAtTime(620, start);
+  osc.frequency.exponentialRampToValueAtTime(1450, start + 0.22);
+  osc.frequency.exponentialRampToValueAtTime(920, start + 0.6);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(0.6, start + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.01, start + 0.68);
+  const filt = ctx.createBiquadFilter();
+  filt.type = "bandpass";
+  filt.frequency.value = 1600;
+  filt.Q.value = 0.7;
+  osc.connect(filt);
+  filt.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + 0.72);
+}
+
+function childGiggle(ctx, start) {
+  for (let i = 0; i < 5; i++) {
+    const s = start + i * 0.16;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    const gain = ctx.createGain();
+    const f = 700 + (i % 2) * 190;
+    osc.frequency.setValueAtTime(f, s);
+    osc.frequency.linearRampToValueAtTime(f * 1.15, s + 0.05);
+    osc.frequency.linearRampToValueAtTime(f * 0.9, s + 0.12);
+    gain.gain.setValueAtTime(0.0001, s);
+    gain.gain.linearRampToValueAtTime(0.22, s + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.01, s + 0.14);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(s);
+    osc.stop(s + 0.16);
+  }
+}
+
+function detectReaction(message, result) {
+  const m = " " + message.toLowerCase() + " ";
+  if (/(hit|slap|spank|smack|beat|punch|shake you|hurt you|hit you)/.test(m)) return "scream";
+  if (/(stupid|shut up|shut it|hate you|i hate|dumb|idiot|ugly|worthless|useless|bad kid|annoying|go away|don'?t love you|you'?re nothing|crybaby)/.test(m)) return "cry";
+  if (/(love you|so proud|proud of you|good girl|good boy|good job|well done|you'?re amazing|hug|beautiful|so smart|my sweet|sweetheart|let'?s play|play with|good idea)/.test(m)) return "happy";
+  if (result && result.values) {
+    if (result.values.volatility > 66) return "upset";
+    if (result.values.trust > 76 && result.values.security > 72) return "happy";
+  }
+  return null;
+}
+
+// smoothed expression + playful state
+const expr = { happy: 0.2, sad: 0, angry: 0, surprised: 0, aa: 0 };
+let nextGiggleAt = 8;
+
 function miraStage() {
   let base = 0;
   if (state.band === "Age 10-12") {
@@ -632,10 +759,8 @@ function familyMember(parent, file, x, z, ry, seat = 0.85, pose = "sit") {
         const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
         // Add pelvis offset (hips are ~7.5% of height above butt) so butt sits on seat
         const pelvisOffset = h * 0.075;
-        console.log(`Family ${file} (sit): h=${h.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${seat}`);
         fv.scene.position.set(x, seat - hipY + pelvisOffset, z);
       } else {
-        console.log(`Family ${file} (stand): h=${h.toFixed(2)}`);
         fv.scene.position.set(x, 0.02, z);
       }
       familyMembers.push(fv);
@@ -676,11 +801,10 @@ function placeChild() {
   if (currentId === "car") {
     const isToddler = vrmHeight < 1.15;
     
-    // Toggle safety seat visibility
-    if (current.childSafetySeat) {
-      current.childSafetySeat.visible = isToddler;
-    }
-    
+    // Toddlers ride in the harnessed safety seat; older kids use the belt
+    if (current.childSafetySeat) current.childSafetySeat.visible = isToddler;
+    if (current.standardBelt) current.standardBelt.visible = !isToddler;
+
     a.seat = isToddler ? 0.94 : 0.85;
     a.z = 0.34;
   }
@@ -696,7 +820,6 @@ function placeChild() {
       child.position.y = 0;
       child.updateMatrixWorld(true);
       hipY = hips.getWorldPosition(new THREE.Vector3()).y;
-      console.log(`Child: vrmH=${vrmHeight.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${a.seat}`);
     }
   }
   // Add pelvis offset (hips are ~7.5% of height above butt) so butt sits on seat
@@ -1197,13 +1320,13 @@ function buildCar() {
   // Safety seat base cushion
   rbox(childSafetySeat, 0.48, 0.10, 0.48, 0.04, 3, padMat, 0.52, 0.86, 0.35);
   
-  // Side torso guards (left & right side protectors)
-  rbox(childSafetySeat, 0.08, 0.32, 0.22, 0.03, 3, shellMat, 0.73, 1.10, 0.38);
-  rbox(childSafetySeat, 0.08, 0.32, 0.22, 0.03, 3, shellMat, 0.31, 1.10, 0.38);
-  
-  // Side torso trim (white borders)
-  rbox(childSafetySeat, 0.015, 0.32, 0.015, 0.005, 3, trimMat, 0.772, 1.10, 0.49);
-  rbox(childSafetySeat, 0.015, 0.32, 0.015, 0.005, 3, trimMat, 0.268, 1.10, 0.49);
+  // Side torso bolsters (lower, so the chest harness stays visible)
+  rbox(childSafetySeat, 0.08, 0.2, 0.22, 0.03, 3, shellMat, 0.73, 0.99, 0.38);
+  rbox(childSafetySeat, 0.08, 0.2, 0.22, 0.03, 3, shellMat, 0.31, 0.99, 0.38);
+
+  // Side bolster trim (white borders)
+  rbox(childSafetySeat, 0.015, 0.2, 0.015, 0.005, 3, trimMat, 0.772, 0.99, 0.49);
+  rbox(childSafetySeat, 0.015, 0.2, 0.015, 0.005, 3, trimMat, 0.268, 0.99, 0.49);
 
   // Side headrest guards (left & right head protection wings)
   rbox(childSafetySeat, 0.08, 0.24, 0.26, 0.03, 3, shellMat, 0.73, 1.34, 0.44);
@@ -1216,7 +1339,53 @@ function buildCar() {
   // Seat backrest cushion
   rbox(childSafetySeat, 0.44, 0.68, 0.12, 0.03, 3, padMat, 0.52, 1.22, 0.50, { rx: -0.1 });
 
-  // (Seat belts deleted by user request)
+  // --- 5-point safety harness on the toddler seat ---
+  // straps run from the top of the backrest, over the chest, to a central
+  // buckle at her lap, then a crotch strap down to the seat base
+  const beltMat = mat(0x39414d, 0.55); // visible slate webbing
+  const buckleMat = mat(0xc2c7cd, 0.3, { metalness: 0.7 });
+  const strapBetween = (parent, a, b, w) => {
+    const A = new THREE.Vector3(...a);
+    const B = new THREE.Vector3(...b);
+    const dir = new THREE.Vector3().subVectors(B, A);
+    const len = dir.length();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, len), beltMat);
+    m.position.copy(A).add(B).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
+    m.castShadow = false;
+    parent.add(m);
+    return m;
+  };
+  // straps sit forward on her chest (z ~0.24) so they're not buried in the shell
+  const buckle = [0.52, 1.0, 0.22];
+  strapBetween(childSafetySeat, [0.66, 1.46, 0.30], buckle, 0.075); // right shoulder
+  strapBetween(childSafetySeat, [0.38, 1.46, 0.30], buckle, 0.075); // left shoulder
+  strapBetween(childSafetySeat, [0.72, 1.04, 0.30], buckle, 0.065); // right lap
+  strapBetween(childSafetySeat, [0.32, 1.04, 0.30], buckle, 0.065); // left lap
+  strapBetween(childSafetySeat, buckle, [0.52, 0.92, 0.24], 0.065); // crotch strap
+  rbox(childSafetySeat, 0.1, 0.13, 0.06, 0.02, 3, buckleMat, 0.52, 1.0, 0.22); // buckle clasp
+  // padded shoulder comfort covers (lighter, so the harness reads)
+  rbox(childSafetySeat, 0.11, 0.24, 0.07, 0.03, 3, padMat, 0.62, 1.28, 0.29);
+  rbox(childSafetySeat, 0.11, 0.24, 0.07, 0.03, 3, padMat, 0.42, 1.28, 0.29);
+
+  // --- standard diagonal seat belt for older kids (no safety seat) ---
+  const standardBelt = new THREE.Group();
+  g.add(standardBelt);
+  const stBuckle = [0.34, 1.02, 0.34];
+  const stStrap = (a, b, w) => {
+    const A = new THREE.Vector3(...a);
+    const B = new THREE.Vector3(...b);
+    const dir = new THREE.Vector3().subVectors(B, A);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, dir.length()), beltMat);
+    m.position.copy(A).add(B).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
+    m.castShadow = false;
+    standardBelt.add(m);
+  };
+  stStrap([0.70, 1.62, 0.48], stBuckle, 0.07); // diagonal shoulder-to-hip
+  stStrap([0.70, 1.02, 0.36], stBuckle, 0.06); // lap
+  rbox(standardBelt, 0.09, 0.12, 0.05, 0.02, 3, buckleMat, 0.34, 1.02, 0.34);
+  standardBelt.visible = false;
 
   // Grocery/shopping bag on driver's seat
   prop(g, "food/bag", -0.5, 0.85, 0.35, { s: 1.15, ry: 0.4 });
@@ -1352,7 +1521,8 @@ function buildCar() {
       }
       wheelGroup.rotation.z = Math.sin(t * 0.7) * 0.06;
     },
-    childSafetySeat
+    childSafetySeat,
+    standardBelt
   };
 }
 
@@ -1920,6 +2090,8 @@ function buildLocationBar() {
 const keys = new Set();
 
 canvas.addEventListener("click", () => {
+  ensureAudio(); // unlock audio playback on first user gesture
+  if (currentId === "party") playPartySound(true);
   if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
 });
 
@@ -2059,6 +2231,7 @@ async function handleSubmit(event) {
   const message = input.value.trim();
   if (!message) return;
   input.value = "";
+  ensureAudio(); // this counts as a user gesture, so sounds can play
   const result = await sendToBackend({
     message,
     day: state.day,
@@ -2068,6 +2241,10 @@ async function handleSubmit(event) {
     values: { ...state.values },
   });
   Object.assign(state.values, result.values);
+
+  // Mira reacts emotionally to what the parent just said or did
+  const react = detectReaction(message, result);
+  if (react) triggerReaction(react);
 
   window.interactionCount = (window.interactionCount || 0) + 1;
   if (window.interactionCount >= 3) {
@@ -2234,17 +2411,129 @@ function updateFrame(dt, t) {
   camRig.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
 
-  // Mira: breathe, face the parent, track them with her head and eyes
+  // Mira: reactions, playful idle, breathing, and head/eye tracking
   camera.getWorldPosition(camWorld);
-  if (childPose === "stand") {
-    child.position.y = childBaseY + Math.sin(t * 1.5) * 0.01;
+  const sitting = childPose === "sit";
+  const anchor = current.childAnchor;
+
+  // resolve the active reaction (with ease in/out)
+  let rType = null;
+  let rk = 0;
+  if (reaction) {
+    if (t >= reaction.until) reaction = null;
+    else {
+      rType = reaction.type;
+      rk = Math.min(1, (t - reaction.start) / 0.3) * Math.min(1, (reaction.until - t) / 0.7);
+    }
+  }
+  // a scream flinch settles into crying after the first second
+  let effType = rType;
+  if (rType === "scream" && reaction && t - reaction.start > 1.1) effType = "cry";
+
+  // playful idle only where she has room and is feeling good
+  const canPlay =
+    childPose === "stand" &&
+    !rType &&
+    (currentId === "home" || currentId === "park") &&
+    state.values.trust > 55 &&
+    state.values.volatility < 45;
+
+  // expression targets
+  let tH = exprHappy, tS = exprSad, tA = exprAngry, tSurp = 0, tAa = 0;
+  if (effType === "cry" || effType === "upset") {
+    tH = 0; tS = 1; tA = 0.15; tAa = 0.25;
+  } else if (effType === "scream") {
+    tH = 0; tS = 0.2; tA = 0.45; tSurp = 1; tAa = 1;
+  } else if (effType === "happy") {
+    tH = 1; tS = 0; tA = 0;
+  }
+  if (rType) {
+    tH = exprHappy + (tH - exprHappy) * rk;
+    tS = exprSad + (tS - exprSad) * rk;
+    tA = exprAngry + (tA - exprAngry) * rk;
+    tSurp *= rk; tAa *= rk;
+  } else if (canPlay) {
+    tH = Math.max(exprHappy, 0.55);
+  }
+  const esm = Math.min(1, dt * 6);
+  expr.happy += (tH - expr.happy) * esm;
+  expr.sad += (tS - expr.sad) * esm;
+  expr.angry += (tA - expr.angry) * esm;
+  expr.surprised += (tSurp - expr.surprised) * esm;
+  expr.aa += (tAa - expr.aa) * esm;
+
+  // body pose targets (blended from rest by reaction strength rk)
+  let LuZ = -1.32, LuX = 0, RuZ = 1.32, RuX = 0;
+  let LlZ = 0, LlX = 0, RlZ = 0, RlX = 0;
+  let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOX = 0, posOZ = 0, posOY = 0;
+
+  if (effType === "cry" || effType === "upset") {
+    LuZ = -1.32 + 0.62 * rk; LuX = -0.7 * rk; RuZ = 1.32 - 0.62 * rk; RuX = -0.7 * rk;
+    LlZ = -1.5 * rk; RlZ = 1.5 * rk; LlX = -0.35 * rk; RlX = -0.35 * rk;
+    headExtraX = -0.05 * rk;          // face stays up toward the parent
+    spineXAdd = 0.05 * rk;            // gentle hunch
+    spineZ = Math.sin(t * 22) * 0.035 * rk; // sob tremble
+    posOY = -0.03 * rk;
+  } else if (effType === "scream") {
+    LuZ = -1.32 + 0.28 * rk; RuZ = 1.32 - 0.28 * rk; LuX = 0.25 * rk; RuX = 0.25 * rk;
+    headExtraX = -0.32 * rk;          // head thrown back
+    spineXAdd = -0.14 * rk;
+    posOY = 0.02 * Math.sin(t * 30) * rk;
+    posOZ = 0.05 * rk;                // recoil away
+  } else if (effType === "happy") {
+    const sw = Math.sin(t * 6) * 0.35 * rk;
+    LuZ = -1.32 + 0.7 * rk; RuZ = 1.32 - 0.7 * rk;
+    LuX = -0.4 * rk + sw; RuX = -0.4 * rk - sw;
+    posOY = Math.abs(Math.sin(t * 5)) * 0.08 * rk; // happy bounce
+  } else if (canPlay) {
+    posOX = Math.sin(t * 0.7) * 0.4;
+    posOZ = Math.sin(t * 0.45) * 0.18;
+    const hop = Math.sin(t * 1.6);
+    posOY = hop > 0.96 ? (hop - 0.96) * 2.2 : 0;
+    LuX = Math.sin(t * 2.2) * 0.18;
+    RuX = Math.sin(t * 2.2 + 1) * 0.18;
+    if (t > nextGiggleAt) {
+      nextGiggleAt = t + 7 + rnd(Math.floor(t)) * 6;
+      const ac = ensureAudio();
+      if (ac) childGiggle(ac, ac.currentTime);
+    }
+  }
+
+  // body yaw: face the parent (skip while wandering, she'll re-orient)
+  if (childPose === "stand" && !canPlay) {
     const targetYaw = Math.atan2(camWorld.x - child.position.x, camWorld.z - child.position.z);
     let diff = targetYaw - child.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     child.rotation.y += diff * Math.min(1, dt * 2.4);
+  } else if (canPlay) {
+    child.rotation.y += (anchor.yaw + posOX * 0.5 - child.rotation.y) * Math.min(1, dt * 2);
   }
+
+  // position (anchor + playful/reaction offsets)
+  child.position.x = anchor.x + posOX;
+  child.position.z = anchor.z + posOZ;
+  child.position.y = childBaseY + posOY + (childPose === "stand" ? Math.sin(t * 1.5) * 0.01 : 0);
+
   if (vrm) {
-    const headBone = vrm.humanoid.getNormalizedBoneNode("head");
+    const eb = (bone, x, y, z) => {
+      if (!bone) return;
+      const k = Math.min(1, dt * 10);
+      bone.rotation.x += (x - bone.rotation.x) * k;
+      bone.rotation.y += (y - bone.rotation.y) * k;
+      bone.rotation.z += (z - bone.rotation.z) * k;
+    };
+    const hb = vrm.humanoid;
+    eb(hb.getNormalizedBoneNode("leftUpperArm"), LuX, 0, LuZ);
+    eb(hb.getNormalizedBoneNode("rightUpperArm"), RuX, 0, RuZ);
+    eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, 0, LlZ);
+    eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, 0, RlZ);
+    const spine = hb.getNormalizedBoneNode("spine");
+    if (spine) {
+      spine.rotation.x += ((sitting ? -0.12 : 0) + spineXAdd - spine.rotation.x) * Math.min(1, dt * 8);
+      spine.rotation.z += (spineZ - spine.rotation.z) * Math.min(1, dt * 12);
+    }
+
+    const headBone = hb.getNormalizedBoneNode("head");
     if (headBone) {
       const headPos = new THREE.Vector3();
       headBone.getWorldPosition(headPos);
@@ -2254,14 +2543,18 @@ function updateFrame(dt, t) {
       relYaw = Math.atan2(Math.sin(relYaw), Math.cos(relYaw));
       relYaw = THREE.MathUtils.clamp(relYaw, -0.85, 0.85);
       const relPitch = THREE.MathUtils.clamp(Math.atan2(dir.y, flat), -0.45, 0.75);
-      headBone.rotation.set(-relPitch * 0.7, relYaw * 0.75, 0);
+      const track = 1 - (rType ? rk * 0.3 : 0); // mostly keep looking at parent
+      headBone.rotation.set(-relPitch * 0.7 * track + headExtraX, relYaw * 0.75 * track, 0);
     }
+
     const em = vrm.expressionManager;
     if (em) {
-      em.setValue("blink", blinkUntil > 0 ? 1 : 0);
-      em.setValue("happy", exprHappy);
-      em.setValue("sad", exprSad);
-      em.setValue("angry", exprAngry);
+      em.setValue("blink", blinkUntil > 0 && effType !== "scream" ? 1 : 0);
+      em.setValue("happy", expr.happy);
+      em.setValue("sad", expr.sad);
+      em.setValue("angry", expr.angry);
+      em.setValue("surprised", expr.surprised);
+      em.setValue("aa", expr.aa);
     }
     vrm.update(dt);
   }
@@ -2328,6 +2621,20 @@ setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : "hom
 renderStats();
 syncUi();
 animate();
+
+// dev helpers for testing reactions from the console
+window.__digiReact = (type) => triggerReaction(type);
+window.__digiEye = (e) => { if (current) current.eye = e; };
+window.__digiState = () => ({
+  reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
+  expr: { ...expr },
+  bones: vrm
+    ? {
+        Lu: ["x", "y", "z"].map((k) => +(vrm.humanoid.getNormalizedBoneNode("leftUpperArm")?.rotation[k] ?? 0).toFixed(2)),
+        Ll: ["x", "y", "z"].map((k) => +(vrm.humanoid.getNormalizedBoneNode("leftLowerArm")?.rotation[k] ?? 0).toFixed(2)),
+      }
+    : null,
+});
 
 // dev helper: teleport the player from the console
 window.__digiGo = (x, z, yaw = 0, pitch = -0.05) => {
