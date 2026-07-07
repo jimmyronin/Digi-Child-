@@ -366,13 +366,20 @@ function carButton(parent, x, y, z, w, h, label = "") {
 function gearSelector(parent, x, y, z) {
   const base = mat(0xd7d8d4, 0.42, { metalness: 0.18 });
   const dark = mat(0x20242a, 0.5);
-  box(parent, 0.48, 0.08, 0.54, base, x, y, z, { cast: true });
-  box(parent, 0.22, 0.025, 0.4, dark, x - 0.12, y + 0.052, z, { cast: false });
-  const stem = cyl(parent, 0.035, 0.045, 0.25, dark, x, y + 0.18, z - 0.05, { rx: -0.35, seg: 12 });
-  stem.rotation.z = 0.08;
-  box(parent, 0.14, 0.2, 0.1, mat(0xbfc5c7, 0.36, { metalness: 0.18 }), x + 0.03, y + 0.33, z - 0.1, { rx: -0.2 });
-  cyl(parent, 0.12, 0.12, 0.055, mat(0xcfd2d1, 0.35, { metalness: 0.2 }), x + 0.24, y + 0.09, z + 0.16, { seg: 24 });
-  cyl(parent, 0.08, 0.08, 0.06, dark, x + 0.24, y + 0.13, z + 0.16, { seg: 24 });
+  const chrome = mat(0xcfd2d1, 0.32, { metalness: 0.55 });
+  // Base plate (rounded corners)
+  rbox(parent, 0.48, 0.08, 0.54, 0.03, 3, base, x, y, z, { cast: true });
+  // Shift gate track
+  rbox(parent, 0.22, 0.025, 0.4, 0.01, 3, dark, x - 0.12, y + 0.052, z, { cast: false });
+  // Stem/shifter shaft (chrome metal look)
+  const stem = cyl(parent, 0.02, 0.02, 0.28, chrome, x - 0.12, y + 0.18, z + 0.05, { rx: 0.15, seg: 12 });
+  // Shifter knob (leather look + chrome cap)
+  rbox(parent, 0.09, 0.12, 0.11, 0.025, 4, dark, x - 0.12, y + 0.31, z + 0.08, { rx: 0.15 });
+  rbox(parent, 0.07, 0.02, 0.08, 0.01, 3, chrome, x - 0.12, y + 0.375, z + 0.08, { rx: 0.15 });
+  
+  // Rotary dial next to it (polished chrome and dark plastic)
+  cyl(parent, 0.12, 0.12, 0.055, chrome, x + 0.12, y + 0.09, z, { seg: 24 });
+  cyl(parent, 0.08, 0.08, 0.06, dark, x + 0.12, y + 0.13, z, { seg: 24 });
 }
 
 function quiltedSeat(parent, x, z, opts = {}) {
@@ -995,6 +1002,55 @@ function buildCar() {
   rbox(g, 1.82, 0.15, 0.58, 0.04, 4, paint, 0, 1.22, -0.94);
   rbox(g, 1.74, 0.05, 0.48, 0.03, 3, mat(0xa79c93, 0.82), 0, 1.34, -0.97, { cast: false });
   box(g, 1.66, 0.03, 0.035, redAccent, 0, 1.17, -0.58, { cast: false });
+  // Custom Canvas Instrument Cluster (Speedometer/Gauges)
+  const gaugeCanvas = document.createElement("canvas");
+  gaugeCanvas.width = 256;
+  gaugeCanvas.height = 128;
+  const gCtx = gaugeCanvas.getContext("2d");
+  gCtx.fillStyle = "#11141a";
+  gCtx.fillRect(0, 0, 256, 128);
+
+  // Speedometer arc (left)
+  gCtx.strokeStyle = "#38475c";
+  gCtx.lineWidth = 6;
+  gCtx.beginPath();
+  gCtx.arc(70, 70, 45, Math.PI * 0.8, Math.PI * 2.2);
+  gCtx.stroke();
+  gCtx.strokeStyle = "#00d2ff";
+  gCtx.beginPath();
+  gCtx.arc(70, 70, 45, Math.PI * 0.8, Math.PI * 1.6);
+  gCtx.stroke();
+
+  // Tachometer arc (right)
+  gCtx.strokeStyle = "#38475c";
+  gCtx.lineWidth = 6;
+  gCtx.beginPath();
+  gCtx.arc(186, 70, 45, Math.PI * 0.8, Math.PI * 2.2);
+  gCtx.stroke();
+  gCtx.strokeStyle = "#ff9d3d";
+  gCtx.beginPath();
+  gCtx.arc(186, 70, 45, Math.PI * 0.8, Math.PI * 1.4);
+  gCtx.stroke();
+
+  // Digital Speed Center
+  gCtx.fillStyle = "#ffffff";
+  gCtx.font = "bold 20px sans-serif";
+  gCtx.textAlign = "center";
+  gCtx.fillText("65", 128, 64);
+  gCtx.fillStyle = "#8a9bb4";
+  gCtx.font = "10px sans-serif";
+  gCtx.fillText("MPH", 128, 78);
+  gCtx.fillStyle = "#27ae60";
+  gCtx.fillText("◀  D  ▶", 128, 44);
+
+  const gaugeTex = new THREE.CanvasTexture(gaugeCanvas);
+  const gaugeMat = new THREE.MeshBasicMaterial({ map: gaugeTex });
+  
+  // Dashboard gauge cowl/hood
+  rbox(g, 0.76, 0.22, 0.36, 0.04, 3, lowerTrim, -0.46, 1.42, -0.94);
+  // The digital gauges display screen
+  box(g, 0.62, 0.18, 0.02, gaugeMat, -0.46, 1.34, -0.91, { cast: false, receive: false });
+
   box(g, 0.88, 0.08, 0.05, darkTrim, 0.36, 1.34, -0.63, { cast: false });
   // Custom Canvas GPS Navigation screen
   const mapCanvas = document.createElement("canvas");
@@ -1066,17 +1122,40 @@ function buildCar() {
   // Tiny dashboard plant
   prop(g, "furniture/plantSmall3", 0.52, 1.37, -1.0, { s: 0.42 });
 
-  // steering wheel with spokes, center pad, and tiny controls
+  // steering column
+  cyl(g, 0.035, 0.045, 0.42, darkTrim, -0.46, 1.0, -0.72, { rx: 0.6 });
+
+  // steering wheel group (tilted)
+  const steeringAssembly = new THREE.Group();
+  steeringAssembly.position.set(-0.46, 1.18, -0.52);
+  steeringAssembly.rotation.x = -0.95;
+  g.add(steeringAssembly);
+
+  const wheelGroup = new THREE.Group();
+  steeringAssembly.add(wheelGroup);
+
+  // Wheel rim (rounded torus)
   const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 16, 36), mat(0x1b1d21, 0.38));
-  wheel.position.set(-0.46, 1.18, -0.52);
-  wheel.rotation.x = -0.95;
-  g.add(wheel);
-  const spoke = box(g, 0.36, 0.04, 0.035, darkTrim, -0.46, 1.18, -0.52, { rx: -0.95 });
-  box(g, 0.045, 0.27, 0.035, darkTrim, -0.46, 1.11, -0.49, { rx: -0.95 });
-  cyl(g, 0.105, 0.105, 0.06, mat(0x30323a, 0.42), -0.46, 1.18, -0.55, { rx: Math.PI / 2, seg: 24 });
-  carButton(g, -0.59, 1.15, -0.57, 0.07, 0.045);
-  carButton(g, -0.33, 1.15, -0.57, 0.07, 0.045);
-  cyl(g, 0.035, 0.045, 0.42, darkTrim, -0.45, 1.0, -0.72, { rx: 0.6 });
+  wheelGroup.add(wheel);
+
+  // Spokes
+  const spoke = rbox(wheelGroup, 0.44, 0.05, 0.03, 0.01, 3, darkTrim, 0, 0, 0);
+  const spokeVert = rbox(wheelGroup, 0.05, 0.22, 0.03, 0.01, 3, darkTrim, 0, -0.1, 0);
+
+  // Center pad
+  const centerPad = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 24), mat(0x282c34, 0.42));
+  centerPad.rotation.x = Math.PI / 2;
+  wheelGroup.add(centerPad);
+
+  // Chrome logo
+  const logo = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 16), chrome);
+  logo.position.y = 0.031;
+  logo.rotation.x = Math.PI / 2;
+  wheelGroup.add(logo);
+
+  // Buttons on spokes
+  carButton(wheelGroup, -0.13, 0.02, 0.018, 0.07, 0.045);
+  carButton(wheelGroup, 0.13, 0.02, 0.018, 0.07, 0.045);
 
   // front seats, rear bench, and center console
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
@@ -1189,8 +1268,7 @@ function buildCar() {
         c.position.z += dt * 19;
         if (c.position.z > 16) c.position.z -= 104;
       }
-      wheel.rotation.z = Math.sin(t * 0.7) * 0.06;
-      spoke.rotation.z = Math.sin(t * 0.7) * 0.06;
+      wheelGroup.rotation.z = Math.sin(t * 0.7) * 0.06;
     },
     shoulderBelt,
     lapBelt,
