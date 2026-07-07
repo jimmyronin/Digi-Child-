@@ -774,34 +774,26 @@ function placeChild() {
     } else {
       // Standard diagonal belt placement for older child/teenager
       if (current.standardShoulderBelt) {
-        const x1 = 0.72;
-        const y1 = seatH + vrmHeight * 0.68;
-        const z1 = 0.42;
+        // Start exactly at her right shoulder (door side window shoulder) and run down-left to buckle
+        const x1 = 0.52 + 0.10 * vrmHeight;
+        const y1 = y + vrmHeight * 0.72;
+        const z1 = 0.36;
 
         const x2 = 0.35;
         const y2 = seatH + vrmHeight * 0.08;
         const z2 = 0.46;
 
-        const cx = (x1 + x2) / 2;
-        const cy = (y1 + y2) / 2;
-        const cz = (z1 + z2) / 2;
-
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const dz = z2 - z1;
-        const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        current.standardShoulderBelt.position.set(cx, cy, cz);
-        current.standardShoulderBelt.scale.set(1, len / 0.8, 1);
-        
-        const angle = Math.atan2(dy, dx) + Math.PI / 2;
-        current.standardShoulderBelt.rotation.set(0, 0, angle);
+        placeStrap(current.standardShoulderBelt, { x: x1, y: y1, z: z1 }, { x: x2, y: y2, z: z2 });
       }
       if (current.standardLapBelt) {
         current.standardLapBelt.position.set(0.52, seatH + vrmHeight * 0.08, 0.45);
+        current.standardLapBelt.rotation.set(0, 0, 0);
+        current.standardLapBelt.scale.set(1, 1, 1);
       }
       if (current.standardBuckle) {
         current.standardBuckle.position.set(0.35, seatH + vrmHeight * 0.08, 0.46);
+        current.standardBuckle.rotation.set(0, 0, 0);
+        current.standardBuckle.scale.set(1, 1, 1);
       }
     }
   }
