@@ -6,6 +6,7 @@ import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 
 /* ============================================================
    DOM
@@ -348,7 +349,14 @@ function loadModel(path) {
                 o.receiveShadow = true;
               }
             });
-            resolve(gltf.scene);
+            // normalize every model to a center-bottom origin: some Kenney
+            // packs pivot at a corner, which made furniture drift into walls
+            const bounds = new THREE.Box3().setFromObject(gltf.scene);
+            const center = bounds.getCenter(new THREE.Vector3());
+            const root = new THREE.Group();
+            gltf.scene.position.set(-center.x, -bounds.min.y, -center.z);
+            root.add(gltf.scene);
+            resolve(root);
           },
           undefined,
           reject
@@ -382,296 +390,68 @@ function makeTree(scale = 1, tone = 0x4d8f3a) {
 }
 
 /* ============================================================
-   The child (Mira) — a toddler, persistent across every scene.
-   Big head, huge dark eyes, messy buns, oversized sweater.
-   Small enough that the parent looks DOWN at her and she
-   looks UP at the camera.
+   The child (Mira) — the user's own VRoid character (.vrm).
+   15 models cover her growth: mira-01..05 (child),
+   mira-06..10 (teenager), mira-11..15 (adult).
+   The sim age picks which one is loaded.
    ============================================================ */
 const child = new THREE.Group();
 scene.add(child);
 
-const skinMat = mat(0xf6d7bc, 0.55);
-const sweaterMat = mat(0x93ab7d, 0.85);
-const jeansMat = mat(0x5f7591, 0.8);
-const hairMat = mat(0xccd3e0, 0.32);
-const accentMat = mat(0xc96a3c, 0.55);
-const shoeMat = mat(0xd14b3f, 0.55);
-
-// stubby legs + little orange shoes (pivot at hip so she can sit)
-function makeHip(side) {
-  const hip = new THREE.Group();
-  hip.position.set(side * 0.12, 0.34, 0.02);
-  const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.16, 8, 16), jeansMat);
-  leg.position.y = -0.15;
-  leg.castShadow = true;
-  hip.add(leg);
-  const shoe = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.12, 8, 16), shoeMat);
-  shoe.rotation.x = Math.PI / 2;
-  shoe.position.set(0, -0.32, 0.08);
-  shoe.castShadow = true;
-  hip.add(shoe);
-  return hip;
-}
-const leftHip = makeHip(-1);
-const rightHip = makeHip(1);
-child.add(leftHip, rightHip);
-
-// oversized sweater body that drapes wider at the hem
-const body = new THREE.Group();
-body.position.y = 0.52;
-child.add(body);
-
-const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.32, 0.42, 32), sweaterMat);
-torso.castShadow = true;
-body.add(torso);
-const collar = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.05, 16, 32), sweaterMat);
-collar.rotation.x = Math.PI / 2;
-collar.position.y = 0.2;
-collar.castShadow = true;
-body.add(collar);
-const hem = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.04, 16, 32), sweaterMat);
-hem.rotation.x = Math.PI / 2;
-hem.position.y = -0.21;
-hem.castShadow = true;
-body.add(hem);
-
-// cat print on the chest, like the reference sweater
-const catCanvas = document.createElement("canvas");
-catCanvas.width = catCanvas.height = 256;
-{
-  const c = catCanvas.getContext("2d");
-  c.strokeStyle = "#f3efe2";
-  c.lineWidth = 13;
-  c.lineCap = "round";
-  c.beginPath();
-  c.moveTo(28, 200);
-  for (let i = 1; i <= 5; i++) c.lineTo(28 + i * 40, i % 2 ? 176 : 200);
-  c.stroke();
-  c.fillStyle = "#232733";
-  c.beginPath(); c.arc(128, 108, 58, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.moveTo(80, 76); c.lineTo(98, 26); c.lineTo(122, 62); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(176, 76); c.lineTo(158, 26); c.lineTo(134, 62); c.closePath(); c.fill();
-  c.fillStyle = "#f2c531";
-  c.beginPath(); c.arc(106, 106, 8, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.arc(150, 106, 8, 0, Math.PI * 2); c.fill();
-}
-const catTex = new THREE.CanvasTexture(catCanvas);
-catTex.colorSpace = THREE.SRGBColorSpace;
-const catPrint = new THREE.Mesh(
-  new THREE.PlaneGeometry(0.18, 0.18),
-  new THREE.MeshStandardMaterial({ map: catTex, transparent: true, roughness: 0.85 })
-);
-catPrint.position.set(0, 0.05, 0.235);
-body.add(catPrint);
-
-// sleeves with tiny hands peeking out
-function makeArmGroup(side) {
-  const armG = new THREE.Group();
-  armG.position.set(side * 0.22, 0.68, 0.02);
-  
-  const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), sweaterMat);
-  shoulder.castShadow = true;
-  armG.add(shoulder);
-
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.35, 16), sweaterMat);
-  sleeve.position.set(side * 0.09, -0.19, 0.05);
-  sleeve.rotation.z = side * 0.32;
-  sleeve.rotation.x = -0.2;
-  sleeve.castShadow = true;
-  armG.add(sleeve);
-  
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), skinMat);
-  hand.position.set(side * 0.22, -0.32, 0.08);
-  armG.add(hand);
-  
-  return armG;
-}
-const leftArm = makeArmGroup(-1);
-const rightArm = makeArmGroup(1);
-child.add(leftArm, rightArm);
-
-// big toddler head with a hand-painted face — drawn on a canvas texture
-// the way stylized games do it: glossy gradient eyes, lashes, freckles
-const head = new THREE.Group();
-head.position.y = 1.0;
-child.add(head);
-
-const faceCanvas = document.createElement("canvas");
-faceCanvas.width = 2048;
-faceCanvas.height = 1024;
-const faceTex = new THREE.CanvasTexture(faceCanvas);
-faceTex.colorSpace = THREE.SRGBColorSpace;
-faceTex.anisotropy = 8;
-
-const face = { smile: 16, blushBoost: 0 };
-
-function drawFace(blink = false) {
-  const g = faceCanvas.getContext("2d");
-  const cx = 512;
-  const eyeY = 496;
-  g.fillStyle = "#f6d7bc";
-  g.fillRect(0, 0, 2048, 1024);
-
-  // soft blush
-  for (const s of [-1, 1]) {
-    const bx = cx + s * 190;
-    const rg = g.createRadialGradient(bx, 598, 10, bx, 598, 92);
-    rg.addColorStop(0, `rgba(243,146,118,${0.5 + face.blushBoost})`);
-    rg.addColorStop(1, "rgba(243,146,118,0)");
-    g.fillStyle = rg;
-    g.beginPath();
-    g.arc(bx, 598, 92, 0, Math.PI * 2);
-    g.fill();
-  }
-  // freckles
-  g.fillStyle = "rgba(186,122,84,0.6)";
-  for (const [fx, fy, fr] of [[-158, 566, 7], [-126, 594, 6], [-188, 606, 6], [-98, 572, 5], [158, 566, 7], [126, 596, 6], [188, 604, 6], [98, 572, 5]]) {
-    g.beginPath();
-    g.arc(cx + fx, fy, fr, 0, Math.PI * 2);
-    g.fill();
-  }
-  // brows
-  g.strokeStyle = "#8a6a52";
-  g.lineWidth = 14;
-  g.lineCap = "round";
-  for (const s of [-1, 1]) {
-    g.beginPath();
-    g.moveTo(cx + s * 66, 386);
-    g.quadraticCurveTo(cx + s * 120, 364, cx + s * 174, 382);
-    g.stroke();
-  }
-  // eyes
-  for (const s of [-1, 1]) {
-    const ex = cx + s * 125;
-    if (blink) {
-      g.strokeStyle = "#3a2a22";
-      g.lineWidth = 13;
-      g.lineCap = "round";
-      g.beginPath();
-      g.moveTo(ex - 56, eyeY);
-      g.quadraticCurveTo(ex, eyeY + 28, ex + 56, eyeY);
-      g.stroke();
-      continue;
-    }
-    g.fillStyle = "#ffffff";
-    g.beginPath();
-    g.ellipse(ex, eyeY, 64, 54, 0, 0, Math.PI * 2);
-    g.fill();
-    const ir = g.createRadialGradient(ex, eyeY - 8, 6, ex, eyeY + 2, 48);
-    ir.addColorStop(0, "#c9e4f4");
-    ir.addColorStop(0.4, "#5595c9");
-    ir.addColorStop(0.78, "#2a5c88");
-    ir.addColorStop(1, "#152a40");
-    g.fillStyle = ir;
-    g.beginPath();
-    g.arc(ex, eyeY + 2, 48, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = "rgba(16,22,34,0.45)";
-    g.beginPath();
-    g.ellipse(ex, eyeY - 26, 46, 20, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = "#0d1119";
-    g.beginPath();
-    g.arc(ex, eyeY + 6, 21, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = "#ffffff";
-    g.beginPath();
-    g.arc(ex - 17, eyeY - 12, 14, 0, Math.PI * 2);
-    g.fill();
-    g.beginPath();
-    g.arc(ex + 19, eyeY + 22, 7, 0, Math.PI * 2);
-    g.fill();
-    // upper lash line + wing
-    g.strokeStyle = "#2c2320";
-    g.lineWidth = 15;
-    g.lineCap = "round";
-    g.beginPath();
-    g.moveTo(ex - 62, eyeY - 20);
-    g.quadraticCurveTo(ex, eyeY - 60, ex + 62, eyeY - 20);
-    g.stroke();
-    g.lineWidth = 10;
-    g.beginPath();
-    g.moveTo(ex + s * 58, eyeY - 26);
-    g.lineTo(ex + s * 78, eyeY - 42);
-    g.stroke();
-    // lower lash hint
-    g.strokeStyle = "rgba(44,35,32,0.45)";
-    g.lineWidth = 6;
-    g.beginPath();
-    g.moveTo(ex - 32, eyeY + 46);
-    g.quadraticCurveTo(ex, eyeY + 55, ex + 32, eyeY + 46);
-    g.stroke();
-  }
-  // smile
-  g.strokeStyle = "#9c5a44";
-  g.lineWidth = 15;
-  g.lineCap = "round";
-  g.beginPath();
-  g.moveTo(cx - 56, 656);
-  g.quadraticCurveTo(cx, 656 + face.smile, cx + 56, 656);
-  g.stroke();
-  faceTex.needsUpdate = true;
-}
-drawFace();
-
-const headMesh = new THREE.Mesh(
-  new THREE.SphereGeometry(0.32, 64, 48),
-  new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.5 })
-);
-headMesh.scale.set(1.05, 0.95, 1.0);
-headMesh.castShadow = true;
-head.add(headMesh);
-
-// button nose
-sph(head, 0.022, skinMat, 0, -0.06, 0.31, { cast: false });
-
-// sculpted silver bob: crown, back, side locks, chunky bangs, low pigtails
-const crown = new THREE.Mesh(
-  new THREE.SphereGeometry(0.335, 32, 22, 0, Math.PI * 2, 0, Math.PI * 0.5),
-  hairMat
-);
-crown.position.set(0, 0.06, -0.015);
-crown.scale.set(1.03, 0.92, 0.99);
-crown.castShadow = true;
-head.add(crown);
-const hairBack = new THREE.Mesh(
-  new THREE.SphereGeometry(0.335, 32, 22, Math.PI, Math.PI, 0, Math.PI * 0.94),
-  hairMat
-);
-hairBack.position.set(0, 0.01, -0.01);
-hairBack.scale.set(1.05, 1.0, 1.0);
-hairBack.castShadow = true;
-head.add(hairBack);
-for (const s of [-1, 1]) {
-  // chin-length side locks framing the face
-  sph(head, 0.095, hairMat, s * 0.3, -0.06, 0.06, { sx: 0.5, sy: 1.6, sz: 0.85 });
-  // low little pigtails with orange ties
-  const tail = new THREE.Group();
-  tail.position.set(s * 0.28, -0.13, -0.11);
-  tail.rotation.z = s * 0.45;
-  cyl(tail, 0.024, 0.024, 0.06, accentMat, 0, 0.03, 0, { rz: Math.PI / 2, cast: false });
-  sph(tail, 0.065, hairMat, s * 0.03, -0.045, 0);
-  sph(tail, 0.05, hairMat, s * 0.055, -0.125, 0.012);
-  head.add(tail);
-}
-// chunky parted bangs
-for (const [bx, by, bz, br, rz] of [
-  [-0.215, 0.13, 0.27, 0.09, 0.4],
-  [-0.11, 0.18, 0.265, 0.1, 0.18],
-  [0.015, 0.195, 0.26, 0.105, 0],
-  [0.13, 0.175, 0.265, 0.095, -0.2],
-  [0.22, 0.125, 0.27, 0.085, -0.42],
-]) {
-  sph(head, br, hairMat, bx, by, bz, { sy: 0.85, sz: 0.6, cast: false }).rotation.z = rz;
-}
-// tiny orange clips at the edge of the bangs, like the reference
-box(head, 0.052, 0.016, 0.012, accentMat, -0.07, 0.065, 0.31, { rz: 0.5, cast: false });
-box(head, 0.052, 0.016, 0.012, accentMat, 0.09, 0.075, 0.308, { rz: -0.4, cast: false });
-
-// soft fill from the parent's side so her face never blows out
-const childLight = new THREE.PointLight(0xffd9a0, 0.75, 3.5, 2);
+// soft fill from the parent's side so her face never goes dark
+const childLight = new THREE.PointLight(0xffd9a0, 0.6, 3.5, 2);
 childLight.position.set(0, 1.5, 1.1);
 child.add(childLight);
+
+const vrmLoader = new GLTFLoader();
+vrmLoader.register((parser) => new VRMLoaderPlugin(parser));
+
+let vrm = null;
+let vrmStage = 0;
+let vrmHeight = 1.2;
+let exprHappy = 0.2;
+let exprSad = 0;
+let exprAngry = 0;
+
+function miraStage() {
+  return Math.max(1, Math.min(15, Math.round(state.age)));
+}
+
+function loadMira(stage) {
+  if (stage === vrmStage) return;
+  vrmStage = stage;
+  const url = `./assets/mira/mira-${String(stage).padStart(2, "0")}.vrm`;
+  vrmLoader.load(
+    url,
+    (gltf) => {
+      if (vrmStage !== stage) return; // a newer request superseded this one
+      const next = gltf.userData.vrm;
+      if (!next) return;
+      if (vrm) {
+        child.remove(vrm.scene);
+        VRMUtils.deepDispose(vrm.scene);
+      }
+      vrm = next;
+      VRMUtils.rotateVRM0(vrm);
+      vrm.scene.traverse((o) => {
+        if (o.isMesh) o.castShadow = true;
+        o.frustumCulled = false;
+      });
+      child.add(vrm.scene);
+      // relax the T-pose: arms down at her sides
+      for (const [boneName, rz] of [["leftUpperArm", -1.32], ["rightUpperArm", 1.32]]) {
+        const b = vrm.humanoid.getNormalizedBoneNode(boneName);
+        if (b) b.rotation.z = rz;
+      }
+      if (vrm.lookAt) vrm.lookAt.target = camera;
+      const bounds = new THREE.Box3().setFromObject(vrm.scene);
+      vrmHeight = Math.max(0.8, bounds.max.y - Math.min(bounds.min.y, 0));
+      placeChild();
+    },
+    undefined,
+    (e) => console.warn(`Could not load ${url}`, e)
+  );
+}
 
 // blink timing
 let blinkUntil = -1;
@@ -682,21 +462,20 @@ let childBaseY = 0;
 
 function setChildPose(pose) {
   childPose = pose;
+  if (!vrm) return;
   const sit = pose === "sit";
-  leftHip.rotation.x = sit ? -1.35 : 0;
-  rightHip.rotation.x = sit ? -1.35 : 0;
-}
-
-// she grows as the age band advances
-function childScale() {
-  return state.band === "Age 14-16" ? 1.18 : state.band === "Age 10-12" ? 1.0 : 0.8;
+  for (const side of ["left", "right"]) {
+    const upper = vrm.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
+    const lower = vrm.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
+    if (upper) upper.rotation.x = sit ? Math.PI / 2.15 : 0;
+    if (lower) lower.rotation.x = sit ? -Math.PI / 2.05 : 0;
+  }
 }
 
 function placeChild() {
   if (!current) return;
   const a = current.childAnchor;
-  const s = childScale();
-  const y = a.pose === "sit" ? (a.seat || 0) - 0.27 * s : 0;
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.38 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
@@ -792,9 +571,9 @@ function buildHome() {
   prop(g, "furniture/tableCoffee", -4.3, 3.4, { s: 2, ry: Math.PI / 2 });
   solid(colliders, -4.3, 3.4, 0.95, 1.5);
   box(g, 0.08, 1.35, 1.95, mat(0x2b2924, 0.68), 0.42, 0.92, 3.4, { cast: false });
-  prop(g, "furniture/cabinetTelevision", 0.06, 3.4, { s: 1.85, ry: -Math.PI / 2 });
-  prop(g, "furniture/televisionModern", 0.03, 3.4, { s: 1.45, ry: -Math.PI / 2, y: 0.9 });
-  solid(colliders, 0.2, 3.4, 0.75, 1.9);
+  prop(g, "furniture/cabinetTelevision", 0.28, 3.4, { s: 1.85, ry: -Math.PI / 2 });
+  prop(g, "furniture/televisionModern", 0.3, 3.4, { s: 1.45, ry: -Math.PI / 2, y: 0.62 });
+  solid(colliders, 0.28, 3.4, 0.75, 1.9);
   prop(g, "furniture/bookcaseClosedWide", -1.4, 5.6, { s: 2, ry: Math.PI });
   solid(colliders, -1.4, 5.6, 1.8, 0.7);
   prop(g, "furniture/lampRoundFloor", -6.45, 5.3, { s: 2 });
@@ -830,10 +609,10 @@ function buildHome() {
   prop(g, "furniture/kitchenCoffeeMachine", -5.2, -5.65, { s: 2, y: 0.9 });
   prop(g, "furniture/tableRound", -3, -3.1, { s: 2 });
   kitchenTableLegs(g, -3, -3.1);
-  prop(g, "food/plate-dinner", -3.34, -3.02, { s: 1.1, y: 0.78, ry: 0.3 });
-  prop(g, "food/cup-coffee", -2.68, -3.28, { s: 1.0, y: 0.8, ry: -0.4 });
-  prop(g, "food/bowl-cereal", -2.95, -2.82, { s: 0.95, y: 0.8 });
-  prop(g, "food/apple", -3.18, -3.38, { s: 0.85, y: 0.82 });
+  prop(g, "food/plate-dinner", -3.34, -3.02, { s: 0.34, y: 0.78, ry: 0.3 });
+  prop(g, "food/cup-coffee", -2.68, -3.28, { s: 0.5, y: 0.78, ry: -0.4 });
+  prop(g, "food/bowl-cereal", -2.95, -2.82, { s: 0.45, y: 0.78 });
+  prop(g, "food/apple", -3.18, -3.38, { s: 0.45, y: 0.78 });
   prop(g, "furniture/chairCushion", -3.95, -3.1, { s: 2, ry: Math.PI / 2 });
   prop(g, "furniture/chairCushion", -2.05, -3.1, { s: 2, ry: -Math.PI / 2 });
   prop(g, "food/cutting-board", -4.2, -5.5, { s: 1.15, y: 0.86, ry: Math.PI / 2 });
@@ -1558,7 +1337,7 @@ function setLocation(id) {
   placeChild();
   if (current.aimAtChild !== false) {
     const a = current.childAnchor;
-    const headY = child.position.y + 1.0 * childScale();
+    const headY = child.position.y + vrmHeight * 0.92;
     const dist = Math.max(0.6, Math.hypot(a.x - current.spawn.x, a.z - current.spawn.z));
     player.pitch = THREE.MathUtils.clamp(Math.atan2(headY - current.eye, dist) * 0.85, -0.6, 0.3);
   }
@@ -1722,11 +1501,11 @@ function updateChildLook() {
   const trust = state.values.trust;
   const volatility = state.values.volatility;
   const security = state.values.security;
-  face.smile = trust > 70 ? 34 : volatility > 55 ? -12 : 16;
-  face.blushBoost = trust > 70 ? 0.2 : 0;
-  drawFace(blinkUntil > 0);
-  childLight.intensity = security > 65 ? 0.75 : 0.35;
-  child.scale.setScalar(childScale());
+  exprHappy = trust > 70 ? 0.85 : trust > 55 ? 0.3 : 0.1;
+  exprSad = volatility > 55 ? 0.45 : 0;
+  exprAngry = volatility > 70 ? 0.35 : 0;
+  childLight.intensity = security > 65 ? 0.6 : 0.3;
+  loadMira(miraStage());
   placeChild();
 }
 
@@ -1919,30 +1698,44 @@ function updateFrame(dt, t) {
   camRig.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
 
-  // Mira: breathe, face the parent, track them with her head
+  // Mira: breathe, face the parent, track them with her head and eyes
   camera.getWorldPosition(camWorld);
   if (childPose === "stand") {
-    child.position.y = childBaseY + Math.sin(t * 1.5) * 0.015;
+    child.position.y = childBaseY + Math.sin(t * 1.5) * 0.01;
     const targetYaw = Math.atan2(camWorld.x - child.position.x, camWorld.z - child.position.z);
     let diff = targetYaw - child.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     child.rotation.y += diff * Math.min(1, dt * 2.4);
   }
-  head.lookAt(camWorld);
-  head.rotation.x = THREE.MathUtils.clamp(head.rotation.x, -1.0, 0.35);
-  head.rotation.y = THREE.MathUtils.clamp(head.rotation.y, -1.05, 1.05);
-  head.rotation.z = 0;
-  leftArm.rotation.z = -0.16 + Math.sin(t * 1.2) * 0.05;
-  rightArm.rotation.z = 0.16 - Math.sin(t * 1.2) * 0.05;
+  if (vrm) {
+    const headBone = vrm.humanoid.getNormalizedBoneNode("head");
+    if (headBone) {
+      const headPos = new THREE.Vector3();
+      headBone.getWorldPosition(headPos);
+      const dir = camWorld.clone().sub(headPos);
+      const flat = Math.max(0.001, Math.hypot(dir.x, dir.z));
+      let relYaw = Math.atan2(dir.x, dir.z) - child.rotation.y;
+      relYaw = Math.atan2(Math.sin(relYaw), Math.cos(relYaw));
+      relYaw = THREE.MathUtils.clamp(relYaw, -0.85, 0.85);
+      const relPitch = THREE.MathUtils.clamp(Math.atan2(dir.y, flat), -0.45, 0.75);
+      headBone.rotation.set(-relPitch * 0.7, relYaw * 0.75, 0);
+    }
+    const em = vrm.expressionManager;
+    if (em) {
+      em.setValue("blink", blinkUntil > 0 ? 1 : 0);
+      em.setValue("happy", exprHappy);
+      em.setValue("sad", exprSad);
+      em.setValue("angry", exprAngry);
+    }
+    vrm.update(dt);
+  }
 
   // blink every few seconds
   if (blinkUntil < 0 && t >= nextBlinkAt) {
-    blinkUntil = t + 0.13;
-    drawFace(true);
+    blinkUntil = t + 0.14;
   } else if (blinkUntil > 0 && t >= blinkUntil) {
     blinkUntil = -1;
     nextBlinkAt = t + 2.4 + rnd(Math.floor(t * 7)) * 3;
-    drawFace(false);
   }
   motes.rotation.y = t * 0.015;
 }
@@ -1964,6 +1757,14 @@ setLocation("home");
 renderStats();
 syncUi();
 animate();
+
+// dev helper: teleport the player from the console
+window.__digiGo = (x, z, yaw = 0, pitch = -0.05) => {
+  player.x = x;
+  player.z = z;
+  player.yaw = yaw;
+  player.pitch = pitch;
+};
 
 // dev helper: measure model bounding boxes from the console
 window.__digiProbe = async (paths) => {
