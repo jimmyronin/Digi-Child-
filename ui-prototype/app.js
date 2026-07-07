@@ -8,6 +8,17 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 
+// Redirect client console.log to backend uvicorn log
+const originalLog = console.log;
+console.log = function(...args) {
+  originalLog.apply(console, args);
+  fetch("http://localhost:8000/api/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: args.join(" ") })
+  }).catch(() => {});
+};
+
 /* ============================================================
    DOM
    ============================================================ */
