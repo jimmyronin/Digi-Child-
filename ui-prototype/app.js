@@ -779,6 +779,23 @@ let childBaseY = 0;
 const childWorld = { x: 0, z: 0 }; // her own walking position in the scene
 let walkPhase = 0; // leg-cycle phase
 let walkAmt = 0; // 0..1 how much she is currently walking
+const childTarget = { x: 0, z: 0 };
+let nextWanderAt = 0;
+
+const playPoints = {
+  home: [
+    { x: 0.5, z: 0.2 },   // living room rug
+    { x: 1.5, z: -0.8 },  // dining table area
+    { x: 2.2, z: -2.0 },  // bedroom/bed
+    { x: 0.2, z: -1.8 },  // kitchen counter
+  ],
+  park: [
+    { x: -2.5, z: -2.0 }, // slide
+    { x: 2.5, z: -2.0 },  // swings
+    { x: 0, z: 1.5 },     // sandbox
+    { x: -1.2, z: 2.2 },  // grass
+  ]
+};
 
 function setChildPose(pose) {
   childPose = pose;
@@ -833,6 +850,9 @@ function placeChild() {
   childBaseY = y;
   childWorld.x = a.x;
   childWorld.z = a.z;
+  childTarget.x = a.x;
+  childTarget.z = a.z;
+  nextWanderAt = 0;
   walkAmt = 0;
   setChildPose(a.pose);
 
@@ -2436,18 +2456,44 @@ function updateFrame(dt, t) {
   let effType = rType;
   if (rType === "scream" && reaction && t - reaction.start > 1.1) effType = "cry";
 
-  // --- follow the parent: she walks on her legs to stay near you ---
+  // --- AI Wandering and Follow-the-Parent logic ---
   const dxp = camWorld.x - childWorld.x;
   const dzp = camWorld.z - childWorld.z;
   const distP = Math.hypot(dxp, dzp) || 0.001;
   const canWalk = childPose === "stand" && effType !== "cry" && effType !== "scream" && effType !== "upset";
+  const goodMood = state.values.volatility < 45 && state.values.trust > 50;
+
+  if (canWalk) {
+    // If parent is too far away, prioritize following the parent to stay near
+    if (distP > 2.6) {
+      childTarget.x = camWorld.x - (dxp / distP) * 1.25; // stop 1.25m away from parent
+      childTarget.z = camWorld.z - (dzp / distP) * 1.25;
+    } else {
+      // If parent is close, explore play points periodically
+      if (goodMood && t > nextWanderAt) {
+        const points = playPoints[currentId];
+        if (points && points.length > 0) {
+          const pt = points[Math.floor(Math.random() * points.length)];
+          childTarget.x = pt.x;
+          childTarget.z = pt.z;
+        }
+        nextWanderAt = t + 8 + Math.random() * 12; // wander again in 8-20 seconds
+      }
+    }
+  }
+
+  // Calculate actual movement towards childTarget
+  const dxT = childTarget.x - childWorld.x;
+  const dzT = childTarget.z - childWorld.z;
+  const distT = Math.hypot(dxT, dzT) || 0.001;
+
   let walking = false;
-  if (canWalk && distP > 1.45) {
+  if (canWalk && distT > 0.18) {
     walking = true;
-    const spd = state.values.volatility > 55 ? 1.5 : 2.3; // reluctant if upset
-    const step = Math.min(distP - 1.15, spd * dt);
-    const nx = childWorld.x + (dxp / distP) * step;
-    const nz = childWorld.z + (dzp / distP) * step;
+    const spd = state.values.volatility > 55 ? 1.4 : 2.0; // speed
+    const step = Math.min(distT, spd * dt);
+    const nx = childWorld.x + (dxT / distT) * step;
+    const nz = childWorld.z + (dzT / distT) * step;
     const r = 0.26;
     const blocked = (x, z) => {
       for (const c of current.colliders)
@@ -2467,7 +2513,6 @@ function updateFrame(dt, t) {
   const fwdX = -Math.sin(player.yaw), fwdZ = -Math.cos(player.yaw);
   const facing = (fwdX * dxp + fwdZ * dzp) / distP;
   const attended = !rType && distP < 3.4 && facing > 0.5;
-  const goodMood = state.values.volatility < 45 && state.values.trust > 50;
 
   // expression targets
   let tH = exprHappy, tS = exprSad, tA = exprAngry, tSurp = 0, tAa = 0;
@@ -2543,10 +2588,10 @@ function updateFrame(dt, t) {
     LuX += Math.sin(t * 3) * 0.1; RuX += Math.sin(t * 3 + 1) * 0.1;
   }
 
-  // body yaw: turn toward the parent (faster while walking)
-  {
-    const targetYaw = Math.atan2(camWorld.x - childWorld.x, camWorld.z - childWorld.z);
-    let diff = targetYaw - child.rotation.y;
+  // body yaw: turn toward target direction when walking, otherwise turn to parent (faster while walking)
+  if (canWalk) {
+    const yawTarget = walking ? Math.atan2(dxT, dzT) : Math.atan2(dxp, dzp);
+    let diff = yawTarget - child.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     child.rotation.y += diff * Math.min(1, dt * (walking ? 5 : 2.6));
   }
