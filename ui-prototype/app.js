@@ -317,6 +317,64 @@ function towelBar(parent, x, y, z, ry = 0) {
   return bar;
 }
 
+function carVent(parent, x, y, z, w = 0.46) {
+  const frame = mat(0x20242a, 0.46);
+  const slat = mat(0xd9dedf, 0.38, { metalness: 0.15 });
+  box(parent, w, 0.16, 0.04, frame, x, y, z, { cast: false });
+  for (let i = 0; i < 4; i++) {
+    box(parent, w - 0.1, 0.014, 0.055, slat, x, y - 0.052 + i * 0.035, z - 0.025, { cast: false });
+  }
+  box(parent, 0.08, 0.045, 0.065, slat, x + w * 0.18, y, z - 0.045, { cast: false });
+}
+
+function carButton(parent, x, y, z, w, h, label = "") {
+  const btn = box(parent, w, h, 0.045, mat(0xd9dedf, 0.42, { metalness: 0.1 }), x, y, z, { cast: false });
+  if (label) {
+    const p = textPanel(label, w * 0.82, h * 0.82, "#d9dedf", "#29313a");
+    p.position.set(x, y, z - 0.026);
+    parent.add(p);
+  }
+  return btn;
+}
+
+function gearSelector(parent, x, y, z) {
+  const base = mat(0xd7d8d4, 0.42, { metalness: 0.18 });
+  const dark = mat(0x20242a, 0.5);
+  box(parent, 0.48, 0.08, 0.54, base, x, y, z, { cast: true });
+  box(parent, 0.22, 0.025, 0.4, dark, x - 0.12, y + 0.052, z, { cast: false });
+  const stem = cyl(parent, 0.035, 0.045, 0.25, dark, x, y + 0.18, z - 0.05, { rx: -0.35, seg: 12 });
+  stem.rotation.z = 0.08;
+  box(parent, 0.14, 0.2, 0.1, mat(0xbfc5c7, 0.36, { metalness: 0.18 }), x + 0.03, y + 0.33, z - 0.1, { rx: -0.2 });
+  cyl(parent, 0.12, 0.12, 0.055, mat(0xcfd2d1, 0.35, { metalness: 0.2 }), x + 0.24, y + 0.09, z + 0.16, { seg: 24 });
+  cyl(parent, 0.08, 0.08, 0.06, dark, x + 0.24, y + 0.13, z + 0.16, { seg: 24 });
+}
+
+function quiltedSeat(parent, x, z, opts = {}) {
+  const seat = mat(opts.color || 0x6a5148, 0.82);
+  const seam = mat(0x2d2826, 0.62);
+  const accent = mat(0xc9b4a8, 0.78);
+  box(parent, 0.68, 0.18, 0.72, seat, x, 0.76, z);
+  box(parent, 0.68, 0.78, 0.16, seat, x, 1.22, z + 0.37, { rx: -0.1 });
+  box(parent, 0.34, 0.18, 0.14, seat, x, 1.68, z + 0.43);
+  box(parent, 0.5, 0.012, 0.46, accent, x, 0.86, z - 0.02, { cast: false });
+  box(parent, 0.46, 0.38, 0.012, accent, x, 1.24, z + 0.29, { rx: -0.1, cast: false });
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      box(parent, 0.015, 0.011, 0.54, seam, x + s * (0.08 + i * 0.07), 0.872, z - 0.02, {
+        rz: s * 0.7,
+        cast: false,
+      });
+      box(parent, 0.012, 0.42, 0.012, seam, x + s * (0.07 + i * 0.06), 1.24, z + 0.21, {
+        rz: -s * 0.65,
+        rx: -0.1,
+        cast: false,
+      });
+    }
+  }
+  box(parent, 0.05, 0.12, 0.8, seam, x - 0.38, 0.82, z, { cast: false });
+  box(parent, 0.05, 0.12, 0.8, seam, x + 0.38, 0.82, z, { cast: false });
+}
+
 function rnd(i) {
   return Math.abs(Math.sin(i * 127.1 + 311.7) * 43758.5453) % 1;
 }
@@ -733,6 +791,7 @@ function buildHome() {
 function buildCar() {
   const g = new THREE.Group();
   const movers = [];
+  const inspectCar = queryParams.get("view") === "car";
 
   // world outside
   box(g, 60, 0.08, 120, mat(0x6da24e, 0.95), 0, -0.09, -20, { cast: false });
@@ -774,36 +833,102 @@ function buildCar() {
   });
 
   // car cabin
-  const paint = mat(0xa63c3c, 0.45, { metalness: 0.25 });
-  const darkTrim = mat(0x24262b, 0.6);
-  const seatMat = mat(0x54463a, 0.8);
-  box(g, 1.9, 0.1, 3.4, darkTrim, 0, 0.44, 0.2, { cast: false });
-  box(g, 1.85, 0.34, 1.2, paint, 0, 0.8, -1.95);
-  box(g, 1.8, 0.52, 0.55, darkTrim, 0, 1.06, -0.9);
-  box(g, 1.8, 0.07, 0.62, mat(0x33363c, 0.5), 0, 1.33, -0.92);
-  box(g, 0.5, 0.22, 0.04, glowMat(0x8fd8cf), -0.45, 1.22, -0.66, { cast: false, receive: false });
-  box(g, 0.34, 0.2, 0.04, glowMat(0x3b4754), 0.1, 1.2, -0.66, { cast: false, receive: false });
+  const paint = mat(0xb9aca2, 0.72, { metalness: 0.08 });
+  const lowerTrim = mat(0x746b66, 0.74);
+  const darkTrim = mat(0x1f232a, 0.52);
+  const redAccent = mat(0xba3f35, 0.45);
+  const stitch = mat(0x2d2826, 0.62);
+  const chrome = mat(0xcfd2d1, 0.32, { metalness: 0.28 });
 
-  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.032, 12, 28), mat(0x1b1d21, 0.4));
-  wheel.position.set(-0.45, 1.16, -0.6);
+  // floor, tunnel, and cabin shell
+  box(g, 1.95, 0.1, 3.55, mat(0x15181d, 0.78), 0, 0.42, 0.2, { cast: false });
+  box(g, 0.48, 0.18, 2.1, lowerTrim, 0.03, 0.62, 0.55);
+  box(g, 1.95, 0.34, 1.25, paint, 0, 0.8, -1.95);
+  box(g, 0.07, 0.68, 3.05, paint, -0.98, 0.9, 0.22);
+  box(g, 0.07, 0.68, 3.05, paint, 0.98, 0.9, 0.22);
+  if (!inspectCar) box(g, 1.95, 0.09, 2.2, paint, 0, 2.1, 0.7, { cast: false });
+
+  // layered dashboard inspired by the reference photo
+  box(g, 1.86, 0.28, 0.46, lowerTrim, 0, 1.0, -0.92);
+  box(g, 1.82, 0.15, 0.58, paint, 0, 1.22, -0.94);
+  box(g, 1.74, 0.05, 0.48, mat(0xa79c93, 0.82), 0, 1.34, -0.97, { cast: false });
+  box(g, 1.66, 0.03, 0.035, redAccent, 0, 1.17, -0.58, { cast: false });
+  box(g, 0.88, 0.08, 0.05, darkTrim, 0.36, 1.34, -0.63, { cast: false });
+  box(g, 0.74, 0.26, 0.035, mat(0x76868a, 0.58, { metalness: 0.05 }), 0.38, 1.45, -0.66, { cast: false, receive: false });
+  box(g, 0.5, 0.035, 0.045, darkTrim, 0.38, 1.29, -0.68, { cast: false });
+  box(g, 0.84, 0.07, 0.07, darkTrim, 0.34, 1.54, -0.98, { cast: false });
+  for (let i = 0; i < 8; i++) {
+    box(g, 0.08, 0.012, 0.055, mat(0x2a2e32, 0.58), -0.32 + i * 0.09, 1.38, -1.22, { cast: false });
+  }
+  carVent(g, -0.24, 1.22, -0.56, 0.44);
+  carVent(g, 0.4, 1.22, -0.56, 0.5);
+  box(g, 0.18, 0.15, 0.05, mat(0xd8d4cf, 0.5), 0.09, 1.22, -0.52, { cast: false });
+  carButton(g, 0.09, 1.26, -0.555, 0.08, 0.055, "!");
+
+  // climate and media controls under the vents
+  box(g, 0.92, 0.22, 0.055, mat(0x30343a, 0.58), 0.12, 1.0, -0.54, { cast: false });
+  for (let i = 0; i < 7; i++) {
+    carButton(g, -0.25 + i * 0.11, 1.04, -0.585, 0.075, 0.028);
+  }
+  for (const x of [-0.34, 0.54]) {
+    cyl(g, 0.055, 0.055, 0.045, chrome, x, 0.94, -0.58, { rx: Math.PI / 2, seg: 18 });
+    cyl(g, 0.034, 0.034, 0.052, darkTrim, x, 0.94, -0.61, { rx: Math.PI / 2, seg: 18 });
+  }
+  box(g, 0.42, 0.18, 0.04, glowMat(0x24313a), -0.5, 1.2, -0.57, { cast: false, receive: false });
+  cyl(g, 0.15, 0.16, 0.05, darkTrim, -0.45, 1.2, -0.6, { rx: Math.PI / 2, seg: 24 });
+  cyl(g, 0.09, 0.09, 0.055, glowMat(0x31485a), -0.45, 1.2, -0.63, { rx: Math.PI / 2, seg: 18 });
+
+  // steering wheel with spokes, center pad, and tiny controls
+  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 16, 36), mat(0x1b1d21, 0.38));
+  wheel.position.set(-0.46, 1.18, -0.52);
   wheel.rotation.x = -0.95;
   g.add(wheel);
-  const spoke = box(g, 0.32, 0.035, 0.035, mat(0x1b1d21, 0.4), -0.45, 1.16, -0.6, { rx: -0.95 });
-  cyl(g, 0.035, 0.045, 0.4, darkTrim, -0.45, 1.0, -0.72, { rx: 0.6 });
+  const spoke = box(g, 0.36, 0.04, 0.035, darkTrim, -0.46, 1.18, -0.52, { rx: -0.95 });
+  box(g, 0.045, 0.27, 0.035, darkTrim, -0.46, 1.11, -0.49, { rx: -0.95 });
+  cyl(g, 0.105, 0.105, 0.06, mat(0x30323a, 0.42), -0.46, 1.18, -0.55, { rx: Math.PI / 2, seg: 24 });
+  carButton(g, -0.59, 1.15, -0.57, 0.07, 0.045);
+  carButton(g, -0.33, 1.15, -0.57, 0.07, 0.045);
+  cyl(g, 0.035, 0.045, 0.42, darkTrim, -0.45, 1.0, -0.72, { rx: 0.6 });
 
-  for (const sx of [-0.45, 0.5]) {
-    box(g, 0.62, 0.16, 0.6, seatMat, sx, 0.78, 0.35);
-    box(g, 0.62, 0.78, 0.16, seatMat, sx, 1.22, 0.72, { rx: -0.1 });
-    box(g, 0.3, 0.18, 0.12, seatMat, sx, 1.68, 0.78);
+  // front seats, rear bench, and center console
+  quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
+  quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
+  box(g, 1.7, 0.16, 0.62, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
+  box(g, 1.7, 0.7, 0.16, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
+  for (const x of [-0.42, 0, 0.42]) {
+    box(g, 0.012, 0.58, 0.018, stitch, x, 1.21, 1.77, { rx: -0.08, cast: false });
   }
-  box(g, 1.7, 0.16, 0.6, seatMat, 0, 0.78, 1.55);
-  box(g, 1.7, 0.7, 0.16, seatMat, 0, 1.2, 1.85, { rx: -0.08 });
+  box(g, 0.42, 0.2, 1.85, mat(0xa99d95, 0.72), 0.02, 0.88, 0.58);
+  box(g, 0.4, 0.18, 0.72, mat(0xbdb3aa, 0.68), 0.02, 1.02, 1.02);
+  box(g, 0.025, 0.02, 0.72, stitch, 0.02, 1.125, 1.02, { cast: false });
+  gearSelector(g, 0.02, 0.96, -0.02);
+  cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.38, { seg: 24 });
+  cyl(g, 0.095, 0.095, 0.035, darkTrim, 0.14, 1.04, 0.38, { seg: 24 });
+  for (let i = 0; i < 5; i++) carButton(g, -0.15 + i * 0.075, 1.07, 0.17, 0.052, 0.04);
+  box(g, 0.34, 0.035, 0.52, mat(0xefe4d8, 0.7), 0.02, 1.13, 0.66, { cast: false });
+  box(g, 0.3, 0.018, 0.48, stitch, 0.02, 1.155, 0.66, { cast: false });
 
-  box(g, 0.07, 0.5, 2.9, paint, -0.94, 0.72, 0.2);
-  box(g, 0.07, 0.5, 2.9, paint, 0.94, 0.72, 0.2);
-  box(g, 1.95, 0.09, 2.2, paint, 0, 2.1, 0.7, { cast: false });
+  // door cards, speaker rings, and window/roof structure
+  box(g, 0.08, 0.48, 1.38, lowerTrim, -0.96, 0.98, 0.08);
+  box(g, 0.08, 0.48, 1.38, lowerTrim, 0.96, 0.98, 0.08);
+  box(g, 0.085, 0.08, 0.78, mat(0xb7a99e, 0.72), -0.99, 1.05, 0.08, { cast: false });
+  box(g, 0.085, 0.08, 0.78, mat(0xb7a99e, 0.72), 0.99, 1.05, 0.08, { cast: false });
+  box(g, 0.09, 0.025, 1.08, redAccent, -1.005, 1.18, 0.08, { cast: false });
+  box(g, 0.09, 0.025, 1.08, redAccent, 1.005, 1.18, 0.08, { cast: false });
+  box(g, 0.1, 0.06, 0.66, darkTrim, -0.98, 1.25, -0.1, { cast: false });
+  box(g, 0.1, 0.06, 0.66, darkTrim, 0.98, 1.25, -0.1, { cast: false });
+  for (const sx of [-1, 1]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.013, 8, 24), mat(0x30343a, 0.45));
+    ring.position.set(sx * 0.995, 0.82, -0.42);
+    ring.rotation.y = Math.PI / 2;
+    g.add(ring);
+  }
+  if (!inspectCar) {
+    box(g, 1.86, 0.06, 0.08, darkTrim, 0, 1.96, -0.62, { cast: false });
+    box(g, 1.9, 0.05, 0.1, mat(0x5d645f, 0.55), 0, 2.22, -0.4, { cast: false });
+  }
   for (const [px, pz, tilt] of [[-0.9, -0.72, 0.28], [0.9, -0.72, 0.28], [-0.9, 1.62, -0.2], [0.9, 1.62, -0.2]]) {
-    cyl(g, 0.045, 0.045, 0.95, darkTrim, px, 1.6, pz, { rx: tilt });
+    if (!inspectCar || pz < 0) cyl(g, 0.045, 0.045, 0.95, darkTrim, px, 1.6, pz, { rx: tilt });
   }
   const glass = new THREE.Mesh(
     new THREE.PlaneGeometry(1.78, 0.85),
@@ -813,8 +938,11 @@ function buildCar() {
   glass.rotation.x = -0.3;
   g.add(glass);
   box(g, 0.32, 0.1, 0.04, mat(0x1b1d21, 0.3), 0, 1.9, -0.7);
+  const cabinGlow = new THREE.PointLight(0xffd0bf, 0.28, 3.2, 2);
+  cabinGlow.position.set(0.25, 1.5, -0.3);
+  g.add(cabinGlow);
 
-  const sun = new THREE.DirectionalLight(0xfff2d8, 1.9);
+  const sun = new THREE.DirectionalLight(0xfff2d8, 1.22);
   sun.position.set(8, 14, 6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -833,7 +961,7 @@ function buildCar() {
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
-    env: { bg: 0xbfe0f2, fog: [0xbfe0f2, 30, 90], hemi: 0.85, envI: 0.5 },
+    env: { bg: 0xbfe0f2, fog: [0xbfe0f2, 30, 90], hemi: 0.65, envI: 0.35 },
     camWobble: (t) => Math.sin(t * 7.2) * 0.008,
     tick: (t, dt) => {
       for (const m of movers) {
@@ -1367,6 +1495,14 @@ function setLocation(id) {
     player.z = -2.15;
     player.yaw = -0.75;
     player.pitch = -0.08;
+  } else if (id === "car" && debugView === "car") {
+    current.eye = 2.32;
+    player.x = 0.0;
+    player.z = 0.42;
+    player.yaw = 0.0;
+    player.pitch = -0.82;
+  } else if (id === "car") {
+    player.pitch = -0.22;
   }
 
   // child reacts to the new place
@@ -1767,7 +1903,7 @@ function animate() {
    Boot
    ============================================================ */
 buildLocationBar();
-setLocation("home");
+setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : "home");
 renderStats();
 syncUi();
 animate();
