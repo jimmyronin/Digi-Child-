@@ -7,6 +7,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 // Redirect client console.log to backend uvicorn log
 const originalLog = console.log;
@@ -191,6 +192,20 @@ function box(parent, w, h, d, material, x, y, z, opts = {}) {
   return m;
 }
 
+function rbox(parent, w, h, d, radius, segments, material, x, y, z, opts = {}) {
+  const maxRad = Math.min(w, h, d) * 0.49;
+  const rad = Math.min(radius, maxRad);
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, segments, rad), material);
+  m.position.set(x, y, z);
+  if (opts.rx) m.rotation.x = opts.rx;
+  if (opts.ry) m.rotation.y = opts.ry;
+  if (opts.rz) m.rotation.z = opts.rz;
+  m.castShadow = opts.cast !== false;
+  m.receiveShadow = opts.receive !== false;
+  parent.add(m);
+  return m;
+}
+
 function cyl(parent, rTop, rBot, h, material, x, y, z, opts = {}) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, opts.seg || 16), material);
   m.position.set(x, y, z);
@@ -362,28 +377,16 @@ function gearSelector(parent, x, y, z) {
 
 function quiltedSeat(parent, x, z, opts = {}) {
   const seat = mat(opts.color || 0x6a5148, 0.52, { metalness: 0.06 });
-  const seam = mat(0x2d2826, 0.45);
   const accent = mat(0xc9b4a8, 0.55);
-  box(parent, 0.68, 0.18, 0.72, seat, x, 0.76, z);
-  box(parent, 0.68, 0.78, 0.16, seat, x, 1.22, z + 0.37, { rx: -0.1 });
-  box(parent, 0.34, 0.18, 0.14, seat, x, 1.68, z + 0.43);
-  box(parent, 0.5, 0.012, 0.46, accent, x, 0.86, z - 0.02, { cast: false });
-  box(parent, 0.46, 0.38, 0.012, accent, x, 1.24, z + 0.29, { rx: -0.1, cast: false });
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      box(parent, 0.015, 0.011, 0.54, seam, x + s * (0.08 + i * 0.07), 0.872, z - 0.02, {
-        rz: s * 0.7,
-        cast: false,
-      });
-      box(parent, 0.012, 0.42, 0.012, seam, x + s * (0.07 + i * 0.06), 1.24, z + 0.21, {
-        rz: -s * 0.65,
-        rx: -0.1,
-        cast: false,
-      });
-    }
-  }
-  box(parent, 0.05, 0.12, 0.8, seam, x - 0.38, 0.82, z, { cast: false });
-  box(parent, 0.05, 0.12, 0.8, seam, x + 0.38, 0.82, z, { cast: false });
+  // Bottom seat cushion (well rounded)
+  rbox(parent, 0.68, 0.18, 0.72, 0.05, 4, seat, x, 0.76, z);
+  // Backrest (well rounded)
+  rbox(parent, 0.68, 0.78, 0.16, 0.04, 4, seat, x, 1.22, z + 0.37, { rx: -0.1 });
+  // Headrest (well rounded)
+  rbox(parent, 0.34, 0.18, 0.14, 0.04, 4, seat, x, 1.68, z + 0.43);
+  // Accent cushions (softer boundaries)
+  rbox(parent, 0.5, 0.02, 0.46, 0.01, 3, accent, x, 0.86, z - 0.02, { cast: false });
+  rbox(parent, 0.46, 0.38, 0.02, 0.01, 3, accent, x, 1.24, z + 0.29, { rx: -0.1, cast: false });
 }
 
 function curtains(parent, x, z, orientation = "north", color = 0xc57857) {
@@ -981,16 +984,16 @@ function buildCar() {
 
   // floor, tunnel, and cabin shell
   box(g, 1.95, 0.1, 3.55, mat(0x15181d, 0.78), 0, 0.42, 0.2, { cast: false });
-  box(g, 0.48, 0.18, 2.1, lowerTrim, 0.03, 0.62, 0.55);
+  rbox(g, 0.48, 0.18, 2.1, 0.02, 3, lowerTrim, 0.03, 0.62, 0.55);
   box(g, 1.95, 0.34, 1.25, paint, 0, 0.8, -1.95);
   box(g, 0.07, 0.68, 3.05, paint, -0.98, 0.9, 0.22);
   box(g, 0.07, 0.68, 3.05, paint, 0.98, 0.9, 0.22);
   if (!inspectCar) box(g, 1.95, 0.09, 2.2, paint, 0, 2.1, 0.7, { cast: false });
 
   // layered dashboard inspired by the reference photo
-  box(g, 1.86, 0.28, 0.46, lowerTrim, 0, 1.0, -0.92);
-  box(g, 1.82, 0.15, 0.58, paint, 0, 1.22, -0.94);
-  box(g, 1.74, 0.05, 0.48, mat(0xa79c93, 0.82), 0, 1.34, -0.97, { cast: false });
+  rbox(g, 1.86, 0.28, 0.46, 0.05, 4, lowerTrim, 0, 1.0, -0.92);
+  rbox(g, 1.82, 0.15, 0.58, 0.04, 4, paint, 0, 1.22, -0.94);
+  rbox(g, 1.74, 0.05, 0.48, 0.03, 3, mat(0xa79c93, 0.82), 0, 1.34, -0.97, { cast: false });
   box(g, 1.66, 0.03, 0.035, redAccent, 0, 1.17, -0.58, { cast: false });
   box(g, 0.88, 0.08, 0.05, darkTrim, 0.36, 1.34, -0.63, { cast: false });
   box(g, 0.74, 0.26, 0.035, mat(0x76868a, 0.58, { metalness: 0.05 }), 0.38, 1.45, -0.66, { cast: false, receive: false });
@@ -1037,13 +1040,13 @@ function buildCar() {
   const shoulderBelt = box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
   const lapBelt = box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
   const buckle = box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
-  box(g, 1.7, 0.16, 0.62, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
-  box(g, 1.7, 0.7, 0.16, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
+  rbox(g, 1.7, 0.16, 0.62, 0.03, 3, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
+  rbox(g, 1.7, 0.7, 0.16, 0.03, 3, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
   for (const x of [-0.42, 0, 0.42]) {
     box(g, 0.012, 0.58, 0.018, stitch, x, 1.21, 1.77, { rx: -0.08, cast: false });
   }
-  box(g, 0.42, 0.2, 1.85, mat(0xa99d95, 0.72), 0.02, 0.88, 0.58);
-  box(g, 0.4, 0.18, 0.72, mat(0xbdb3aa, 0.68), 0.02, 1.02, 1.02);
+  rbox(g, 0.42, 0.2, 1.85, 0.02, 3, mat(0xa99d95, 0.72), 0.02, 0.88, 0.58);
+  rbox(g, 0.4, 0.18, 0.72, 0.03, 3, mat(0xbdb3aa, 0.68), 0.02, 1.02, 1.02);
   box(g, 0.025, 0.02, 0.72, stitch, 0.02, 1.125, 1.02, { cast: false });
   gearSelector(g, 0.02, 0.96, -0.02);
   cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.38, { seg: 24 });
