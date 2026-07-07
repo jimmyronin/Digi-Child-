@@ -1,2 +1,7 @@
 shared_data/*.json
 shared_data/state.json
+.env
+*.db
+__pycache__/
+*/__pycache__/
+*.py[cod]
