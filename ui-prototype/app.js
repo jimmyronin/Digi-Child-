@@ -556,7 +556,7 @@ function loadMira(stage) {
 }
 
 // a seated, static VRoid family member (party guests)
-function familyMember(parent, file, x, z, ry, seat = 0.46) {
+function familyMember(parent, file, x, z, ry, seat = 0.76) {
   vrmLoader.load(
     `./assets/mira/${file}.vrm`,
     (gltf) => {
@@ -628,7 +628,7 @@ function placeChild() {
     if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
   } else if (currentId === "party") {
     // Sit directly on dining chair, leaning back
-    a.seat = 0.46;
+    a.seat = 0.76;
     a.z = -1.82;
   }
   
