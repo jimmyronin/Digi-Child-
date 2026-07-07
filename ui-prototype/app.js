@@ -736,7 +736,7 @@ function placeChild() {
       // Shoulder Straps: from shoulder height down to the buckle (Z moved forward to 0.28 to lie on chest)
       const shY = y + vrmHeight * 0.68;
       const shZ = 0.28;
-      const shOffX = vrmHeight * 0.075;
+      const shOffX = vrmHeight * 0.10; // widened from 0.075 to 0.10 to completely clear her head and cheeks
       
       const pL1 = { x: 0.52 + shOffX, y: shY, z: shZ };
       const pL2 = { x: buckleX + 0.025, y: buckleY + 0.04, z: buckleZ };
@@ -797,11 +797,12 @@ function placeChild() {
       placeStrap(current.lapBeltR, pLapR1, pLapR2);
       
     } else {
-      // Standard diagonal belt placement for older child/teenager (Z moved forward to 0.28 to lie on chest)
+      // Standard diagonal belt placement for older child/teenager
       if (current.standardShoulderBelt) {
-        const x1 = 0.52 + 0.10 * vrmHeight;
-        const y1 = y + vrmHeight * 0.72;
-        const z1 = 0.28;
+        // Starts at door B-pillar (0.72) at shoulder height and runs across shoulder and chest to buckle
+        const x1 = 0.72;
+        const y1 = seatH + vrmHeight * 0.68;
+        const z1 = 0.36;
 
         const x2 = 0.35;
         const y2 = seatH + vrmHeight * 0.08;
