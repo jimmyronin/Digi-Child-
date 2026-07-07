@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digi-Child Sim UI Prototype</title>
+    <link rel="stylesheet" href="./styles.css?v=3" />
+  </head>
+  <body>
+    <main class="experience-shell">
+      <canvas id="scene" aria-label="Digi-Child first-person scene"></canvas>
+
+      <nav id="locationBar" class="location-bar" aria-label="Places"></nav>
+      <div id="crosshair" class="crosshair" aria-hidden="true"></div>
+      <div id="lockHint" class="lock-hint">Click the world to explore · WASD to walk · mouse to look · Enter to talk</div>
+
+      <section class="topbar" aria-label="session state">
+        <div class="brand-lockup">
+          <p class="kicker">Digi-Child Sim</p>
+          <h1 id="stageTitle">Year 05</h1>
+        </div>
+        <div class="session-chip">
+          <span id="dayLabel">Day 5 of 21</span>
+          <strong id="ageBand">Age 5-7</strong>
+        </div>
+      </section>
+
+      <aside class="timeline" aria-label="development timeline">
+        <span>0</span>
+        <div class="timeline-track">
+          <div id="timelineFill" class="timeline-fill"></div>
+          <div id="timelineMarker" class="timeline-marker"></div>
+        </div>
+        <span>18</span>
+      </aside>
+
+      <section class="state-panel" aria-label="growth indicators">
+        <div class="panel-title">
+          <span>Current State</span>
+          <strong id="stateMood">curious</strong>
+        </div>
+        <div id="stats" class="stats"></div>
+      </section>
+
+      <section class="conversation-panel" aria-label="conversation">
+        <div class="child-line">
+          <img src="./assets/mira_portrait.png" class="child-avatar" alt="Mira" />
+          <div class="child-dialog">
+            <span class="speaker">Mira</span>
+            <p id="childText">Are we learning something today, or are you just checking if I remember you?</p>
+          </div>
+        </div>
+        <form id="messageForm" class="composer">
+          <input
+            id="messageInput"
+            autocomplete="off"
+            placeholder="Speak to Mira..."
+            aria-label="Message to child"
+          />
+          <button type="submit">Speak</button>
+        </form>
+        <div class="actions">
+          <button id="milestoneBtn" type="button">Milestone</button>
+          <button id="reportBtn" type="button">Architect Report</button>
+          <button id="ageBtn" type="button" style="display: none;">Age Up</button>
+        </div>
+      </section>
+
+      <section id="insightPanel" class="insight-panel" aria-live="polite">
+        <div class="insight-head">
+          <span id="insightTitle">Milestone Check</span>
+          <button id="closeInsight" type="button" aria-label="Close panel">×</button>
+        </div>
+        <p id="insightText"></p>
+      </section>
+    </main>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/",
+          "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.3/lib/three-vrm.module.min.js"
+        }
+      }
+    </script>
+    <script type="module" src="./app.js?v=35"></script>
+  </body>
+</html>
