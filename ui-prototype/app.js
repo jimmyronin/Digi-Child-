@@ -640,7 +640,7 @@ function placeChild() {
     }
   }
   
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.05 : 0;
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.22 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
