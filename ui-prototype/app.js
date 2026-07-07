@@ -799,9 +799,9 @@ function placeChild() {
     } else {
       // Standard diagonal belt placement for older child/teenager
       if (current.standardShoulderBelt) {
-        // Starts at door B-pillar (0.72) at shoulder height and runs across shoulder and chest to buckle
+        // Starts at door B-pillar (0.72) at shoulder height (relative to child's Y position) and runs across chest
         const x1 = 0.72;
-        const y1 = seatH + vrmHeight * 0.68;
+        const y1 = y + vrmHeight * 0.70; // FIXED: Changed seatH to y so it aligns to her shoulder instead of floating at the ceiling
         const z1 = 0.36;
 
         const x2 = 0.35;
