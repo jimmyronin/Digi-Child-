@@ -350,9 +350,9 @@ function gearSelector(parent, x, y, z) {
 }
 
 function quiltedSeat(parent, x, z, opts = {}) {
-  const seat = mat(opts.color || 0x6a5148, 0.82);
-  const seam = mat(0x2d2826, 0.62);
-  const accent = mat(0xc9b4a8, 0.78);
+  const seat = mat(opts.color || 0x6a5148, 0.52, { metalness: 0.06 });
+  const seam = mat(0x2d2826, 0.45);
+  const accent = mat(0xc9b4a8, 0.55);
   box(parent, 0.68, 0.18, 0.72, seat, x, 0.76, z);
   box(parent, 0.68, 0.78, 0.16, seat, x, 1.22, z + 0.37, { rx: -0.1 });
   box(parent, 0.34, 0.18, 0.14, seat, x, 1.68, z + 0.43);
@@ -752,7 +752,7 @@ function buildHome() {
   prop(g, "furniture/chairCushion", -2.05, -3.1, { s: 2, ry: -Math.PI / 2 });
   prop(g, "food/cutting-board", -4.2, -5.5, { s: 1.15, y: 0.9, ry: Math.PI / 2 });
   prop(g, "food/pan", -3.55, -5.5, { s: 1.1, y: 0.9, ry: -0.35 });
-  prop(g, "food/banana", -5.75, -5.45, { s: 0.9, y: 0.9, ry: 0.6 });
+  prop(g, "food/banana", -5.35, -5.5, { s: 0.9, y: 0.9, ry: 0.6 });
   prop(g, "furniture/trashcan", -1.95, -5.45, { s: 2 });
   solid(colliders, -1.95, -5.45, 0.55, 0.55);
   solid(colliders, -3, -3.1, 1.7, 1.7);
@@ -792,13 +792,14 @@ function buildHome() {
   tileFloor(g, 3.75, 3.0, 6.35, 5.75, { base: 0xded8c9, grout: 0xbfb7a8, step: 0.82 });
   wallTileSurface(g, 3.75, 1.25, 5.86, 6.05, 2.35, "north", { cols: 6, rows: 4 });
   wallTileSurface(g, 6.86, 1.25, 3.0, 5.55, 2.35, "east", { cols: 5, rows: 4 });
-  wallTileSurface(g, 0.62, 1.25, 3.85, 3.9, 2.35, "west", { cols: 4, rows: 4 });
+  wallTileSurface(g, 0.62, 1.25, 4.4, 2.8, 2.35, "west", { cols: 3, rows: 4 });
   wallTileSurface(g, 5.32, 1.25, 0.12, 3.0, 2.35, "south", { cols: 3, rows: 4 });
 
   const marble = mat(0xe6e0d6, 0.62);
   box(g, 3.9, 0.12, 0.72, marble, 2.82, 0.9, 5.48, { cast: true });
   prop(g, "furniture/bathroomCabinetDrawer", 1.35, 5.42, { s: 1.8, ry: Math.PI });
-  prop(g, "furniture/bathroomSinkSquare", 2.48, 5.43, { s: 1.3, y: 0.96, ry: Math.PI });
+  // sink basin recessed into the vanity counter
+  prop(g, "furniture/bathroomSinkSquare", 2.48, 5.43, { s: 1.3, y: 0.52, ry: Math.PI });
   prop(g, "furniture/washer", 1.05, 4.35, { s: 2, ry: Math.PI / 2 });
   solid(colliders, 1.05, 4.35, 0.85, 0.85);
   prop(g, "furniture/bathroomCabinet", 3.45, 5.78, { s: 1.55, y: 1.3, ry: Math.PI });
@@ -963,8 +964,13 @@ function buildCar() {
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
   quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
   // Mira's booster seat so she can see out the window
-  box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.7), 0.52, 0.94, 0.32);
-  box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.7), 0.52, 1.15, 0.6);
+  box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.55), 0.52, 0.94, 0.32);
+  box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.55), 0.52, 1.15, 0.6);
+  // her seat belt: shoulder strap, lap strap, and buckle
+  const beltMat = mat(0x23262b, 0.45);
+  box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
+  box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
+  box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
   box(g, 1.7, 0.16, 0.62, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   box(g, 1.7, 0.7, 0.16, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
   for (const x of [-0.42, 0, 0.42]) {
@@ -1033,7 +1039,7 @@ function buildCar() {
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
-    env: { bg: 0xbfe0f2, fog: [0xbfe0f2, 30, 90], hemi: 0.65, envI: 0.35 },
+    env: { bg: 0xbfe0f2, fog: [0xbfe0f2, 30, 90], hemi: 0.65, envI: 0.55 },
     camWobble: (t) => Math.sin(t * 7.2) * 0.008,
     tick: (t, dt) => {
       for (const m of movers) {
@@ -1396,13 +1402,13 @@ function buildParty() {
     prop(g, "furniture/chairCushion", x, z, { s: 2, ry });
     solid(colliders, x, z, 0.55, 0.55);
   }
-  chair(-1.5, -1.75, Math.PI);
-  chair(0, -1.75, Math.PI);
-  chair(1.5, -1.75, Math.PI);
-  chair(-1.5, 0.75, 0);
-  chair(1.5, 0.75, 0);
-  chair(2.85, -0.5, -Math.PI / 2);
-  chair(-2.85, -0.5, Math.PI / 2);
+  chair(-1.5, -1.75, 0);
+  chair(0, -1.75, 0);
+  chair(1.5, -1.75, 0);
+  chair(-1.5, 0.75, Math.PI);
+  chair(1.5, 0.75, Math.PI);
+  chair(2.85, -0.5, Math.PI / 2);
+  chair(-2.85, -0.5, -Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
   familyMember(g, "mira-15", -1.5, -1.75, 0);
