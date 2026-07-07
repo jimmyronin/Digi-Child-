@@ -619,8 +619,8 @@ function placeChild() {
     a.z = -1.82;
   }
   
-  // 0.32 of vrmHeight places her hips exactly at seat height when sitting with straight legs
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.32 : 0;
+  // 0.14 of vrmHeight places her hips exactly at seat height when sitting with straight legs
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.14 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
