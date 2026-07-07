@@ -503,7 +503,20 @@ let exprSad = 0;
 let exprAngry = 0;
 
 function miraStage() {
-  return Math.max(1, Math.min(15, Math.round(state.age)));
+  const age = state.age;
+  if (age <= 7.9) {
+    // Child (5.0 to 7.9) -> Stage 1 to 5
+    const pct = Math.max(0, Math.min(1, (age - 5) / 2.9));
+    return Math.max(1, Math.min(5, 1 + Math.floor(pct * 5)));
+  } else if (age <= 12.9) {
+    // Pre-teen (8.0 to 12.9) -> Stage 6 to 10
+    const pct = Math.max(0, Math.min(1, (age - 8) / 4.9));
+    return Math.max(6, Math.min(10, 6 + Math.floor(pct * 5)));
+  } else {
+    // Late Teen/Adult (13.0 to 18.0) -> Stage 11 to 15
+    const pct = Math.max(0, Math.min(1, (age - 13) / 5));
+    return Math.max(11, Math.min(15, 11 + Math.floor(pct * 5)));
+  }
 }
 
 function loadMira(stage) {
