@@ -375,6 +375,23 @@ function quiltedSeat(parent, x, z, opts = {}) {
   box(parent, 0.05, 0.12, 0.8, seam, x + 0.38, 0.82, z, { cast: false });
 }
 
+function curtains(parent, x, z, orientation = "north", color = 0xc57857) {
+  const rodMat = mat(0x6f4b31, 0.5);
+  const clothMat = mat(color, 0.85);
+  const y = 1.55;
+  if (orientation === "north" || orientation === "south") {
+    const zOff = orientation === "north" ? 0.14 : -0.14;
+    cyl(parent, 0.02, 0.02, 2.6, rodMat, x, 2.42, z + zOff, { rz: Math.PI / 2, seg: 8 });
+    box(parent, 0.36, 1.7, 0.1, clothMat, x - 1.12, y, z + zOff, { cast: false });
+    box(parent, 0.36, 1.7, 0.1, clothMat, x + 1.12, y, z + zOff, { cast: false });
+  } else {
+    const xOff = orientation === "east" ? -0.14 : 0.14;
+    cyl(parent, 0.02, 0.02, 2.6, rodMat, x + xOff, 2.42, z, { rx: Math.PI / 2, seg: 8 });
+    box(parent, 0.1, 1.7, 0.36, clothMat, x + xOff, y, z - 1.12, { cast: false });
+    box(parent, 0.1, 1.7, 0.36, clothMat, x + xOff, y, z + 1.12, { cast: false });
+  }
+}
+
 function rnd(i) {
   return Math.abs(Math.sin(i * 127.1 + 311.7) * 43758.5453) % 1;
 }
@@ -525,6 +542,40 @@ function loadMira(stage) {
   );
 }
 
+// a seated, static VRoid family member (party guests)
+function familyMember(parent, file, x, z, ry, seat = 0.46) {
+  vrmLoader.load(
+    `./assets/mira/${file}.vrm`,
+    (gltf) => {
+      const fv = gltf.userData.vrm;
+      if (!fv) return;
+      VRMUtils.rotateVRM0(fv);
+      fv.scene.traverse((o) => {
+        if (o.isMesh) o.castShadow = true;
+        o.frustumCulled = false;
+      });
+      const bounds = new THREE.Box3().setFromObject(fv.scene);
+      const h = Math.max(1.0, bounds.max.y - Math.min(bounds.min.y, 0));
+      for (const [boneName, rz] of [["leftUpperArm", -1.32], ["rightUpperArm", 1.32]]) {
+        const b = fv.humanoid.getNormalizedBoneNode(boneName);
+        if (b) b.rotation.z = rz;
+      }
+      for (const side of ["left", "right"]) {
+        const upper = fv.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
+        const lower = fv.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
+        if (upper) upper.rotation.x = Math.PI / 2.15;
+        if (lower) lower.rotation.x = -Math.PI / 2.05;
+      }
+      fv.humanoid.update();
+      fv.scene.position.set(x, seat - h * 0.47, z);
+      fv.scene.rotation.y = ry;
+      parent.add(fv.scene);
+    },
+    undefined,
+    (e) => console.warn(`Could not load family member ${file}`, e)
+  );
+}
+
 // blink timing
 let blinkUntil = -1;
 let nextBlinkAt = 3.2;
@@ -630,38 +681,51 @@ function buildHome() {
   interiorDoor(g, 0.5, 2.1, Math.PI / 2, { flip: true, color: 0xa0744a, gapWidth: 1.6 });
   interiorDoor(g, 3.0, 0, 0, { color: 0x8a6241, gapWidth: 1.6 });
 
-  // windows (emissive daylight)
+  // windows (emissive daylight) with curtains
   const win = glowMat(0xcfe8ff);
   box(g, 1.9, 1.2, 0.05, win, -4, 1.8, -5.87, { cast: false, receive: false });
   box(g, 1.9, 1.2, 0.05, win, -3.4, 1.8, 5.87, { cast: false, receive: false });
   box(g, 0.05, 1.2, 1.9, win, 6.87, 1.8, -3, { cast: false, receive: false });
+  curtains(g, -4, -5.87, "north");
+  curtains(g, -3.4, 5.87, "south");
+  curtains(g, 6.87, -3, "east", 0x8fae85);
 
   /* --- living room (real furniture models) --- */
   prop(g, "furniture/rugRound", -3.4, 3.2, { s: 3.6 });
-  prop(g, "furniture/loungeSofa", -6.15, 3.4, { s: 2, ry: Math.PI / 2 });
-  solid(colliders, -6.15, 3.4, 1.1, 2.2);
-  prop(g, "furniture/tableCoffee", -4.3, 3.4, { s: 2, ry: Math.PI / 2 });
-  solid(colliders, -4.3, 3.4, 0.95, 1.5);
-  box(g, 0.08, 1.35, 1.95, mat(0x2b2924, 0.68), 0.42, 0.92, 3.4, { cast: false });
-  prop(g, "furniture/cabinetTelevision", 0.28, 3.4, { s: 1.85, ry: -Math.PI / 2 });
-  prop(g, "furniture/televisionModern", 0.3, 3.4, { s: 1.45, ry: -Math.PI / 2, y: 0.62 });
-  solid(colliders, 0.28, 3.4, 0.75, 1.9);
+  // TV wall sits on the solid south part of the wall, clear of the bathroom door
+  prop(g, "furniture/loungeSofa", -6.15, 4.5, { s: 2, ry: Math.PI / 2 });
+  solid(colliders, -6.15, 4.5, 1.1, 2.2);
+  prop(g, "furniture/tableCoffee", -4.4, 4.5, { s: 2, ry: Math.PI / 2 });
+  solid(colliders, -4.4, 4.5, 0.95, 1.5);
+  box(g, 0.08, 1.35, 1.95, mat(0x2b2924, 0.68), 0.42, 0.92, 4.5, { cast: false });
+  prop(g, "furniture/cabinetTelevision", 0.28, 4.5, { s: 1.85, ry: -Math.PI / 2 });
+  prop(g, "furniture/televisionModern", 0.3, 4.5, { s: 1.45, ry: -Math.PI / 2, y: 0.58 });
+  solid(colliders, 0.28, 4.5, 0.75, 1.9);
   prop(g, "furniture/bookcaseClosedWide", -1.4, 5.6, { s: 2, ry: Math.PI });
   solid(colliders, -1.4, 5.6, 1.8, 0.7);
-  prop(g, "furniture/lampRoundFloor", -6.45, 5.3, { s: 2 });
-  solid(colliders, -6.45, 5.3, 0.5, 0.5);
+  // books on the shelves
+  for (const [bx, by, brot] of [[-1.72, 0.06, 0.2], [-1.35, 0.06, -0.3], [-1.05, 0.06, 0.5], [-1.6, 0.5, -0.2], [-1.18, 0.5, 0.35], [-1.45, 0.98, 0.1]]) {
+    prop(g, "furniture/books", bx, 5.62, { s: 1.5, y: by, ry: brot });
+  }
+  prop(g, "furniture/lampRoundFloor", -6.5, 2.85, { s: 2 });
+  solid(colliders, -6.5, 2.85, 0.5, 0.5);
   prop(g, "furniture/pottedPlant", -0.5, 5.25, { s: 2 });
   solid(colliders, -0.5, 5.25, 0.6, 0.6);
+  prop(g, "furniture/ceilingFan", -3.4, 3.2, { s: 2, y: 2.72 });
+  prop(g, "furniture/coatRackStanding", -6.55, 1.5, { s: 2 });
+  solid(colliders, -6.55, 1.5, 0.6, 0.6);
+  // bear head trophy mounted on the wall, where a trophy belongs
+  prop(g, "furniture/bear", -1.4, 5.85, { s: 1.3, y: 2.05, ry: Math.PI });
 
-  // Mira's play corner: little table, teddy bear, books
+  // Mira's play corner: little table, floor cushion, books
   prop(g, "furniture/tableCoffeeSquare", -3.1, 0.6, { s: 1.6 });
   prop(g, "furniture/books", -3.2, 0.62, { s: 1.6, y: 0.37, ry: 0.4 });
-  prop(g, "furniture/bear", -2.4, 1.15, { s: 1.2, ry: -0.7 });
+  prop(g, "furniture/pillow", -2.35, 1.15, { s: 1.4, ry: -0.7 });
   solid(colliders, -3.1, 0.6, 1.2, 0.8);
 
-  // painting + warm floor lamp light
-  box(g, 1.5, 1.0, 0.05, mat(0xd98632, 0.7), -3.4, 1.9, 5.87, { cast: false });
-  box(g, 1.3, 0.8, 0.03, mat(0x1c5a5a, 0.6), -3.4, 1.9, 5.84, { cast: false });
+  // painting on the west wall + warm floor lamp light
+  box(g, 0.05, 1.0, 1.5, mat(0xd98632, 0.7), -6.87, 1.9, 1.5, { cast: false });
+  box(g, 0.03, 0.8, 1.3, mat(0x1c5a5a, 0.6), -6.84, 1.9, 1.5, { cast: false });
   const lampLight = new THREE.PointLight(0xffa64d, 1.4, 6, 2);
   lampLight.position.set(-6.3, 1.7, 5.2);
   g.add(lampLight);
@@ -679,17 +743,18 @@ function buildHome() {
   solid(colliders, -6.35, -5.45, 1.0, 0.9);
   prop(g, "furniture/kitchenMicrowave", -2.55, -5.6, { s: 2, y: 0.9 });
   prop(g, "furniture/kitchenCoffeeMachine", -5.2, -5.65, { s: 2, y: 0.9 });
-  prop(g, "furniture/tableRound", -3, -3.1, { s: 2 });
-  kitchenTableLegs(g, -3, -3.1);
-  prop(g, "food/plate-dinner", -3.34, -3.02, { s: 0.34, y: 0.78, ry: 0.3 });
-  prop(g, "food/cup-coffee", -2.68, -3.28, { s: 0.5, y: 0.78, ry: -0.4 });
-  prop(g, "food/bowl-cereal", -2.95, -2.82, { s: 0.45, y: 0.78 });
-  prop(g, "food/apple", -3.18, -3.38, { s: 0.45, y: 0.78 });
+  prop(g, "furniture/tableCross", -3, -3.1, { s: 2 });
+  prop(g, "food/plate-dinner", -3.34, -3.02, { s: 0.34, y: 0.705, ry: 0.3 });
+  prop(g, "food/cup-coffee", -2.68, -3.28, { s: 0.5, y: 0.705, ry: -0.4 });
+  prop(g, "food/bowl-cereal", -2.95, -2.82, { s: 0.45, y: 0.705 });
+  prop(g, "food/apple", -3.18, -3.38, { s: 0.45, y: 0.705 });
   prop(g, "furniture/chairCushion", -3.95, -3.1, { s: 2, ry: Math.PI / 2 });
   prop(g, "furniture/chairCushion", -2.05, -3.1, { s: 2, ry: -Math.PI / 2 });
-  prop(g, "food/cutting-board", -4.2, -5.5, { s: 1.15, y: 0.86, ry: Math.PI / 2 });
+  prop(g, "food/cutting-board", -4.2, -5.5, { s: 1.15, y: 0.9, ry: Math.PI / 2 });
   prop(g, "food/pan", -3.55, -5.5, { s: 1.1, y: 0.9, ry: -0.35 });
-  prop(g, "food/banana", -5.75, -5.45, { s: 0.9, y: 0.88, ry: 0.6 });
+  prop(g, "food/banana", -5.75, -5.45, { s: 0.9, y: 0.9, ry: 0.6 });
+  prop(g, "furniture/trashcan", -1.95, -5.45, { s: 2 });
+  solid(colliders, -1.95, -5.45, 0.55, 0.55);
   solid(colliders, -3, -3.1, 1.7, 1.7);
   const kitchenLight = new THREE.PointLight(0xfff1cf, 1.1, 7, 2);
   kitchenLight.position.set(-3.4, 2.7, -3.4);
@@ -699,11 +764,10 @@ function buildHome() {
   prop(g, "furniture/rugRectangle", 4.6, -3.55, { s: 2.7, ry: Math.PI / 2 });
   prop(g, "furniture/bedSingle", 5.65, -5.05, { s: 2.05, ry: Math.PI / 2 });
   solid(colliders, 5.65, -5.05, 2.15, 1.2);
-  prop(g, "furniture/pillowBlue", 6.08, -5.48, { s: 1.05, y: 0.58, ry: Math.PI / 2 });
-  prop(g, "furniture/pillow", 5.72, -5.48, { s: 0.95, y: 0.6, ry: Math.PI / 2 });
-  prop(g, "furniture/bear", 5.0, -4.78, { s: 0.95, y: 0.7, ry: -2.2 });
+  // bear head trophy on the bedroom wall
+  prop(g, "furniture/bear", 6.85, -4.2, { s: 1.2, y: 1.85, ry: -Math.PI / 2 });
   prop(g, "furniture/sideTableDrawers", 4.12, -5.45, { s: 1.75 });
-  prop(g, "furniture/lampSquareTable", 4.12, -5.45, { s: 1.25, y: 0.78 });
+  prop(g, "furniture/lampSquareTable", 4.12, -5.45, { s: 1.25, y: 0.67 });
   solid(colliders, 4.12, -5.45, 0.72, 0.72);
   const bedLight = new THREE.PointLight(0xffb066, 1.05, 5.2, 2);
   bedLight.position.set(4.25, 1.35, -5.25);
@@ -712,8 +776,11 @@ function buildHome() {
   solid(colliders, 1.45, -5.55, 1.35, 0.62);
   prop(g, "furniture/desk", 6.48, -2.45, { s: 1.75, ry: -Math.PI / 2 });
   prop(g, "furniture/chairDesk", 5.6, -2.45, { s: 1.55, ry: Math.PI / 2 });
-  prop(g, "furniture/computerScreen", 6.46, -2.45, { s: 1.05, y: 0.78, ry: -Math.PI / 2 });
-  prop(g, "furniture/books", 6.42, -2.88, { s: 0.82, y: 0.78, ry: -0.4 });
+  prop(g, "furniture/computerScreen", 6.46, -2.45, { s: 1.05, y: 0.67, ry: -Math.PI / 2 });
+  prop(g, "furniture/books", 6.42, -2.88, { s: 0.82, y: 0.67, ry: -0.4 });
+  prop(g, "furniture/radio", 1.45, -5.6, { s: 1.4, y: 0.76 });
+  prop(g, "furniture/books", 1.28, -5.55, { s: 1.3, y: 0.02, ry: 0.3 });
+  prop(g, "furniture/books", 1.62, -5.55, { s: 1.3, y: 0.4, ry: -0.25 });
   solid(colliders, 6.48, -2.45, 0.82, 1.35);
   prop(g, "furniture/cabinetBedDrawer", 1.02, -1.08, { s: 1.8, ry: Math.PI / 2 });
   solid(colliders, 1.02, -1.08, 0.65, 1.15);
@@ -730,10 +797,12 @@ function buildHome() {
 
   const marble = mat(0xe6e0d6, 0.62);
   box(g, 3.9, 0.12, 0.72, marble, 2.82, 0.9, 5.48, { cast: true });
-  prop(g, "furniture/bathroomCabinetDrawer", 1.35, 5.42, { s: 1.55, ry: Math.PI });
-  prop(g, "furniture/bathroomSinkSquare", 2.48, 5.43, { s: 1.75, ry: Math.PI });
-  prop(g, "furniture/bathroomCabinet", 3.45, 5.42, { s: 1.55, ry: Math.PI });
-  prop(g, "furniture/bathroomCabinetDrawer", 4.15, 5.42, { s: 1.35, ry: Math.PI });
+  prop(g, "furniture/bathroomCabinetDrawer", 1.35, 5.42, { s: 1.8, ry: Math.PI });
+  prop(g, "furniture/bathroomSinkSquare", 2.48, 5.43, { s: 1.3, y: 0.96, ry: Math.PI });
+  prop(g, "furniture/washer", 1.05, 4.35, { s: 2, ry: Math.PI / 2 });
+  solid(colliders, 1.05, 4.35, 0.85, 0.85);
+  prop(g, "furniture/bathroomCabinet", 3.45, 5.78, { s: 1.55, y: 1.3, ry: Math.PI });
+  prop(g, "furniture/bathroomCabinetDrawer", 4.15, 5.42, { s: 1.8, ry: Math.PI });
   solid(colliders, 2.82, 5.45, 3.85, 0.76);
   prop(g, "furniture/bathroomMirror", 2.48, 5.78, { s: 2.05, y: 1.35, ry: Math.PI });
   box(g, 1.15, 0.85, 0.04, glowMat(0xd8ecf2), 2.48, 1.8, 5.84, { cast: false });
@@ -893,6 +962,9 @@ function buildCar() {
   // front seats, rear bench, and center console
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
   quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
+  // Mira's booster seat so she can see out the window
+  box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.7), 0.52, 0.94, 0.32);
+  box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.7), 0.52, 1.15, 0.6);
   box(g, 1.7, 0.16, 0.62, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   box(g, 1.7, 0.7, 0.16, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
   for (const x of [-0.42, 0, 0.42]) {
@@ -957,7 +1029,7 @@ function buildCar() {
     colliders: [],
     bounds: { minX: -0.45, maxX: -0.45, minZ: 0.42, maxZ: 0.42 },
     spawn: { x: -0.45, z: 0.42, yaw: 0 },
-    childAnchor: { x: 0.5, z: 0.38, seat: 0.86, yaw: 0, pose: "sit" },
+    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: 0, pose: "sit" },
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
@@ -1295,16 +1367,16 @@ function buildParty() {
 
   const plateSpots = [[-1.5, -0.95], [0, -0.95], [1.5, -0.95], [-1.5, -0.08], [0, -0.08], [1.5, -0.08]];
   for (const [px, pz] of plateSpots) {
-    prop(g, "food/plate-dinner", px, pz, { s: 0.34, y: 0.87 });
-    prop(g, "food/glass-wine", px + 0.34, pz + 0.14, { s: 0.42, y: 0.87 });
+    prop(g, "food/plate-dinner", px, pz, { s: 0.34, y: 0.858 });
+    prop(g, "food/glass-wine", px + 0.34, pz + 0.14, { s: 0.42, y: 0.858 });
   }
   // holiday feast (offset so it doesn't hide Mira)
-  prop(g, "food/turkey", -0.75, -0.5, { s: 0.62, y: 0.87 });
-  prop(g, "food/pie", 0.8, -0.42, { s: 0.52, y: 0.87 });
-  prop(g, "food/cake-birthday", -1.9, -0.5, { s: 0.5, y: 0.87 });
-  prop(g, "food/loaf-baguette", 1.95, -0.55, { s: 0.45, y: 0.87, ry: 0.6 });
-  prop(g, "food/wine-red", 0.38, -0.75, { s: 0.45, y: 0.87 });
-  prop(g, "holiday/gingerbread-man", -0.3, -0.88, { s: 0.55, y: 0.87, ry: 0.4 });
+  prop(g, "food/turkey", -0.75, -0.5, { s: 0.62, y: 0.858 });
+  prop(g, "food/pie", 0.8, -0.42, { s: 0.52, y: 0.858 });
+  prop(g, "food/cake-birthday", -1.9, -0.5, { s: 0.5, y: 0.858 });
+  prop(g, "food/loaf-baguette", 1.95, -0.55, { s: 0.45, y: 0.858, ry: 0.6 });
+  prop(g, "food/wine-red", 0.38, -0.75, { s: 0.45, y: 0.858 });
+  prop(g, "holiday/gingerbread-man", -0.3, -0.88, { s: 0.55, y: 0.858, ry: 0.4 });
 
   // Mira's booster seat on the middle chair
   box(g, 0.4, 0.14, 0.4, mat(0x3f8fd1, 0.7), 0, 0.57, -1.75);
@@ -1332,23 +1404,11 @@ function buildParty() {
   chair(2.85, -0.5, -Math.PI / 2);
   chair(-2.85, -0.5, Math.PI / 2);
 
-  // family, seated
-  const mom = makePerson({ shirt: 0x9d3b34, hairColor: 0x4a2c17 });
-  mom.position.set(-1.5, 0.28, -1.72);
-  mom.rotation.y = 0;
-  g.add(mom);
-  const dad = makePerson({ shirt: 0x556457, hairColor: 0x241a12, scale: 1.08 });
-  dad.position.set(1.5, 0.28, -1.72);
-  dad.rotation.y = 0;
-  g.add(dad);
-  const grandma = makePerson({ shirt: 0x7b5796, hairColor: 0xc9c3b8, scale: 0.96 });
-  grandma.position.set(2.82, 0.28, -0.5);
-  grandma.rotation.y = -Math.PI / 2;
-  g.add(grandma);
-  const sibling = makePerson({ shirt: 0x3f8fd1, hairColor: 0x2b1b12, scale: 0.85 });
-  sibling.position.set(-1.5, 0.28, 0.72);
-  sibling.rotation.y = Math.PI;
-  g.add(sibling);
+  // family, seated — real VRoid characters (the user's adult/teen models)
+  familyMember(g, "mira-15", -1.5, -1.75, 0);
+  familyMember(g, "mira-13", 1.5, -1.75, 0);
+  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2);
+  familyMember(g, "mira-08", -1.5, 0.75, Math.PI);
 
   // decorated tree with presents (Kenney holiday kit)
   {
