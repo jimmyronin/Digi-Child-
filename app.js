@@ -996,7 +996,50 @@ function buildCar() {
   rbox(g, 1.74, 0.05, 0.48, 0.03, 3, mat(0xa79c93, 0.82), 0, 1.34, -0.97, { cast: false });
   box(g, 1.66, 0.03, 0.035, redAccent, 0, 1.17, -0.58, { cast: false });
   box(g, 0.88, 0.08, 0.05, darkTrim, 0.36, 1.34, -0.63, { cast: false });
-  box(g, 0.74, 0.26, 0.035, mat(0x76868a, 0.58, { metalness: 0.05 }), 0.38, 1.45, -0.66, { cast: false, receive: false });
+  // Custom Canvas GPS Navigation screen
+  const mapCanvas = document.createElement("canvas");
+  mapCanvas.width = 256;
+  mapCanvas.height = 128;
+  const ctx = mapCanvas.getContext("2d");
+  ctx.fillStyle = "#1b212c";
+  ctx.fillRect(0, 0, 256, 128);
+  // Grid/Roads
+  ctx.strokeStyle = "#38475c";
+  ctx.lineWidth = 4;
+  for (let i = 0; i < 256; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 128); ctx.stroke();
+  }
+  for (let j = 0; j < 128; j += 40) {
+    ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(256, j); ctx.stroke();
+  }
+  // Route line
+  ctx.strokeStyle = "#00d2ff";
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(30, 110);
+  ctx.lineTo(90, 80);
+  ctx.lineTo(160, 80);
+  ctx.lineTo(220, 30);
+  ctx.stroke();
+  // GPS Marker
+  ctx.fillStyle = "#ff3b30";
+  ctx.beginPath();
+  ctx.arc(160, 80, 8, 0, Math.PI * 2);
+  ctx.fill();
+  // UI text
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 16px sans-serif";
+  ctx.fillText("Route Active", 12, 28);
+  ctx.fillStyle = "#8a9bb4";
+  ctx.font = "12px sans-serif";
+  ctx.fillText("ETA: 12 min", 12, 46);
+
+  const screenTex = new THREE.CanvasTexture(mapCanvas);
+  const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
+  box(g, 0.74, 0.26, 0.035, screenMat, 0.38, 1.45, -0.66, { cast: false, receive: false });
+
   box(g, 0.5, 0.035, 0.045, darkTrim, 0.38, 1.29, -0.68, { cast: false });
   box(g, 0.84, 0.07, 0.07, darkTrim, 0.34, 1.54, -0.98, { cast: false });
   for (let i = 0; i < 8; i++) {
@@ -1020,6 +1063,9 @@ function buildCar() {
   cyl(g, 0.15, 0.16, 0.05, darkTrim, -0.45, 1.2, -0.6, { rx: Math.PI / 2, seg: 24 });
   cyl(g, 0.09, 0.09, 0.055, glowMat(0x31485a), -0.45, 1.2, -0.63, { rx: Math.PI / 2, seg: 18 });
 
+  // Tiny dashboard plant
+  prop(g, "furniture/plantSmall3", 0.52, 1.37, -1.0, { s: 0.42 });
+
   // steering wheel with spokes, center pad, and tiny controls
   const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 16, 36), mat(0x1b1d21, 0.38));
   wheel.position.set(-0.46, 1.18, -0.52);
@@ -1040,6 +1086,10 @@ function buildCar() {
   const shoulderBelt = box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
   const lapBelt = box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
   const buckle = box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
+
+  // Grocery/shopping bag on driver's seat
+  prop(g, "food/bag", -0.5, 0.85, 0.35, { s: 1.15, ry: 0.4 });
+
   rbox(g, 1.7, 0.16, 0.62, 0.03, 3, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   rbox(g, 1.7, 0.7, 0.16, 0.03, 3, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
   for (const x of [-0.42, 0, 0.42]) {
@@ -1048,8 +1098,18 @@ function buildCar() {
   rbox(g, 0.42, 0.2, 1.85, 0.02, 3, mat(0xa99d95, 0.72), 0.02, 0.88, 0.58);
   rbox(g, 0.4, 0.18, 0.72, 0.03, 3, mat(0xbdb3aa, 0.68), 0.02, 1.02, 1.02);
   box(g, 0.025, 0.02, 0.72, stitch, 0.02, 1.125, 1.02, { cast: false });
+
+  // Console donut snack
+  prop(g, "food/donut-sprinkles", 0.02, 1.135, 1.02, { s: 0.45, ry: 0.3 });
+
   gearSelector(g, 0.02, 0.96, -0.02);
+
+  // Cup holders with coffee and soda
   cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.38, { seg: 24 });
+  prop(g, "food/cup-coffee", -0.12, 1.04, 0.38, { s: 0.65, ry: 1.5 });
+
+  cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.52, { seg: 24 });
+  prop(g, "food/soda-can", -0.12, 1.04, 0.52, { s: 0.6, ry: -0.8 });
   cyl(g, 0.095, 0.095, 0.035, darkTrim, 0.14, 1.04, 0.38, { seg: 24 });
   for (let i = 0; i < 5; i++) carButton(g, -0.15 + i * 0.075, 1.07, 0.17, 0.052, 0.04);
   box(g, 0.34, 0.035, 0.52, mat(0xefe4d8, 0.7), 0.02, 1.13, 0.66, { cast: false });
@@ -1065,7 +1125,14 @@ function buildCar() {
   box(g, 0.1, 0.06, 0.66, darkTrim, -0.98, 1.25, -0.1, { cast: false });
   box(g, 0.1, 0.06, 0.66, darkTrim, 0.98, 1.25, -0.1, { cast: false });
   for (const sx of [-1, 1]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.013, 8, 24), mat(0x30343a, 0.45));
+    // Dark speaker mesh background
+    const backer = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.01, 24), mat(0x181a1d, 0.62));
+    backer.position.set(sx * 0.992, 0.82, -0.42);
+    backer.rotation.z = Math.PI / 2;
+    g.add(backer);
+
+    // Chrome outer speaker ring trim
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.013, 8, 24), mat(0xcfd2d1, 0.32, { metalness: 0.55 }));
     ring.position.set(sx * 0.995, 0.82, -0.42);
     ring.rotation.y = Math.PI / 2;
     g.add(ring);
@@ -1084,7 +1151,10 @@ function buildCar() {
   glass.position.set(0, 1.72, -1.1);
   glass.rotation.x = -0.3;
   g.add(glass);
-  box(g, 0.32, 0.1, 0.04, mat(0x1b1d21, 0.3), 0, 1.9, -0.7);
+  // Polished stem-and-frame rearview mirror
+  cyl(g, 0.015, 0.015, 0.12, darkTrim, 0, 1.98, -0.8, { rx: 0.6, seg: 8 });
+  rbox(g, 0.32, 0.11, 0.03, 0.015, 3, darkTrim, 0, 1.9, -0.7);
+  box(g, 0.3, 0.09, 0.01, mat(0xbfc5c7, 0.2, { metalness: 0.95, roughness: 0.05 }), 0, 1.9, -0.682);
   const cabinGlow = new THREE.PointLight(0xffd0bf, 0.28, 3.2, 2);
   cabinGlow.position.set(0.25, 1.5, -0.3);
   g.add(cabinGlow);
