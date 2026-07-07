@@ -579,12 +579,15 @@ function familyMember(parent, file, x, z, ry, seat = 0.85) {
         if (upper) upper.rotation.x = -Math.PI / 2.15; // Bend thighs forward
         if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
       }
-      // Use actual hip bone position for precise seating
-      const hips = fv.humanoid.getNormalizedBoneNode("hips");
-      const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
-      fv.scene.position.set(x, seat - hipY, z);
+      // Add to parent first at origin, force matrix update, then read hip position
+      fv.scene.position.set(0, 0, 0);
       fv.scene.rotation.y = ry;
       parent.add(fv.scene);
+      fv.scene.updateMatrixWorld(true);
+      const hips = fv.humanoid.getNormalizedBoneNode("hips");
+      const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
+      console.log(`Family ${file}: h=${h.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${seat}`);
+      fv.scene.position.set(x, seat - hipY, z);
     },
     undefined,
     (e) => console.warn(`Could not load family member ${file}`, e)
@@ -632,11 +635,19 @@ function placeChild() {
     a.z = -1.75;
   }
   
-  // Use actual hip bone Y for precise seat placement
+  // Force matrix update so hip bone world position is accurate
+  child.updateMatrixWorld(true);
   let hipY = vrmHeight * 0.50; // fallback
   if (vrm) {
     const hips = vrm.humanoid.getNormalizedBoneNode("hips");
-    if (hips) hipY = hips.getWorldPosition(new THREE.Vector3()).y;
+    if (hips) {
+      // Reset child to origin to get pure local hip height
+      const prevY = child.position.y;
+      child.position.y = 0;
+      child.updateMatrixWorld(true);
+      hipY = hips.getWorldPosition(new THREE.Vector3()).y;
+      console.log(`Child: vrmH=${vrmHeight.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${a.seat}`);
+    }
   }
   const y = a.pose === "sit" ? (a.seat || 0) - hipY : 0;
   child.position.set(a.x, y, a.z);
