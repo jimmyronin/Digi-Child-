@@ -556,7 +556,7 @@ function loadMira(stage) {
 }
 
 // a seated, static VRoid family member (party guests)
-function familyMember(parent, file, x, z, ry, seat = 0.76) {
+function familyMember(parent, file, x, z, ry, seat = 0.85) {
   vrmLoader.load(
     `./assets/mira/${file}.vrm`,
     (gltf) => {
@@ -579,8 +579,10 @@ function familyMember(parent, file, x, z, ry, seat = 0.76) {
         if (upper) upper.rotation.x = -Math.PI / 2.15; // Bend thighs forward
         if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
       }
-      fv.humanoid.update();
-      fv.scene.position.set(x, seat - h * 0.50, z); // hips at ~50% of standing height land on seat
+      // Use actual hip bone position for precise seating
+      const hips = fv.humanoid.getNormalizedBoneNode("hips");
+      const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
+      fv.scene.position.set(x, seat - hipY, z);
       fv.scene.rotation.y = ry;
       parent.add(fv.scene);
     },
@@ -617,9 +619,8 @@ function placeChild() {
   const a = current.childAnchor;
   
   if (currentId === "car") {
-    // Sit directly on passenger seat, leaning back against the backrest
-    a.seat = 0.86; 
-    a.z = 0.52; 
+    a.seat = 0.85;
+    a.z = 0.34;
     if (current.shoulderBelt) {
       current.shoulderBelt.position.set(0.66, 1.12, 0.42);
       current.shoulderBelt.scale.set(1, 0.85, 1);
@@ -627,13 +628,17 @@ function placeChild() {
     if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
     if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
   } else if (currentId === "party") {
-    // Sit directly on dining chair, leaning back against the backrest
-    a.seat = 0.76;
+    a.seat = 0.85;
     a.z = -1.75;
   }
   
-  // Position model so hips (at ~50% of standing height) land exactly on the seat surface
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.50 : 0;
+  // Use actual hip bone Y for precise seat placement
+  let hipY = vrmHeight * 0.50; // fallback
+  if (vrm) {
+    const hips = vrm.humanoid.getNormalizedBoneNode("hips");
+    if (hips) hipY = hips.getWorldPosition(new THREE.Vector3()).y;
+  }
+  const y = a.pose === "sit" ? (a.seat || 0) - hipY : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
