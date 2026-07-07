@@ -598,6 +598,37 @@ function setChildPose(pose) {
 function placeChild() {
   if (!current) return;
   const a = current.childAnchor;
+  
+  if (currentId === "car") {
+    const showBooster = (state.band === "Age 5-7");
+    
+    // Toggle booster visibility
+    if (current.boosterSeat) current.boosterSeat.visible = showBooster;
+    if (current.boosterBack) current.boosterBack.visible = showBooster;
+    
+    // Adjust sitting positions and belt alignment dynamically
+    if (showBooster) {
+      a.seat = 1.03;
+      a.z = 0.34;
+      if (current.shoulderBelt) {
+        current.shoulderBelt.position.set(0.66, 1.27, 0.46);
+        current.shoulderBelt.scale.set(1, 1, 1);
+      }
+      if (current.lapBelt) current.lapBelt.position.set(0.52, 1.05, 0.5);
+      if (current.buckle) current.buckle.position.set(0.31, 1.02, 0.5);
+    } else {
+      // Pre-teen & teen: Sit directly on car seat
+      a.seat = 0.86;
+      a.z = 0.38; 
+      if (current.shoulderBelt) {
+        current.shoulderBelt.position.set(0.66, 1.12, 0.42);
+        current.shoulderBelt.scale.set(1, 0.85, 1);
+      }
+      if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
+      if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
+    }
+  }
+  
   const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.38 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
@@ -964,13 +995,13 @@ function buildCar() {
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
   quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
   // Mira's booster seat so she can see out the window
-  box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.55), 0.52, 0.94, 0.32);
-  box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.55), 0.52, 1.15, 0.6);
+  const boosterSeat = box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.55), 0.52, 0.94, 0.32);
+  const boosterBack = box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.55), 0.52, 1.15, 0.6);
   // her seat belt: shoulder strap, lap strap, and buckle
   const beltMat = mat(0x23262b, 0.45);
-  box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
-  box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
-  box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
+  const shoulderBelt = box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
+  const lapBelt = box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
+  const buckle = box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
   box(g, 1.7, 0.16, 0.62, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   box(g, 1.7, 0.7, 0.16, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
   for (const x of [-0.42, 0, 0.42]) {
@@ -1053,6 +1084,11 @@ function buildCar() {
       wheel.rotation.z = Math.sin(t * 0.7) * 0.06;
       spoke.rotation.z = Math.sin(t * 0.7) * 0.06;
     },
+    boosterSeat,
+    boosterBack,
+    shoulderBelt,
+    lapBelt,
+    buckle
   };
 }
 
