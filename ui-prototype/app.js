@@ -659,6 +659,8 @@ function placeChild() {
     // Toggle harness vs standard belt visibility
     if (current.shoulderBeltL) current.shoulderBeltL.visible = isToddler;
     if (current.shoulderBeltR) current.shoulderBeltR.visible = isToddler;
+    if (current.shoulderPadL) current.shoulderPadL.visible = isToddler;
+    if (current.shoulderPadR) current.shoulderPadR.visible = isToddler;
     if (current.chestClip) current.chestClip.visible = isToddler;
     if (current.lapBeltL) current.lapBeltL.visible = isToddler;
     if (current.lapBeltR) current.lapBeltR.visible = isToddler;
@@ -731,9 +733,9 @@ function placeChild() {
         mesh.quaternion.copy(alignQuaternion);
       };
 
-      // Shoulder Straps: from shoulder height down to the buckle
+      // Shoulder Straps: from shoulder height down to the buckle (Z moved forward to 0.28 to lie on chest)
       const shY = y + vrmHeight * 0.68;
-      const shZ = 0.44;
+      const shZ = 0.28;
       const shOffX = vrmHeight * 0.075;
       
       const pL1 = { x: 0.52 + shOffX, y: shY, z: shZ };
@@ -743,6 +745,30 @@ function placeChild() {
       const pR1 = { x: 0.52 - shOffX, y: shY, z: shZ };
       const pR2 = { x: buckleX - 0.025, y: buckleY + 0.04, z: buckleZ };
       placeStrap(current.shoulderBeltR, pR1, pR2);
+
+      // Padded shoulder covers (shoulder pads) on the upper chest segment
+      const placePad = (mesh, p1, p2, t = 0.25) => {
+        if (!mesh) return;
+        const cx = p1.x + t * (p2.x - p1.x);
+        const cy = p1.y + t * (p2.y - p1.y);
+        const cz = p1.z + t * (p2.z - p1.z);
+
+        mesh.position.set(cx, cy, cz + 0.015); // sit slightly on top of the strap
+        mesh.scale.set(1, 1, 1);
+        
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dz = p2.z - p1.z;
+        const direction = new THREE.Vector3(dx, dy, dz).normalize();
+        const alignQuaternion = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          direction
+        );
+        mesh.quaternion.copy(alignQuaternion);
+      };
+      
+      placePad(current.shoulderPadL, pL1, pL2, 0.25);
+      placePad(current.shoulderPadR, pR1, pR2, 0.25);
       
       // Chest clip connecting the two shoulder straps at mid-chest height
       if (current.chestClip) {
@@ -753,9 +779,8 @@ function placeChild() {
         const zMid = shZ + t * (buckleZ - shZ);
         
         const clipW = Math.abs(xL - xR) + 0.025;
-        current.chestClip.position.set(0.52, midY, zMid + 0.015);
+        current.chestClip.position.set(0.52, midY, zMid + 0.022);
         current.chestClip.scale.set(clipW / 0.14, 1, 1);
-        // Chest clip should lie flat in the screen plane
         current.chestClip.rotation.set(0, 0, 0);
       }
       
@@ -772,16 +797,15 @@ function placeChild() {
       placeStrap(current.lapBeltR, pLapR1, pLapR2);
       
     } else {
-      // Standard diagonal belt placement for older child/teenager
+      // Standard diagonal belt placement for older child/teenager (Z moved forward to 0.28 to lie on chest)
       if (current.standardShoulderBelt) {
-        // Start exactly at her right shoulder (door side window shoulder) and run down-left to buckle
         const x1 = 0.52 + 0.10 * vrmHeight;
         const y1 = y + vrmHeight * 0.72;
-        const z1 = 0.36;
+        const z1 = 0.28;
 
         const x2 = 0.35;
         const y2 = seatH + vrmHeight * 0.08;
-        const z2 = 0.46;
+        const z2 = 0.24;
 
         placeStrap(current.standardShoulderBelt, { x: x1, y: y1, z: z1 }, { x: x2, y: y2, z: z2 });
       }
@@ -1309,9 +1333,15 @@ function buildCar() {
   const beltMat = mat(0x282c30, 0.72); // dark gray strap
   const clipMat = mat(0x1a1d20, 0.52); // black plastic clip
   const redMat = mat(0xc0392b, 0.62);  // red buckle release button
+  const comfortPadMat = mat(0x7f8c8d, 0.65); // light gray comfort pad fabric
 
   const shoulderBeltL = box(g, 0.045, 0.8, 0.015, beltMat, 0, 0, 0, { cast: false });
   const shoulderBeltR = box(g, 0.045, 0.8, 0.015, beltMat, 0, 0, 0, { cast: false });
+  
+  // Grey comfort pads on shoulder straps
+  const shoulderPadL = rbox(g, 0.065, 0.18, 0.035, 0.008, 3, comfortPadMat, 0, 0, 0, { cast: false });
+  const shoulderPadR = rbox(g, 0.065, 0.18, 0.035, 0.008, 3, comfortPadMat, 0, 0, 0, { cast: false });
+
   const chestClip = rbox(g, 0.14, 0.035, 0.025, 0.006, 3, clipMat, 0, 0, 0, { cast: false });
   
   const lapBeltL = box(g, 0.22, 0.045, 0.015, beltMat, 0, 0, 0, { cast: false });
@@ -1466,6 +1496,8 @@ function buildCar() {
     childSafetySeat,
     shoulderBeltL,
     shoulderBeltR,
+    shoulderPadL,
+    shoulderPadR,
     chestClip,
     lapBeltL,
     lapBeltR,
