@@ -11,7 +11,15 @@ import local_ai
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from child_agent.brain import get_age_persona
 
+class LogRequest(BaseModel):
+    message: str
+
 app = FastAPI(title="Digi-Child Sim API")
+
+@app.post("/api/log")
+async def client_log(req: LogRequest):
+    print(f"CLIENT LOG: {req.message}", flush=True)
+    return {"status": "ok"}
 
 app.add_middleware(
     CORSMiddleware,
