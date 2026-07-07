@@ -618,7 +618,7 @@ function placeChild() {
   
   if (currentId === "car") {
     // Sit directly on passenger seat, leaning back
-    a.seat = 0.78; 
+    a.seat = 0.86; 
     a.z = 0.42; 
     if (current.shoulderBelt) {
       current.shoulderBelt.position.set(0.66, 1.12, 0.42);
@@ -632,8 +632,8 @@ function placeChild() {
     a.z = -1.82;
   }
   
-  // 0.14 of vrmHeight places her hips exactly at seat height when sitting with straight legs
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.14 : 0;
+  // 0.41 of vrmHeight places her hips/thighs perfectly on the seat cushions when sitting with straight legs
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.41 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
@@ -1905,7 +1905,7 @@ function ageUp() {
   state.values.volatility = clamp(state.values.volatility + (state.band === "Age 14-16" ? 5 : 1));
   state.childLine = chooseLine(state.values.volatility > 58 ? "guarded" : "curious", state.band);
   
-  const scale = 1.0 + ((state.age - 5) * 0.08);
+  const scale = 1.0; // Keep child group scale at 1.0 since VRM models have distinct physical heights per stage
   child.scale.set(scale, scale, scale);
   
   syncUi();
