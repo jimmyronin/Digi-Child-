@@ -647,15 +647,31 @@ function placeChild() {
   if (!current) return;
   const a = current.childAnchor;
   
+  // Dynamically wrap seat belt over the child based on her exact height
   if (currentId === "car") {
-    a.seat = 0.85;
+    const isToddler = vrmHeight < 1.15;
+    
+    // Toggle safety seat visibility
+    if (current.childSafetySeat) {
+      current.childSafetySeat.visible = isToddler;
+    }
+    
+    // Toggle harness vs standard belt visibility
+    if (current.shoulderBeltL) current.shoulderBeltL.visible = isToddler;
+    if (current.shoulderBeltR) current.shoulderBeltR.visible = isToddler;
+    if (current.chestClip) current.chestClip.visible = isToddler;
+    if (current.lapBeltL) current.lapBeltL.visible = isToddler;
+    if (current.lapBeltR) current.lapBeltR.visible = isToddler;
+    if (current.buckleGroup) current.buckleGroup.visible = isToddler;
+    
+    if (current.standardShoulderBelt) current.standardShoulderBelt.visible = !isToddler;
+    if (current.standardLapBelt) current.standardLapBelt.visible = !isToddler;
+    if (current.standardBuckle) current.standardBuckle.visible = !isToddler;
+    
+    a.seat = isToddler ? 0.94 : 0.85;
     a.z = 0.34;
-    // (Seat belt positioning deferred to the end of placeChild after height is computed)
-  } else if (currentId === "party") {
-    a.seat = 0.50;
-    a.z = -1.75;
   }
-  
+
   // Use actual hip bone Y for precise seat placement
   child.updateMatrixWorld(true);
   let hipY = vrmHeight * 0.50; // fallback
@@ -680,37 +696,113 @@ function placeChild() {
 
   // Dynamically wrap seat belt over the child based on her exact height
   if (currentId === "car") {
-    const seatH = 0.85;
-    if (current.shoulderBelt) {
-      // Anchors: from left door pillar shoulder height to right side buckle
-      const x1 = 0.72;
-      const y1 = seatH + vrmHeight * 0.68; // scales with child height
-      const z1 = 0.42;
-
-      const x2 = 0.35;
-      const y2 = seatH + vrmHeight * 0.08; // buckle height scales to match lap
-      const z2 = 0.46;
-
-      const cx = (x1 + x2) / 2;
-      const cy = (y1 + y2) / 2;
-      const cz = (z1 + z2) / 2;
-
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const dz = z2 - z1;
-      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-      current.shoulderBelt.position.set(cx, cy, cz);
-      current.shoulderBelt.scale.set(1, len / 0.8, 1); // scale relative to base length 0.8
+    const isToddler = vrmHeight < 1.15;
+    const seatH = isToddler ? 0.94 : 0.85;
+    
+    if (isToddler) {
+      // 5-point harness system placement
+      const buckleX = 0.52;
+      const buckleY = seatH + vrmHeight * 0.05;
+      const buckleZ = 0.22;
       
-      const angle = Math.atan2(dy, dx) + Math.PI / 2;
-      current.shoulderBelt.rotation.set(0, 0, angle);
-    }
-    if (current.lapBelt) {
-      current.lapBelt.position.set(0.52, seatH + vrmHeight * 0.08, 0.45);
-    }
-    if (current.buckle) {
-      current.buckle.position.set(0.35, seatH + vrmHeight * 0.08, 0.46);
+      if (current.buckleGroup) {
+        current.buckleGroup.position.set(buckleX, buckleY, buckleZ);
+      }
+      
+      const placeStrap = (mesh, p1, p2) => {
+        if (!mesh) return;
+        const cx = (p1.x + p2.x) / 2;
+        const cy = (p1.y + p2.y) / 2;
+        const cz = (p1.z + p2.z) / 2;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dz = p2.z - p1.z;
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        mesh.position.set(cx, cy, cz);
+        mesh.scale.set(1, len / 0.8, 1);
+        
+        const direction = new THREE.Vector3(dx, dy, dz).normalize();
+        const alignQuaternion = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          direction
+        );
+        mesh.quaternion.copy(alignQuaternion);
+      };
+
+      // Shoulder Straps: from shoulder height down to the buckle
+      const shY = y + vrmHeight * 0.68;
+      const shZ = 0.44;
+      const shOffX = vrmHeight * 0.075;
+      
+      const pL1 = { x: 0.52 + shOffX, y: shY, z: shZ };
+      const pL2 = { x: buckleX + 0.025, y: buckleY + 0.04, z: buckleZ };
+      placeStrap(current.shoulderBeltL, pL1, pL2);
+      
+      const pR1 = { x: 0.52 - shOffX, y: shY, z: shZ };
+      const pR2 = { x: buckleX - 0.025, y: buckleY + 0.04, z: buckleZ };
+      placeStrap(current.shoulderBeltR, pR1, pR2);
+      
+      // Chest clip connecting the two shoulder straps at mid-chest height
+      if (current.chestClip) {
+        const midY = y + vrmHeight * 0.42;
+        const t = (midY - shY) / (buckleY - shY);
+        const xL = pL1.x + t * (pL2.x - pL1.x);
+        const xR = pR1.x + t * (pR2.x - pR1.x);
+        const zMid = shZ + t * (buckleZ - shZ);
+        
+        const clipW = Math.abs(xL - xR) + 0.025;
+        current.chestClip.position.set(0.52, midY, zMid + 0.015);
+        current.chestClip.scale.set(clipW / 0.14, 1, 1);
+        // Chest clip should lie flat in the screen plane
+        current.chestClip.rotation.set(0, 0, 0);
+      }
+      
+      // Lap Straps: from side anchors to the buckle
+      const lapY = seatH + vrmHeight * 0.08;
+      const lapZ = 0.36;
+      
+      const pLapL1 = { x: 0.70, y: lapY, z: lapZ };
+      const pLapL2 = { x: buckleX + 0.02, y: buckleY, z: buckleZ };
+      placeStrap(current.lapBeltL, pLapL1, pLapL2);
+      
+      const pLapR1 = { x: 0.34, y: lapY, z: lapZ };
+      const pLapR2 = { x: buckleX - 0.02, y: buckleY, z: buckleZ };
+      placeStrap(current.lapBeltR, pLapR1, pLapR2);
+      
+    } else {
+      // Standard diagonal belt placement for older child/teenager
+      if (current.standardShoulderBelt) {
+        const x1 = 0.72;
+        const y1 = seatH + vrmHeight * 0.68;
+        const z1 = 0.42;
+
+        const x2 = 0.35;
+        const y2 = seatH + vrmHeight * 0.08;
+        const z2 = 0.46;
+
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        const cz = (z1 + z2) / 2;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dz = z2 - z1;
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        current.standardShoulderBelt.position.set(cx, cy, cz);
+        current.standardShoulderBelt.scale.set(1, len / 0.8, 1);
+        
+        const angle = Math.atan2(dy, dx) + Math.PI / 2;
+        current.standardShoulderBelt.rotation.set(0, 0, angle);
+      }
+      if (current.standardLapBelt) {
+        current.standardLapBelt.position.set(0.52, seatH + vrmHeight * 0.08, 0.45);
+      }
+      if (current.standardBuckle) {
+        current.standardBuckle.position.set(0.35, seatH + vrmHeight * 0.08, 0.46);
+      }
     }
   }
 }
@@ -1191,11 +1283,59 @@ function buildCar() {
   // front seats, rear bench, and center console
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
   quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
-  // her seat belt: shoulder strap, lap strap, and buckle
-  const beltMat = mat(0x23262b, 0.45);
-  const shoulderBelt = box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
-  const lapBelt = box(g, 0.5, 0.055, 0.02, beltMat, 0.52, 1.05, 0.5, { cast: false });
-  const buckle = box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
+  // child safety booster seat shell group
+  const childSafetySeat = new THREE.Group();
+  g.add(childSafetySeat);
+
+  const shellMat = mat(0x202428, 0.48); // dark charcoal shell
+  const padMat = mat(0x404550, 0.65);   // gray padded cushion fabric
+  const trimMat = mat(0xe5e9ed, 0.9);   // white lining/trim
+
+  // Safety seat base cushion
+  rbox(childSafetySeat, 0.48, 0.10, 0.48, 0.04, 3, padMat, 0.52, 0.86, 0.35);
+  
+  // Side torso guards (left & right side protectors)
+  rbox(childSafetySeat, 0.08, 0.32, 0.22, 0.03, 3, shellMat, 0.73, 1.10, 0.38);
+  rbox(childSafetySeat, 0.08, 0.32, 0.22, 0.03, 3, shellMat, 0.31, 1.10, 0.38);
+  
+  // Side torso trim (white borders)
+  rbox(childSafetySeat, 0.015, 0.32, 0.015, 0.005, 3, trimMat, 0.772, 1.10, 0.49);
+  rbox(childSafetySeat, 0.015, 0.32, 0.015, 0.005, 3, trimMat, 0.268, 1.10, 0.49);
+
+  // Side headrest guards (left & right head protection wings)
+  rbox(childSafetySeat, 0.08, 0.24, 0.26, 0.03, 3, shellMat, 0.73, 1.34, 0.44);
+  rbox(childSafetySeat, 0.08, 0.24, 0.26, 0.03, 3, shellMat, 0.31, 1.34, 0.44);
+
+  // Side headrest trim (white borders)
+  rbox(childSafetySeat, 0.015, 0.24, 0.015, 0.005, 3, trimMat, 0.772, 1.34, 0.56);
+  rbox(childSafetySeat, 0.015, 0.24, 0.015, 0.005, 3, trimMat, 0.268, 1.34, 0.56);
+
+  // Seat backrest cushion
+  rbox(childSafetySeat, 0.44, 0.68, 0.12, 0.03, 3, padMat, 0.52, 1.22, 0.50, { rx: -0.1 });
+
+  // 5-point harness belt components
+  const beltMat = mat(0x282c30, 0.72); // dark gray strap
+  const clipMat = mat(0x1a1d20, 0.52); // black plastic clip
+  const redMat = mat(0xc0392b, 0.62);  // red buckle release button
+
+  const shoulderBeltL = box(g, 0.045, 0.8, 0.015, beltMat, 0, 0, 0, { cast: false });
+  const shoulderBeltR = box(g, 0.045, 0.8, 0.015, beltMat, 0, 0, 0, { cast: false });
+  const chestClip = rbox(g, 0.14, 0.035, 0.025, 0.006, 3, clipMat, 0, 0, 0, { cast: false });
+  
+  const lapBeltL = box(g, 0.22, 0.045, 0.015, beltMat, 0, 0, 0, { cast: false });
+  const lapBeltR = box(g, 0.22, 0.045, 0.015, beltMat, 0, 0, 0, { cast: false });
+
+  // Central crotch buckle group
+  const buckleGroup = new THREE.Group();
+  g.add(buckleGroup);
+  rbox(buckleGroup, 0.08, 0.09, 0.04, 0.012, 3, clipMat, 0, 0, 0);
+  rbox(buckleGroup, 0.04, 0.025, 0.01, 0.004, 3, redMat, 0, 0.025, 0.016);
+
+  // Standard diagonal vehicle seat belt (for older teens)
+  const stdBeltMat = mat(0x23262b, 0.45);
+  const standardShoulderBelt = box(g, 0.055, 0.8, 0.02, stdBeltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
+  const standardLapBelt = box(g, 0.5, 0.055, 0.02, stdBeltMat, 0.52, 1.05, 0.5, { cast: false });
+  const standardBuckle = box(g, 0.08, 0.1, 0.045, mat(0x9aa0a4, 0.3, { metalness: 0.55 }), 0.31, 1.02, 0.5);
 
   // Grocery/shopping bag on driver's seat
   prop(g, "food/bag", -0.5, 0.85, 0.35, { s: 1.15, ry: 0.4 });
@@ -1331,9 +1471,16 @@ function buildCar() {
       }
       wheelGroup.rotation.z = Math.sin(t * 0.7) * 0.06;
     },
-    shoulderBelt,
-    lapBelt,
-    buckle
+    childSafetySeat,
+    shoulderBeltL,
+    shoulderBeltR,
+    chestClip,
+    lapBeltL,
+    lapBeltR,
+    buckleGroup,
+    standardShoulderBelt,
+    standardLapBelt,
+    standardBuckle
   };
 }
 
