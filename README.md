@@ -50,7 +50,7 @@ The UI is built as a first-person 3D game:
 ### Controls
 
 | Input | Action |
-| --- | --- |
++| --- | --- |
 | Click the 3D world | Capture the mouse (first-person look) |
 | Mouse | Look around |
 | WASD / arrow keys | Walk (walkable scenes) |
