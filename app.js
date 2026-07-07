@@ -26,6 +26,8 @@ const insightTitle = document.querySelector("#insightTitle");
 const insightText = document.querySelector("#insightText");
 const locationBar = document.querySelector("#locationBar");
 const lockHint = document.querySelector("#lockHint");
+const queryParams = new URLSearchParams(window.location.search);
+if (queryParams.has("view")) document.body.classList.add("is-debug-view");
 
 /* ============================================================
    Session state
@@ -241,6 +243,63 @@ function kitchenTableLegs(parent, x, z) {
   box(parent, 1.25, 0.07, 0.08, topMat, x, 0.68, z + 0.53, { cast: true });
   box(parent, 0.08, 0.07, 1.25, topMat, x - 0.53, 0.68, z, { cast: true });
   box(parent, 0.08, 0.07, 1.25, topMat, x + 0.53, 0.68, z, { cast: true });
+}
+
+function tileFloor(parent, x, z, w, d, opts = {}) {
+  const base = mat(opts.base || 0xd9d2c1, 0.86);
+  const grout = mat(opts.grout || 0xbeb6a7, 0.92);
+  box(parent, w, 0.035, d, base, x, 0.002, z, { cast: false });
+
+  const step = opts.step || 0.72;
+  for (let gx = x - w / 2 + step; gx < x + w / 2 - 0.02; gx += step) {
+    box(parent, 0.018, 0.038, d, grout, gx, 0.026, z, { cast: false, receive: false });
+  }
+  for (let gz = z - d / 2 + step; gz < z + d / 2 - 0.02; gz += step) {
+    box(parent, w, 0.038, 0.018, grout, x, 0.027, gz, { cast: false, receive: false });
+  }
+}
+
+function wallTileSurface(parent, x, y, z, w, h, orientation = "north", opts = {}) {
+  const tile = mat(opts.base || 0xd6cfbe, 0.9);
+  const grout = mat(opts.grout || 0xb9b1a2, 0.95);
+  const depth = 0.028;
+  const isSide = orientation === "east" || orientation === "west";
+  box(parent, isSide ? depth : w, h, isSide ? w : depth, tile, x, y, z, { cast: false, receive: false });
+
+  const cols = opts.cols || Math.max(2, Math.floor(w / 0.9));
+  const rows = opts.rows || Math.max(2, Math.floor(h / 0.62));
+  for (let i = 1; i < cols; i++) {
+    const offset = -w / 2 + (w * i) / cols;
+    box(parent, isSide ? 0.01 : 0.012, h, isSide ? 0.012 : 0.01, grout,
+      x + (isSide ? 0 : offset), y, z + (isSide ? offset : 0),
+      { cast: false, receive: false }
+    );
+  }
+  for (let i = 1; i < rows; i++) {
+    const yy = y - h / 2 + (h * i) / rows;
+    box(parent, isSide ? 0.012 : w, 0.012, isSide ? w : 0.012, grout, x, yy, z, { cast: false, receive: false });
+  }
+}
+
+function glassPanel(parent, w, h, d, x, z, opts = {}) {
+  const glass = mat(0xbfdde6, 0.25, {
+    transparent: true,
+    opacity: 0.36,
+    metalness: 0.05,
+  });
+  return box(parent, w, h, d, glass, x, h / 2, z, { cast: false, receive: false, ...opts });
+}
+
+function towelBar(parent, x, y, z, ry = 0) {
+  const bar = new THREE.Group();
+  bar.position.set(x, y, z);
+  bar.rotation.y = ry;
+  parent.add(bar);
+  const metal = mat(0x1d1b18, 0.4, { metalness: 0.35 });
+  const towel = mat(0xe9e2d6, 0.88);
+  cyl(bar, 0.018, 0.018, 0.7, metal, 0, 0.12, 0, { rz: Math.PI / 2, seg: 10 });
+  box(bar, 0.5, 0.58, 0.045, towel, 0, -0.18, 0.035, { cast: true });
+  return bar;
 }
 
 function rnd(i) {
@@ -785,46 +844,72 @@ function buildHome() {
   kitchenLight.position.set(-3.4, 2.7, -3.4);
   g.add(kitchenLight);
 
-  /* --- bedroom (real furniture models) --- */
-  prop(g, "furniture/rugRectangle", 4.0, -3.25, { s: 3, ry: Math.PI / 2 });
-  prop(g, "furniture/bedSingle", 5.9, -4.45, { s: 2.25, ry: Math.PI / 2 });
-  solid(colliders, 5.9, -4.45, 2.35, 1.35);
-  prop(g, "furniture/pillowBlue", 6.35, -5.05, { s: 1.2, y: 0.58, ry: Math.PI / 2 });
-  prop(g, "furniture/pillow", 6.0, -5.08, { s: 1.05, y: 0.6, ry: Math.PI / 2 });
-  prop(g, "furniture/bear", 5.1, -4.05, { s: 1.05, y: 0.72, ry: -2.4 });
-  prop(g, "furniture/sideTableDrawers", 4.62, -5.48, { s: 2 });
-  prop(g, "furniture/lampSquareTable", 4.62, -5.48, { s: 1.45, y: 0.82 });
-  prop(g, "furniture/books", 4.35, -5.34, { s: 1.0, y: 0.85, ry: -0.25 });
-  solid(colliders, 4.62, -5.48, 0.8, 0.8);
-  const bedLight = new THREE.PointLight(0xffb066, 1.1, 5.2, 2);
-  bedLight.position.set(4.6, 1.35, -5.2);
+  /* --- bedroom (wall-aligned, clearer circulation) --- */
+  prop(g, "furniture/rugRectangle", 4.6, -3.55, { s: 2.7, ry: Math.PI / 2 });
+  prop(g, "furniture/bedSingle", 5.65, -5.05, { s: 2.05, ry: Math.PI / 2 });
+  solid(colliders, 5.65, -5.05, 2.15, 1.2);
+  prop(g, "furniture/pillowBlue", 6.08, -5.48, { s: 1.05, y: 0.58, ry: Math.PI / 2 });
+  prop(g, "furniture/pillow", 5.72, -5.48, { s: 0.95, y: 0.6, ry: Math.PI / 2 });
+  prop(g, "furniture/bear", 5.0, -4.78, { s: 0.95, y: 0.7, ry: -2.2 });
+  prop(g, "furniture/sideTableDrawers", 4.12, -5.45, { s: 1.75 });
+  prop(g, "furniture/lampSquareTable", 4.12, -5.45, { s: 1.25, y: 0.78 });
+  solid(colliders, 4.12, -5.45, 0.72, 0.72);
+  const bedLight = new THREE.PointLight(0xffb066, 1.05, 5.2, 2);
+  bedLight.position.set(4.25, 1.35, -5.25);
   g.add(bedLight);
-  prop(g, "furniture/bookcaseOpenLow", 1.45, -5.55, { s: 2 });
-  solid(colliders, 1.45, -5.55, 1.4, 0.7);
-  prop(g, "furniture/desk", 1.3, -2.0, { s: 1.85, ry: Math.PI / 2 });
-  prop(g, "furniture/chairDesk", 2.18, -2.0, { s: 1.8, ry: -Math.PI / 2 });
-  prop(g, "furniture/computerScreen", 1.25, -2.0, { s: 1.15, y: 0.78, ry: Math.PI / 2 });
-  prop(g, "furniture/books", 1.28, -2.38, { s: 0.9, y: 0.78, ry: 0.5 });
-  solid(colliders, 1.3, -2.0, 0.95, 1.45);
-  prop(g, "furniture/cabinetBed", 6.45, -1.0, { s: 2, ry: -Math.PI / 2 });
-  solid(colliders, 6.45, -1.0, 0.8, 1.3);
-  prop(g, "furniture/plantSmall2", 1.1, -0.55, { s: 1.4 });
-  box(g, 1.3, 0.86, 0.035, mat(0x527ba0, 0.65), 4.5, 1.85, -5.88, { cast: false });
-  box(g, 1.06, 0.62, 0.025, mat(0xf3d482, 0.7), 4.5, 1.85, -5.91, { cast: false });
+  prop(g, "furniture/bookcaseOpenLow", 1.45, -5.55, { s: 1.9 });
+  solid(colliders, 1.45, -5.55, 1.35, 0.62);
+  prop(g, "furniture/desk", 6.48, -2.45, { s: 1.75, ry: -Math.PI / 2 });
+  prop(g, "furniture/chairDesk", 5.6, -2.45, { s: 1.55, ry: Math.PI / 2 });
+  prop(g, "furniture/computerScreen", 6.46, -2.45, { s: 1.05, y: 0.78, ry: -Math.PI / 2 });
+  prop(g, "furniture/books", 6.42, -2.88, { s: 0.82, y: 0.78, ry: -0.4 });
+  solid(colliders, 6.48, -2.45, 0.82, 1.35);
+  prop(g, "furniture/cabinetBedDrawer", 1.02, -1.08, { s: 1.8, ry: Math.PI / 2 });
+  solid(colliders, 1.02, -1.08, 0.65, 1.15);
+  prop(g, "furniture/plantSmall2", 6.45, -0.55, { s: 1.25 });
+  box(g, 1.3, 0.86, 0.035, mat(0x527ba0, 0.65), 4.55, 1.85, -5.88, { cast: false });
+  box(g, 1.06, 0.62, 0.025, mat(0xf3d482, 0.7), 4.55, 1.85, -5.91, { cast: false });
 
-  /* --- bathroom (real fixture models) --- */
-  prop(g, "furniture/bathtub", 6.15, 4.4, { s: 1.9, ry: Math.PI / 2 });
-  solid(colliders, 6.15, 4.4, 1.3, 2.5);
-  prop(g, "furniture/bathroomSink", 2.4, 5.5, { s: 2, ry: Math.PI });
-  prop(g, "furniture/bathroomMirror", 2.4, 5.72, { s: 1.8, y: 1.28, ry: Math.PI });
-  box(g, 0.7, 0.9, 0.04, glowMat(0xd8ecf2), 2.4, 1.9, 5.87, { cast: false });
-  solid(colliders, 2.4, 5.5, 0.8, 0.7);
-  prop(g, "furniture/bathroomCabinetDrawer", 3.4, 5.48, { s: 1.7, ry: Math.PI });
-  prop(g, "furniture/toilet", 1.05, 3.1, { s: 2, ry: Math.PI / 2 });
-  solid(colliders, 1.05, 3.1, 0.7, 0.9);
-  prop(g, "furniture/shower", 5.9, 0.7, { s: 2, ry: Math.PI });
-  solid(colliders, 5.9, 0.7, 1.2, 1.0);
-  prop(g, "furniture/rugDoormat", 3.5, 3.5, { s: 2 });
+  /* --- bathroom: vanity wall, private toilet bay, glass shower lane --- */
+  tileFloor(g, 3.75, 3.0, 6.35, 5.75, { base: 0xded8c9, grout: 0xbfb7a8, step: 0.82 });
+  wallTileSurface(g, 3.75, 1.25, 5.86, 6.05, 2.35, "north", { cols: 6, rows: 4 });
+  wallTileSurface(g, 6.86, 1.25, 3.0, 5.55, 2.35, "east", { cols: 5, rows: 4 });
+  wallTileSurface(g, 0.62, 1.25, 3.85, 3.9, 2.35, "west", { cols: 4, rows: 4 });
+  wallTileSurface(g, 5.32, 1.25, 0.12, 3.0, 2.35, "south", { cols: 3, rows: 4 });
+
+  const marble = mat(0xe6e0d6, 0.62);
+  box(g, 3.9, 0.12, 0.72, marble, 2.82, 0.9, 5.48, { cast: true });
+  prop(g, "furniture/bathroomCabinetDrawer", 1.35, 5.42, { s: 1.55, ry: Math.PI });
+  prop(g, "furniture/bathroomSinkSquare", 2.48, 5.43, { s: 1.75, ry: Math.PI });
+  prop(g, "furniture/bathroomCabinet", 3.45, 5.42, { s: 1.55, ry: Math.PI });
+  prop(g, "furniture/bathroomCabinetDrawer", 4.15, 5.42, { s: 1.35, ry: Math.PI });
+  solid(colliders, 2.82, 5.45, 3.85, 0.76);
+  prop(g, "furniture/bathroomMirror", 2.48, 5.78, { s: 2.05, y: 1.35, ry: Math.PI });
+  box(g, 1.15, 0.85, 0.04, glowMat(0xd8ecf2), 2.48, 1.8, 5.84, { cast: false });
+  prop(g, "furniture/lampWall", 1.25, 5.78, { s: 1.15, y: 1.75, ry: Math.PI });
+  prop(g, "furniture/lampWall", 3.72, 5.78, { s: 1.15, y: 1.75, ry: Math.PI });
+  towelBar(g, 0.68, 1.15, 4.28, Math.PI / 2);
+
+  const privacyWall = mat(0xcac2b3, 0.92);
+  box(g, 0.16, 2.7, 2.35, privacyWall, 4.86, 1.35, 4.38, { cast: false });
+  box(g, 0.16, 2.45, 1.05, privacyWall, 5.56, 1.22, 3.27, { ry: Math.PI / 2, cast: false });
+  wallTileSurface(g, 4.76, 1.25, 4.38, 2.2, 2.35, "west", { cols: 3, rows: 4 });
+  box(g, 0.08, 0.08, 2.45, mat(0xa79d8f, 0.8), 4.72, 2.72, 4.38, { cast: false });
+  solid(colliders, 4.86, 4.38, 0.16, 2.35);
+  solid(colliders, 5.56, 3.27, 1.05, 0.16);
+  prop(g, "furniture/toilet", 5.95, 5.05, { s: 1.75, ry: Math.PI });
+  solid(colliders, 5.95, 5.05, 0.85, 0.95);
+  prop(g, "furniture/bathroomCabinet", 5.95, 5.75, { s: 1.35, y: 1.2, ry: Math.PI });
+
+  glassPanel(g, 1.55, 2.15, 0.045, 6.12, 2.25, { ry: Math.PI / 2 });
+  glassPanel(g, 1.2, 2.15, 0.045, 5.52, 1.25);
+  prop(g, "furniture/showerRound", 6.1, 1.22, { s: 1.75, ry: -Math.PI / 2 });
+  solid(colliders, 6.1, 1.22, 1.25, 1.25);
+  prop(g, "furniture/rugDoormat", 3.05, 3.25, { s: 1.7, ry: Math.PI / 2 });
+  cyl(g, 0.28, 0.2, 0.05, glowMat(0xfff5db), 3.35, 2.96, 3.05, { cast: false, receive: false });
+  const bathLight = new THREE.PointLight(0xfff0d2, 1.7, 7.5, 2);
+  bathLight.position.set(3.35, 2.55, 3.05);
+  g.add(bathLight);
 
   // key light through windows
   const sun = new THREE.DirectionalLight(0xffe4bf, 1.6);
@@ -1476,6 +1561,19 @@ function setLocation(id) {
     const headY = child.position.y + 1.0 * childScale();
     const dist = Math.max(0.6, Math.hypot(a.x - current.spawn.x, a.z - current.spawn.z));
     player.pitch = THREE.MathUtils.clamp(Math.atan2(headY - current.eye, dist) * 0.85, -0.6, 0.3);
+  }
+
+  const debugView = queryParams.get("view");
+  if (id === "home" && debugView === "bathroom") {
+    player.x = 2.05;
+    player.z = 2.2;
+    player.yaw = -2.05;
+    player.pitch = -0.04;
+  } else if (id === "home" && debugView === "bedroom") {
+    player.x = 2.55;
+    player.z = -2.15;
+    player.yaw = -0.75;
+    player.pitch = -0.08;
   }
 
   // child reacts to the new place
