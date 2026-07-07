@@ -519,6 +519,22 @@ vrmLoader.register((parser) => new VRMLoaderPlugin(parser));
 let vrm = null;
 let vrmStage = 0;
 let vrmHeight = 1.2;
+let familyMembers = [];
+let partyAudio = null;
+
+function playPartySound(play) {
+  if (play) {
+    if (!partyAudio) {
+      // Stream a high-quality royalty-free crowd chatter sound effect
+      partyAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2658/2658-84.wav");
+      partyAudio.loop = true;
+      partyAudio.volume = 0.25; // low background volume
+    }
+    partyAudio.play().catch((e) => console.log("Audio autoplay deferred:", e));
+  } else {
+    if (partyAudio) partyAudio.pause();
+  }
+}
 let exprHappy = 0.2;
 let exprSad = 0;
 let exprAngry = 0;
@@ -577,7 +593,7 @@ function loadMira(stage) {
 }
 
 // a seated, static VRoid family member (party guests)
-function familyMember(parent, file, x, z, ry, seat = 0.85) {
+function familyMember(parent, file, x, z, ry, seat = 0.85, pose = "sit") {
   vrmLoader.load(
     `./assets/mira/${file}.vrm`,
     (gltf) => {
@@ -594,11 +610,13 @@ function familyMember(parent, file, x, z, ry, seat = 0.85) {
         const b = fv.humanoid.getNormalizedBoneNode(boneName);
         if (b) b.rotation.z = rz;
       }
-      for (const side of ["left", "right"]) {
-        const upper = fv.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
-        const lower = fv.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
-        if (upper) upper.rotation.x = -Math.PI / 2.15; // Bend thighs forward
-        if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
+      if (pose === "sit") {
+        for (const side of ["left", "right"]) {
+          const upper = fv.humanoid.getNormalizedBoneNode(`${side}UpperLeg`);
+          const lower = fv.humanoid.getNormalizedBoneNode(`${side}LowerLeg`);
+          if (upper) upper.rotation.x = -Math.PI / 2.15; // Bend thighs forward
+          if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
+        }
       }
       // Add to parent first at origin, force matrix update, then read hip position
       fv.scene.position.set(0, 0, 0);
@@ -608,12 +626,19 @@ function familyMember(parent, file, x, z, ry, seat = 0.85) {
       fv.humanoid.update();
       fv.update(0);
       fv.scene.updateMatrixWorld(true);
-      const hips = fv.humanoid.getNormalizedBoneNode("hips");
-      const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
-      // Add pelvis offset (hips are ~7.5% of height above butt) so butt sits on seat
-      const pelvisOffset = h * 0.075;
-      console.log(`Family ${file}: h=${h.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${seat}, offset=${pelvisOffset.toFixed(3)}`);
-      fv.scene.position.set(x, seat - hipY + pelvisOffset, z);
+      
+      if (pose === "sit") {
+        const hips = fv.humanoid.getNormalizedBoneNode("hips");
+        const hipY = hips ? hips.getWorldPosition(new THREE.Vector3()).y : h * 0.50;
+        // Add pelvis offset (hips are ~7.5% of height above butt) so butt sits on seat
+        const pelvisOffset = h * 0.075;
+        console.log(`Family ${file} (sit): h=${h.toFixed(2)}, hipY=${hipY.toFixed(2)}, seat=${seat}`);
+        fv.scene.position.set(x, seat - hipY + pelvisOffset, z);
+      } else {
+        console.log(`Family ${file} (stand): h=${h.toFixed(2)}`);
+        fv.scene.position.set(x, 0.02, z);
+      }
+      familyMembers.push(fv);
     },
     undefined,
     (e) => console.warn(`Could not load family member ${file}`, e)
@@ -1686,10 +1711,25 @@ function buildParty() {
   chair(-2.85, -0.5, Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
-  familyMember(g, "mira-15", -1.5, -1.75, 0, 0.50);
-  familyMember(g, "mira-13", 1.5, -1.75, 0, 0.50);
-  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2, 0.50);
-  familyMember(g, "mira-08", -1.5, 0.75, Math.PI, 0.50);
+  familyMember(g, "mira-15", -1.5, -1.75, 0, 0.50, "sit");
+  familyMember(g, "mira-13", 1.5, -1.75, 0, 0.50, "sit");
+  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2, 0.50, "sit");
+  familyMember(g, "mira-08", -1.5, 0.75, Math.PI, 0.50, "sit");
+  
+  // Occupy remaining empty chairs at the table
+  familyMember(g, "mira-09", 1.5, 0.75, Math.PI, 0.50, "sit");
+  familyMember(g, "mira-06", -2.85, -0.5, Math.PI / 2, 0.50, "sit");
+
+  // Standing groups chatting around the room to make it crowded
+  // Group A (Left side - talking near the holiday tree and presents)
+  familyMember(g, "mira-14", -5.4, -2.2, 1.0, 0, "stand");
+  familyMember(g, "mira-04", -4.5, -3.2, -1.2, 0, "stand");
+  familyMember(g, "mira-12", -5.8, -3.4, 0.2, 0, "stand");
+
+  // Group B (Right side - talking in the corner near sideboard)
+  familyMember(g, "mira-10", 5.6, 1.8, -2.0, 0, "stand");
+  familyMember(g, "mira-03", 4.8, 2.8, 0.5, 0, "stand");
+  familyMember(g, "mira-07", 6.0, 3.2, -0.8, 0, "stand");
 
   // decorated tree with presents (Kenney holiday kit)
   {
@@ -1797,6 +1837,11 @@ function setLocation(id) {
   if (id === currentId || !locationDefs[id]) return;
   if (!built[id]) built[id] = locationDefs[id].build();
   if (current) scene.remove(current.group);
+  
+  // Clear any active family member models and toggle background sounds
+  familyMembers = [];
+  playPartySound(id === "party");
+
   current = built[id];
   currentId = id;
   state.location = id;
@@ -2219,6 +2264,41 @@ function updateFrame(dt, t) {
       em.setValue("angry", exprAngry);
     }
     vrm.update(dt);
+  }
+
+  // Animate all active family members (nodding, turning head, breathing, gesturing)
+  for (let i = 0; i < familyMembers.length; i++) {
+    const fv = familyMembers[i];
+    
+    // Breathing (spine movement)
+    const spine = fv.humanoid.getNormalizedBoneNode("spine");
+    if (spine) {
+      spine.rotation.z = Math.sin(t * 1.8 + i) * 0.015;
+      spine.rotation.x = Math.sin(t * 1.5 + i * 2) * 0.01;
+    }
+    
+    // Head turning/talking rotation
+    const head = fv.humanoid.getNormalizedBoneNode("head");
+    if (head) {
+      const talkPitch = Math.sin(t * 2.8 + i * 1.5) * 0.04;
+      const talkYaw = Math.cos(t * 1.2 + i * 3) * 0.08;
+      const nod = Math.sin(t * 4 + i) * 0.03 * (Math.sin(t * 0.5 + i) > 0 ? 1 : 0.15);
+      head.rotation.set(talkPitch + nod, talkYaw, 0);
+    }
+    
+    // Arm gesturing
+    const leftUpperArm = fv.humanoid.getNormalizedBoneNode("leftUpperArm");
+    const rightUpperArm = fv.humanoid.getNormalizedBoneNode("rightUpperArm");
+    if (leftUpperArm) {
+      leftUpperArm.rotation.z = -1.32 + Math.sin(t * 2 + i) * 0.06;
+      leftUpperArm.rotation.x = Math.sin(t * 1.5 + i) * 0.05;
+    }
+    if (rightUpperArm) {
+      rightUpperArm.rotation.z = 1.32 - Math.sin(t * 2.2 + i * 2.5) * 0.06;
+      rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
+    }
+    
+    fv.update(dt);
   }
 
   // blink every few seconds
