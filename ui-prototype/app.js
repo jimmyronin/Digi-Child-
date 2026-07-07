@@ -503,20 +503,20 @@ let exprSad = 0;
 let exprAngry = 0;
 
 function miraStage() {
-  const age = state.age;
-  if (age <= 7.9) {
-    // Child (5.0 to 7.9) -> Stage 1 to 5
-    const pct = Math.max(0, Math.min(1, (age - 5) / 2.9));
-    return Math.max(1, Math.min(5, 1 + Math.floor(pct * 5)));
-  } else if (age <= 12.9) {
-    // Pre-teen (8.0 to 12.9) -> Stage 6 to 10
-    const pct = Math.max(0, Math.min(1, (age - 8) / 4.9));
-    return Math.max(6, Math.min(10, 6 + Math.floor(pct * 5)));
-  } else {
-    // Late Teen/Adult (13.0 to 18.0) -> Stage 11 to 15
-    const pct = Math.max(0, Math.min(1, (age - 13) / 5));
-    return Math.max(11, Math.min(15, 11 + Math.floor(pct * 5)));
+  let base = 0;
+  if (state.band === "Age 10-12") {
+    base = 5;
+  } else if (state.band === "Age 14-16") {
+    base = 10;
   }
+  
+  let offset = 1; // Default: Home clothes (version 1)
+  if (state.location === "car") offset = 2;       // Casual/Travel (version 2)
+  else if (state.location === "park") offset = 3;  // Gym/Sport (version 3)
+  else if (state.location === "market") offset = 4;// Outdoor/Market (version 4)
+  else if (state.location === "party") offset = 5; // Party/Holiday (version 5)
+  
+  return base + offset;
 }
 
 function loadMira(stage) {
