@@ -1438,13 +1438,13 @@ function buildParty() {
     prop(g, "furniture/chairCushion", x, z, { s: 2, ry });
     solid(colliders, x, z, 0.55, 0.55);
   }
-  chair(-1.5, -1.75, 0);
-  chair(0, -1.75, 0);
-  chair(1.5, -1.75, 0);
-  chair(-1.5, 0.75, Math.PI);
-  chair(1.5, 0.75, Math.PI);
-  chair(2.85, -0.5, -Math.PI / 2);
-  chair(-2.85, -0.5, Math.PI / 2);
+  chair(-1.5, -1.75, Math.PI);
+  chair(0, -1.75, Math.PI);
+  chair(1.5, -1.75, Math.PI);
+  chair(-1.5, 0.75, 0);
+  chair(1.5, 0.75, 0);
+  chair(2.85, -0.5, Math.PI / 2);
+  chair(-2.85, -0.5, -Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
   familyMember(g, "mira-15", -1.5, -1.75, Math.PI);
