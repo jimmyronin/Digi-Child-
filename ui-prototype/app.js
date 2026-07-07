@@ -580,7 +580,7 @@ function familyMember(parent, file, x, z, ry, seat = 0.76) {
         if (lower) lower.rotation.x = Math.PI / 2.05; // Bend knees down
       }
       fv.humanoid.update();
-      fv.scene.position.set(x, seat - h * 0.47, z);
+      fv.scene.position.set(x, seat - h * 0.41, z);
       fv.scene.rotation.y = ry;
       parent.add(fv.scene);
     },
@@ -617,9 +617,9 @@ function placeChild() {
   const a = current.childAnchor;
   
   if (currentId === "car") {
-    // Sit directly on passenger seat, leaning back
+    // Sit directly on passenger seat, leaning back against the backrest
     a.seat = 0.86; 
-    a.z = 0.42; 
+    a.z = 0.52; 
     if (current.shoulderBelt) {
       current.shoulderBelt.position.set(0.66, 1.12, 0.42);
       current.shoulderBelt.scale.set(1, 0.85, 1);
@@ -627,9 +627,9 @@ function placeChild() {
     if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
     if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
   } else if (currentId === "party") {
-    // Sit directly on dining chair, leaning back
+    // Sit directly on dining chair, leaning back against the backrest
     a.seat = 0.76;
-    a.z = -1.82;
+    a.z = -1.75;
   }
   
   // 0.41 of vrmHeight places her hips/thighs perfectly on the seat cushions when sitting with straight legs
