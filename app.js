@@ -525,10 +525,10 @@ let partyAudio = null;
 function playPartySound(play) {
   if (play) {
     if (!partyAudio) {
-      // Stream a high-quality royalty-free crowd chatter sound effect
-      partyAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2658/2658-84.wav");
+      // Use highly reliable, CORS-friendly Google sound library CDN for coffee shop/restaurant ambience
+      partyAudio = new Audio("https://actions.google.com/sounds/v1/ambiences/coffee_shop_atmosphere.ogg");
       partyAudio.loop = true;
-      partyAudio.volume = 0.25; // low background volume
+      partyAudio.volume = 0.35; // pleasant room murmur volume
     }
     partyAudio.play().catch((e) => console.log("Audio autoplay deferred:", e));
   } else {
@@ -1926,6 +1926,20 @@ function buildParty() {
   familyMember(g, "mira-10", 5.6, 1.8, -2.0, 0, "stand");
   familyMember(g, "mira-03", 4.8, 2.8, 0.5, 0, "stand");
   familyMember(g, "mira-07", 6.0, 3.2, -0.8, 0, "stand");
+
+  // Group C (Left-Front - standing near the table and couch)
+  familyMember(g, "mira-15", -3.2, 2.2, -0.5, 0, "stand");
+  familyMember(g, "mira-13", -2.4, 2.8, 2.2, 0, "stand");
+  familyMember(g, "mira-11", -3.8, 3.4, -1.0, 0, "stand");
+
+  // Group D (Center-Back - standing near the entrance/doorway)
+  familyMember(g, "mira-08", -1.2, 4.8, -3.0, 0, "stand");
+  familyMember(g, "mira-09", 1.2, 4.8, 3.0, 0, "stand");
+
+  // Group E (Right-Back - standing near the bookcase/wall)
+  familyMember(g, "mira-15", 3.8, -2.8, 1.5, 0, "stand");
+  familyMember(g, "mira-11", 3.2, -3.8, -2.5, 0, "stand");
+  familyMember(g, "mira-06", 4.6, -3.2, 0.2, 0, "stand");
 
   // decorated tree with presents (Kenney holiday kit)
   {
