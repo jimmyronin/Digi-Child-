@@ -452,6 +452,17 @@ body.is-locked .lock-hint {
   opacity: 0.75;
 }
 
+body.is-debug-view .topbar,
+body.is-debug-view .location-bar,
+body.is-debug-view .timeline,
+body.is-debug-view .state-panel,
+body.is-debug-view .conversation-panel,
+body.is-debug-view .insight-panel,
+body.is-debug-view .lock-hint,
+body.is-debug-view .crosshair {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .location-bar {
     top: 84px;
