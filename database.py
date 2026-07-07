@@ -34,6 +34,20 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clinician_session (
+            session_id TEXT PRIMARY KEY,
+            parent_id TEXT,
+            clinician_id TEXT,
+            monitor_id TEXT,
+            scheduled_time TEXT,
+            status TEXT,
+            parent_availability TEXT,
+            clinician_availability TEXT,
+            monitor_availability TEXT,
+            state_json_snapshot TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -121,5 +135,67 @@ def get_recent_history(child_id, limit=5):
     for row in reversed(rows):
         history.append({"parent": row["parent_message"], "mira": row["child_response"]})
     return history
+
+def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO clinician_session (
+            session_id, parent_id, clinician_id, monitor_id, status,
+            parent_availability, clinician_availability, monitor_availability
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        session_id, parent_id, clinician_id, monitor_id, "pending_outreach",
+        json.dumps(parent_avail), json.dumps(clinician_avail), json.dumps(monitor_avail)
+    ))
+    conn.commit()
+    conn.close()
+
+def get_session(session_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clinician_session WHERE session_id = ?", (session_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        d = dict(row)
+        d["parent_availability"] = json.loads(d["parent_availability"] or "[]")
+        d["clinician_availability"] = json.loads(d["clinician_availability"] or "[]")
+        d["monitor_availability"] = json.loads(d["monitor_availability"] or "[]")
+        return d
+    return None
+
+def update_session(session_id, **kwargs):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    fields = []
+    values = []
+    for k, v in kwargs.items():
+        fields.append(f"{k} = ?")
+        if isinstance(v, (list, dict)):
+            values.append(json.dumps(v))
+        else:
+            values.append(v)
+    values.append(session_id)
+    cursor.execute(f"UPDATE clinician_session SET {', '.join(fields)} WHERE session_id = ?", tuple(values))
+    conn.commit()
+    conn.close()
+
+def list_all_sessions():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clinician_session ORDER BY scheduled_time DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    sessions = []
+    for row in rows:
+        d = dict(row)
+        d["parent_availability"] = json.loads(d["parent_availability"] or "[]")
+        d["clinician_availability"] = json.loads(d["clinician_availability"] or "[]")
+        d["monitor_availability"] = json.loads(d["monitor_availability"] or "[]")
+        sessions.append(d)
+    return sessions
 
 init_db()

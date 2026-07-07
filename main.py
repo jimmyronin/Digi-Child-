@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import get_state, save_state, log_interaction, get_recent_history
+import database
+import scheduling
+from uuid import uuid4
 import os
 import sys
 import json
@@ -134,3 +137,114 @@ async def interact(req: InteractRequest):
             "roomTone": "warm"
         }
     }
+
+class CreateSessionReq(BaseModel):
+    parent_id: str
+    clinician_id: str
+    monitor_id: str
+    clinician_avail: list
+    monitor_avail: list
+
+class ParentAvailReq(BaseModel):
+    session_id: str
+    parent_avail: list
+
+class SessionControlReq(BaseModel):
+    session_id: str
+    action: str
+
+session_controls = {}
+
+@app.post("/api/schedule/create")
+async def api_create_session(req: CreateSessionReq):
+    session_id = str(uuid4())[:8] # short id
+    database.create_session(
+        session_id, req.parent_id, req.clinician_id, req.monitor_id,
+        parent_avail=[], clinician_avail=req.clinician_avail, monitor_avail=req.monitor_avail
+    )
+    return {"status": "ok", "sessionId": session_id}
+
+@app.post("/api/schedule/availability")
+async def api_submit_parent_availability(req: ParentAvailReq):
+    session = database.get_session(req.session_id)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+    
+    database.update_session(req.session_id, parent_availability=req.parent_avail)
+    
+    # Run matching logic
+    match = scheduling.find_overlap(
+        req.parent_avail,
+        session["clinician_availability"],
+        session["monitor_availability"]
+    )
+    
+    if match:
+        database.update_session(
+            req.session_id,
+            status="scheduled",
+            scheduled_time=match["start"]
+        )
+        return {"status": "booked", "match": match}
+    
+    database.update_session(req.session_id, status="pending_match")
+    return {"status": "pending_match", "message": "No overlapping slot found yet."}
+
+@app.get("/api/schedule/sessions")
+async def api_list_sessions():
+    return {"sessions": database.list_all_sessions()}
+
+@app.post("/api/session/control")
+async def api_control_session(req: SessionControlReq):
+    session = database.get_session(req.session_id)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+        
+    if req.action == "pause":
+        session_controls[req.session_id] = {"paused": True}
+        database.update_session(req.session_id, status="live_paused")
+    elif req.action == "resume":
+        session_controls[req.session_id] = {"paused": False}
+        database.update_session(req.session_id, status="live")
+    elif req.action == "complete":
+        session_controls[req.session_id] = {"paused": False}
+        database.update_session(req.session_id, status="completed")
+        
+    return {"status": "ok", "state": session_controls.get(req.session_id, {"paused": False})}
+
+@app.get("/api/session/status")
+async def api_session_status(sessionId: str):
+    session = database.get_session(sessionId)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+    ctrl = session_controls.get(sessionId, {"paused": False})
+    
+    # Also fetch current parent state metrics
+    parent_state = database.get_state(session["parent_id"])
+    history = database.get_recent_history(session["parent_id"], limit=20)
+    
+    return {
+        "status": session["status"],
+        "paused": ctrl["paused"],
+        "metrics": parent_state,
+        "history": history
+    }
+
+@app.post("/api/session/provision")
+async def api_provision_session(req: SessionControlReq):
+    session = database.get_session(req.session_id)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+    
+    # Load parent's history or init
+    parent_state = database.get_state(session["parent_id"])
+    
+    # Set status to live and save snapshot
+    database.update_session(
+        req.session_id,
+        status="live",
+        state_json_snapshot=json.dumps(parent_state)
+    )
+    session_controls[req.session_id] = {"paused": False}
+    return {"status": "ok", "state": parent_state}
+
