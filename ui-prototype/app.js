@@ -593,6 +593,10 @@ function setChildPose(pose) {
     if (upper) upper.rotation.x = sit ? -Math.PI / 2.15 : 0;
     if (lower) lower.rotation.x = 0; // Knees straight (not bent) when sitting
   }
+  const spine = vrm.humanoid.getNormalizedBoneNode("spine");
+  const chest = vrm.humanoid.getNormalizedBoneNode("chest");
+  if (spine) spine.rotation.x = sit ? -0.12 : 0; // Lean back against chair backrest
+  if (chest) chest.rotation.x = sit ? -0.06 : 0;
 }
 
 function placeChild() {
@@ -600,47 +604,23 @@ function placeChild() {
   const a = current.childAnchor;
   
   if (currentId === "car") {
-    const showBooster = (state.band === "Age 5-7");
-    
-    // Toggle booster visibility
-    if (current.boosterSeat) current.boosterSeat.visible = showBooster;
-    if (current.boosterBack) current.boosterBack.visible = showBooster;
-    
-    // Adjust sitting positions and belt alignment dynamically
-    if (showBooster) {
-      a.seat = 1.03;
-      a.z = 0.34;
-      if (current.shoulderBelt) {
-        current.shoulderBelt.position.set(0.66, 1.27, 0.46);
-        current.shoulderBelt.scale.set(1, 1, 1);
-      }
-      if (current.lapBelt) current.lapBelt.position.set(0.52, 1.05, 0.5);
-      if (current.buckle) current.buckle.position.set(0.31, 1.02, 0.5);
-    } else {
-      // Pre-teen & teen: Sit directly on car seat
-      a.seat = 0.86;
-      a.z = 0.38; 
-      if (current.shoulderBelt) {
-        current.shoulderBelt.position.set(0.66, 1.12, 0.42);
-        current.shoulderBelt.scale.set(1, 0.85, 1);
-      }
-      if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
-      if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
+    // Sit directly on passenger seat, leaning back
+    a.seat = 0.78; 
+    a.z = 0.42; 
+    if (current.shoulderBelt) {
+      current.shoulderBelt.position.set(0.66, 1.12, 0.42);
+      current.shoulderBelt.scale.set(1, 0.85, 1);
     }
+    if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
+    if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
   } else if (currentId === "party") {
-    const showBooster = (state.band === "Age 5-7");
-    
-    // Toggle booster visibility in the party
-    if (current.partyBooster) current.partyBooster.visible = showBooster;
-    
-    if (showBooster) {
-      a.seat = 0.64;
-    } else {
-      a.seat = 0.46; // Sits directly on the chair cushion
-    }
+    // Sit directly on dining chair, leaning back
+    a.seat = 0.46;
+    a.z = -1.82;
   }
   
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.22 : 0;
+  // 0.45 of vrmHeight places her hips exactly at seat height when sitting with straight legs
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.45 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
@@ -1005,9 +985,6 @@ function buildCar() {
   // front seats, rear bench, and center console
   quiltedSeat(g, -0.5, 0.35, { color: 0x6a5048 });
   quiltedSeat(g, 0.52, 0.35, { color: 0x7a665f });
-  // Mira's booster seat so she can see out the window
-  const boosterSeat = box(g, 0.52, 0.18, 0.52, mat(0x3f8fd1, 0.55), 0.52, 0.94, 0.32);
-  const boosterBack = box(g, 0.52, 0.3, 0.1, mat(0x2c6ea8, 0.55), 0.52, 1.15, 0.6);
   // her seat belt: shoulder strap, lap strap, and buckle
   const beltMat = mat(0x23262b, 0.45);
   const shoulderBelt = box(g, 0.055, 0.8, 0.02, beltMat, 0.66, 1.27, 0.46, { rz: 0.55, cast: false });
@@ -1095,8 +1072,6 @@ function buildCar() {
       wheel.rotation.z = Math.sin(t * 0.7) * 0.06;
       spoke.rotation.z = Math.sin(t * 0.7) * 0.06;
     },
-    boosterSeat,
-    boosterBack,
     shoulderBelt,
     lapBelt,
     buckle
@@ -1432,8 +1407,7 @@ function buildParty() {
   prop(g, "food/wine-red", 0.38, -0.75, { s: 0.45, y: 0.858 });
   prop(g, "holiday/gingerbread-man", -0.3, -0.88, { s: 0.55, y: 0.858, ry: 0.4 });
 
-  // Mira's booster seat on the middle chair
-  const partyBooster = box(g, 0.4, 0.14, 0.4, mat(0x3f8fd1, 0.7), 0, 0.57, -1.75);
+  // (booster seat deleted)
 
   // candles with flickering flames
   for (const cx of [-1.7, 0.55, 1.9]) {
@@ -1518,8 +1492,7 @@ function buildParty() {
         c.light.intensity = f;
         c.flame.scale.setScalar(0.85 + f * 0.25);
       }
-    },
-    partyBooster
+    }
   };
 }
 
