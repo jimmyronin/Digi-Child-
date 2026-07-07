@@ -776,6 +776,9 @@ let nextBlinkAt = 3.2;
 
 let childPose = "stand";
 let childBaseY = 0;
+const childWorld = { x: 0, z: 0 }; // her own walking position in the scene
+let walkPhase = 0; // leg-cycle phase
+let walkAmt = 0; // 0..1 how much she is currently walking
 
 function setChildPose(pose) {
   childPose = pose;
@@ -828,6 +831,9 @@ function placeChild() {
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
+  childWorld.x = a.x;
+  childWorld.z = a.z;
+  walkAmt = 0;
   setChildPose(a.pose);
 
   // (Seat belts deleted by user request)
@@ -2430,13 +2436,38 @@ function updateFrame(dt, t) {
   let effType = rType;
   if (rType === "scream" && reaction && t - reaction.start > 1.1) effType = "cry";
 
-  // playful idle only where she has room and is feeling good
-  const canPlay =
-    childPose === "stand" &&
-    !rType &&
-    (currentId === "home" || currentId === "park") &&
-    state.values.trust > 55 &&
-    state.values.volatility < 45;
+  // --- follow the parent: she walks on her legs to stay near you ---
+  const dxp = camWorld.x - childWorld.x;
+  const dzp = camWorld.z - childWorld.z;
+  const distP = Math.hypot(dxp, dzp) || 0.001;
+  const canWalk = childPose === "stand" && effType !== "cry" && effType !== "scream" && effType !== "upset";
+  let walking = false;
+  if (canWalk && distP > 1.45) {
+    walking = true;
+    const spd = state.values.volatility > 55 ? 1.5 : 2.3; // reluctant if upset
+    const step = Math.min(distP - 1.15, spd * dt);
+    const nx = childWorld.x + (dxp / distP) * step;
+    const nz = childWorld.z + (dzp / distP) * step;
+    const r = 0.26;
+    const blocked = (x, z) => {
+      for (const c of current.colliders)
+        if (x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r) return true;
+      return false;
+    };
+    if (!blocked(nx, childWorld.z)) childWorld.x = nx;
+    if (!blocked(childWorld.x, nz)) childWorld.z = nz;
+    const b = current.bounds;
+    childWorld.x = THREE.MathUtils.clamp(childWorld.x, b.minX, b.maxX);
+    childWorld.z = THREE.MathUtils.clamp(childWorld.z, b.minZ, b.maxZ);
+  }
+  walkAmt += ((walking ? 1 : 0) - walkAmt) * Math.min(1, dt * 8);
+  if (walking) walkPhase += dt * 8.5;
+
+  // --- is the parent looking at her? then she beams up (or scowls if upset) ---
+  const fwdX = -Math.sin(player.yaw), fwdZ = -Math.cos(player.yaw);
+  const facing = (fwdX * dxp + fwdZ * dzp) / distP;
+  const attended = !rType && distP < 3.4 && facing > 0.5;
+  const goodMood = state.values.volatility < 45 && state.values.trust > 50;
 
   // expression targets
   let tH = exprHappy, tS = exprSad, tA = exprAngry, tSurp = 0, tAa = 0;
@@ -2452,8 +2483,19 @@ function updateFrame(dt, t) {
     tS = exprSad + (tS - exprSad) * rk;
     tA = exprAngry + (tA - exprAngry) * rk;
     tSurp *= rk; tAa *= rk;
-  } else if (canPlay) {
-    tH = Math.max(exprHappy, 0.55);
+  } else if (attended) {
+    if (goodMood) {
+      // she looks up at you and grins, giggling now and then
+      tH = 0.95; tS = 0; tA = 0; tAa = 0.14;
+      if (!walking && t > nextGiggleAt) {
+        nextGiggleAt = t + 4.5 + rnd(Math.floor(t)) * 5;
+        const ac = ensureAudio();
+        if (ac) childGiggle(ac, ac.currentTime);
+      }
+    } else {
+      // upset: she scowls / sulks up at you
+      tH = 0; tS = Math.max(tS, 0.5); tA = Math.max(tA, state.values.volatility > 60 ? 0.5 : 0.2);
+    }
   }
   const esm = Math.min(1, dt * 6);
   expr.happy += (tH - expr.happy) * esm;
@@ -2465,7 +2507,18 @@ function updateFrame(dt, t) {
   // body pose targets (blended from rest by reaction strength rk)
   let LuZ = -1.32, LuX = 0, RuZ = 1.32, RuX = 0;
   let LlZ = 0, LlX = 0, RlZ = 0, RlX = 0;
-  let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOX = 0, posOZ = 0, posOY = 0;
+  let LUpLegX = 0, RUpLegX = 0, LLoLegX = 0, RLoLegX = 0;
+  let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOZ = 0, posOY = 0;
+
+  // walk cycle: alternating leg swings, knee bends, opposite arm swing, step bob
+  if (walkAmt > 0.01) {
+    const sw = Math.sin(walkPhase) * walkAmt;
+    LUpLegX = sw * 0.55; RUpLegX = -sw * 0.55;
+    LLoLegX = Math.max(0, -Math.sin(walkPhase)) * 0.85 * walkAmt;
+    RLoLegX = Math.max(0, Math.sin(walkPhase)) * 0.85 * walkAmt;
+    LuX += -sw * 0.5; RuX += sw * 0.5;
+    posOY += Math.abs(Math.sin(walkPhase)) * 0.03 * walkAmt;
+  }
 
   if (effType === "cry" || effType === "upset") {
     LuZ = -1.32 + 0.62 * rk; LuX = -0.7 * rk; RuZ = 1.32 - 0.62 * rk; RuX = -0.7 * rk;
@@ -2484,35 +2537,24 @@ function updateFrame(dt, t) {
     const sw = Math.sin(t * 6) * 0.35 * rk;
     LuZ = -1.32 + 0.7 * rk; RuZ = 1.32 - 0.7 * rk;
     LuX = -0.4 * rk + sw; RuX = -0.4 * rk - sw;
-    posOY = Math.abs(Math.sin(t * 5)) * 0.08 * rk; // happy bounce
-  } else if (canPlay) {
-    posOX = Math.sin(t * 0.7) * 0.4;
-    posOZ = Math.sin(t * 0.45) * 0.18;
-    const hop = Math.sin(t * 1.6);
-    posOY = hop > 0.96 ? (hop - 0.96) * 2.2 : 0;
-    LuX = Math.sin(t * 2.2) * 0.18;
-    RuX = Math.sin(t * 2.2 + 1) * 0.18;
-    if (t > nextGiggleAt) {
-      nextGiggleAt = t + 7 + rnd(Math.floor(t)) * 6;
-      const ac = ensureAudio();
-      if (ac) childGiggle(ac, ac.currentTime);
-    }
+    posOY += Math.abs(Math.sin(t * 5)) * 0.08 * rk; // happy bounce
+  } else if (!walking && attended && goodMood) {
+    posOY += Math.abs(Math.sin(t * 4)) * 0.025; // happy little bounce in place
+    LuX += Math.sin(t * 3) * 0.1; RuX += Math.sin(t * 3 + 1) * 0.1;
   }
 
-  // body yaw: face the parent (skip while wandering, she'll re-orient)
-  if (childPose === "stand" && !canPlay) {
-    const targetYaw = Math.atan2(camWorld.x - child.position.x, camWorld.z - child.position.z);
+  // body yaw: turn toward the parent (faster while walking)
+  {
+    const targetYaw = Math.atan2(camWorld.x - childWorld.x, camWorld.z - childWorld.z);
     let diff = targetYaw - child.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    child.rotation.y += diff * Math.min(1, dt * 2.4);
-  } else if (canPlay) {
-    child.rotation.y += (anchor.yaw + posOX * 0.5 - child.rotation.y) * Math.min(1, dt * 2);
+    child.rotation.y += diff * Math.min(1, dt * (walking ? 5 : 2.6));
   }
 
-  // position (anchor + playful/reaction offsets)
-  child.position.x = anchor.x + posOX;
-  child.position.z = anchor.z + posOZ;
-  child.position.y = childBaseY + posOY + (childPose === "stand" ? Math.sin(t * 1.5) * 0.01 : 0);
+  // position from her own walking position (+ small reaction/step offsets)
+  child.position.x = childWorld.x;
+  child.position.z = childWorld.z + posOZ;
+  child.position.y = childBaseY + posOY + (childPose === "stand" ? Math.sin(t * 1.5) * 0.008 : 0);
 
   if (vrm) {
     const eb = (bone, x, y, z) => {
@@ -2527,6 +2569,13 @@ function updateFrame(dt, t) {
     eb(hb.getNormalizedBoneNode("rightUpperArm"), RuX, 0, RuZ);
     eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, 0, LlZ);
     eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, 0, RlZ);
+    // legs: only drive them when standing (sitting pose is set elsewhere)
+    if (childPose === "stand") {
+      eb(hb.getNormalizedBoneNode("leftUpperLeg"), LUpLegX, 0, 0);
+      eb(hb.getNormalizedBoneNode("rightUpperLeg"), RUpLegX, 0, 0);
+      eb(hb.getNormalizedBoneNode("leftLowerLeg"), LLoLegX, 0, 0);
+      eb(hb.getNormalizedBoneNode("rightLowerLeg"), RLoLegX, 0, 0);
+    }
     const spine = hb.getNormalizedBoneNode("spine");
     if (spine) {
       spine.rotation.x += ((sitting ? -0.12 : 0) + spineXAdd - spine.rotation.x) * Math.min(1, dt * 8);
