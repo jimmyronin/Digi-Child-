@@ -629,7 +629,7 @@ function placeChild() {
     }
   }
   
-  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.38 : 0;
+  const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.26 : 0;
   child.position.set(a.x, y, a.z);
   child.rotation.y = a.yaw;
   childBaseY = y;
@@ -1066,7 +1066,7 @@ function buildCar() {
     colliders: [],
     bounds: { minX: -0.45, maxX: -0.45, minZ: 0.42, maxZ: 0.42 },
     spawn: { x: -0.45, z: 0.42, yaw: 0 },
-    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: 0, pose: "sit" },
+    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: Math.PI, pose: "sit" },
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
