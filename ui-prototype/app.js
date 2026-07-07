@@ -216,20 +216,34 @@ function interiorDoor(parent, x, z, ry = 0, opts = {}) {
   group.rotation.y = ry;
   parent.add(group);
 
+  const gapW = opts.gapWidth || 1.6;
+  const wallH = opts.wallHeight || 3;
+  const thick = (opts.thickness || 0.18) + 0.04;
   const trim = mat(0xb98b5d, 0.7);
-  const door = mat(opts.color || 0x93623d, 0.72);
-  const knob = mat(0xd8ae5e, 0.35, { metalness: 0.25 });
+  const wallFill = mat(opts.wallColor || 0xcfc8b8, 0.92);
+  const doorMat = mat(opts.color || 0x93623d, 0.72);
+  const knobMat = mat(0xd8ae5e, 0.35, { metalness: 0.25 });
   const flip = opts.flip ? -1 : 1;
 
-  box(group, 0.12, 2.2, 0.14, trim, -0.68, 1.1, 0, { cast: false });
-  box(group, 0.12, 2.2, 0.14, trim, 0.68, 1.1, 0, { cast: false });
-  box(group, 1.46, 0.14, 0.16, trim, 0, 2.18, 0, { cast: false });
-  box(group, 1.54, 0.04, 0.22, trim, 0, 0.02, 0, { cast: false });
-  const slab = box(group, 0.72, 1.84, 0.055, door, flip * 0.34, 0.96, 0.24, {
-    ry: flip * 0.72,
-  });
+  // frame posts flush against the wall edges, header trim, and a wall
+  // filler that closes the space between the top of the door and ceiling
+  const postW = 0.14;
+  box(group, postW, 2.2, thick, trim, -(gapW / 2 - postW / 2), 1.1, 0, { cast: false });
+  box(group, postW, 2.2, thick, trim, gapW / 2 - postW / 2, 1.1, 0, { cast: false });
+  box(group, gapW, 0.18, thick, trim, 0, 2.29, 0, { cast: false });
+  box(group, gapW, wallH - 2.38, thick - 0.04, wallFill, 0, 2.38 + (wallH - 2.38) / 2, 0, { cast: false });
+
+  if (opts.noDoor) return;
+
+  // hinged open door leaf; the knob is part of the leaf so it stays on it
+  const leafW = gapW - postW * 2 - 0.06;
+  const hinge = new THREE.Group();
+  hinge.position.set(-flip * (gapW / 2 - postW), 0, 0);
+  hinge.rotation.y = flip * 0.85;
+  group.add(hinge);
+  const slab = box(hinge, leafW, 2.12, 0.055, doorMat, (flip * leafW) / 2, 1.06, 0);
   slab.receiveShadow = true;
-  sph(group, 0.045, knob, flip * 0.61, 1.0, 0.38, { w: 12, h: 8 });
+  sph(hinge, 0.05, knobMat, flip * (leafW - 0.13), 1.02, 0.06, { w: 12, h: 8 });
 }
 
 function kitchenTableLegs(parent, x, z) {
@@ -552,11 +566,11 @@ function buildHome() {
   wall(g, colliders, wallA, 1.35, 0, 1.7, 0.18);
   wall(g, colliders, wallA, 5.4, 0, 3.2, 0.18);
 
-  // readable room thresholds: open doors in the wall gaps, without blocking movement
-  interiorDoor(g, -1.75, -1, 0, { flip: true, color: 0x9a704b });
-  interiorDoor(g, 0.5, -3.1, Math.PI / 2, { color: 0x8f5f3a });
-  interiorDoor(g, 0.5, 2.1, Math.PI / 2, { flip: true, color: 0xa0744a });
-  interiorDoor(g, 3.0, 0, 0, { color: 0x8a6241 });
+  // readable room thresholds: sealed frames in the wall gaps
+  interiorDoor(g, -1.75, -1, 0, { flip: true, color: 0x9a704b, gapWidth: 2.5, noDoor: true });
+  interiorDoor(g, 0.5, -3.1, Math.PI / 2, { color: 0x8f5f3a, gapWidth: 1.6 });
+  interiorDoor(g, 0.5, 2.1, Math.PI / 2, { flip: true, color: 0xa0744a, gapWidth: 1.6 });
+  interiorDoor(g, 3.0, 0, 0, { color: 0x8a6241, gapWidth: 1.6 });
 
   // windows (emissive daylight)
   const win = glowMat(0xcfe8ff);
