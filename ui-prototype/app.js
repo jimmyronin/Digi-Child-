@@ -627,6 +627,17 @@ function placeChild() {
       if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
       if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
     }
+  } else if (currentId === "party") {
+    const showBooster = (state.band === "Age 5-7");
+    
+    // Toggle booster visibility in the party
+    if (current.partyBooster) current.partyBooster.visible = showBooster;
+    
+    if (showBooster) {
+      a.seat = 0.64;
+    } else {
+      a.seat = 0.46; // Sits directly on the chair cushion
+    }
   }
   
   const y = a.pose === "sit" ? (a.seat || 0) - vrmHeight * 0.26 : 0;
@@ -1421,7 +1432,7 @@ function buildParty() {
   prop(g, "holiday/gingerbread-man", -0.3, -0.88, { s: 0.55, y: 0.858, ry: 0.4 });
 
   // Mira's booster seat on the middle chair
-  box(g, 0.4, 0.14, 0.4, mat(0x3f8fd1, 0.7), 0, 0.57, -1.75);
+  const partyBooster = box(g, 0.4, 0.14, 0.4, mat(0x3f8fd1, 0.7), 0, 0.57, -1.75);
 
   // candles with flickering flames
   for (const cx of [-1.7, 0.55, 1.9]) {
@@ -1438,19 +1449,19 @@ function buildParty() {
     prop(g, "furniture/chairCushion", x, z, { s: 2, ry });
     solid(colliders, x, z, 0.55, 0.55);
   }
-  chair(-1.5, -1.75, Math.PI);
-  chair(0, -1.75, Math.PI);
-  chair(1.5, -1.75, Math.PI);
-  chair(-1.5, 0.75, 0);
-  chair(1.5, 0.75, 0);
-  chair(2.85, -0.5, Math.PI / 2);
-  chair(-2.85, -0.5, -Math.PI / 2);
+  chair(-1.5, -1.75, 0);
+  chair(0, -1.75, 0);
+  chair(1.5, -1.75, 0);
+  chair(-1.5, 0.75, Math.PI);
+  chair(1.5, 0.75, Math.PI);
+  chair(2.85, -0.5, -Math.PI / 2);
+  chair(-2.85, -0.5, Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
-  familyMember(g, "mira-15", -1.5, -1.75, Math.PI);
-  familyMember(g, "mira-13", 1.5, -1.75, Math.PI);
-  familyMember(g, "mira-11", 2.85, -0.5, Math.PI / 2);
-  familyMember(g, "mira-08", -1.5, 0.75, 0);
+  familyMember(g, "mira-15", -1.5, -1.75, 0);
+  familyMember(g, "mira-13", 1.5, -1.75, 0);
+  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2);
+  familyMember(g, "mira-08", -1.5, 0.75, Math.PI);
 
   // decorated tree with presents (Kenney holiday kit)
   {
@@ -1496,7 +1507,7 @@ function buildParty() {
     colliders,
     bounds: { minX: -7.6, maxX: 7.6, minZ: -5.6, maxZ: 5.6 },
     spawn: { x: 0, z: 4.3, yaw: 0 },
-    childAnchor: { x: 0, z: -1.72, seat: 0.64, yaw: Math.PI, pose: "sit" },
+    childAnchor: { x: 0, z: -1.72, seat: 0.64, yaw: 0, pose: "sit" },
     canMove: true,
     eye: 1.55,
     env: { bg: 0x170f0a, fog: [0x170f0a, 12, 30], hemi: 0.55, envI: 0.3 },
@@ -1507,6 +1518,7 @@ function buildParty() {
         c.flame.scale.setScalar(0.85 + f * 0.25);
       }
     },
+    partyBooster
   };
 }
 
