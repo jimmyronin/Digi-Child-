@@ -1066,7 +1066,7 @@ function buildCar() {
     colliders: [],
     bounds: { minX: -0.45, maxX: -0.45, minZ: 0.42, maxZ: 0.42 },
     spawn: { x: -0.45, z: 0.42, yaw: 0 },
-    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: Math.PI, pose: "sit" },
+    childAnchor: { x: 0.52, z: 0.34, seat: 1.03, yaw: 0, pose: "sit" },
     aimAtChild: false,
     canMove: false,
     eye: 1.58,
@@ -1443,14 +1443,14 @@ function buildParty() {
   chair(1.5, -1.75, 0);
   chair(-1.5, 0.75, Math.PI);
   chair(1.5, 0.75, Math.PI);
-  chair(2.85, -0.5, Math.PI / 2);
-  chair(-2.85, -0.5, -Math.PI / 2);
+  chair(2.85, -0.5, -Math.PI / 2);
+  chair(-2.85, -0.5, Math.PI / 2);
 
   // family, seated — real VRoid characters (the user's adult/teen models)
-  familyMember(g, "mira-15", -1.5, -1.75, 0);
-  familyMember(g, "mira-13", 1.5, -1.75, 0);
-  familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2);
-  familyMember(g, "mira-08", -1.5, 0.75, Math.PI);
+  familyMember(g, "mira-15", -1.5, -1.75, Math.PI);
+  familyMember(g, "mira-13", 1.5, -1.75, Math.PI);
+  familyMember(g, "mira-11", 2.85, -0.5, Math.PI / 2);
+  familyMember(g, "mira-08", -1.5, 0.75, 0);
 
   // decorated tree with presents (Kenney holiday kit)
   {
@@ -1496,7 +1496,7 @@ function buildParty() {
     colliders,
     bounds: { minX: -7.6, maxX: 7.6, minZ: -5.6, maxZ: 5.6 },
     spawn: { x: 0, z: 4.3, yaw: 0 },
-    childAnchor: { x: 0, z: -1.72, seat: 0.64, yaw: 0, pose: "sit" },
+    childAnchor: { x: 0, z: -1.72, seat: 0.64, yaw: Math.PI, pose: "sit" },
     canMove: true,
     eye: 1.55,
     env: { bg: 0x170f0a, fog: [0x170f0a, 12, 30], hemi: 0.55, envI: 0.3 },
