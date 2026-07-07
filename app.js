@@ -650,12 +650,7 @@ function placeChild() {
   if (currentId === "car") {
     a.seat = 0.85;
     a.z = 0.34;
-    if (current.shoulderBelt) {
-      current.shoulderBelt.position.set(0.66, 1.12, 0.42);
-      current.shoulderBelt.scale.set(1, 0.85, 1);
-    }
-    if (current.lapBelt) current.lapBelt.position.set(0.52, 0.88, 0.45);
-    if (current.buckle) current.buckle.position.set(0.31, 0.85, 0.45);
+    // (Seat belt positioning deferred to the end of placeChild after height is computed)
   } else if (currentId === "party") {
     a.seat = 0.50;
     a.z = -1.75;
@@ -682,6 +677,42 @@ function placeChild() {
   child.rotation.y = a.yaw;
   childBaseY = y;
   setChildPose(a.pose);
+
+  // Dynamically wrap seat belt over the child based on her exact height
+  if (currentId === "car") {
+    const seatH = 0.85;
+    if (current.shoulderBelt) {
+      // Anchors: from left door pillar shoulder height to right side buckle
+      const x1 = 0.72;
+      const y1 = seatH + vrmHeight * 0.68; // scales with child height
+      const z1 = 0.42;
+
+      const x2 = 0.35;
+      const y2 = seatH + vrmHeight * 0.08; // buckle height scales to match lap
+      const z2 = 0.46;
+
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+      const cz = (z1 + z2) / 2;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dz = z2 - z1;
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      current.shoulderBelt.position.set(cx, cy, cz);
+      current.shoulderBelt.scale.set(1, len / 0.8, 1); // scale relative to base length 0.8
+      
+      const angle = Math.atan2(dy, dx) + Math.PI / 2;
+      current.shoulderBelt.rotation.set(0, 0, angle);
+    }
+    if (current.lapBelt) {
+      current.lapBelt.position.set(0.52, seatH + vrmHeight * 0.08, 0.45);
+    }
+    if (current.buckle) {
+      current.buckle.position.set(0.35, seatH + vrmHeight * 0.08, 0.46);
+    }
+  }
 }
 
 /* ============================================================
@@ -1174,9 +1205,14 @@ function buildCar() {
   for (const x of [-0.42, 0, 0.42]) {
     box(g, 0.012, 0.58, 0.018, stitch, x, 1.21, 1.77, { rx: -0.08, cast: false });
   }
+  
+  // Console Armrest base and Lid
   rbox(g, 0.42, 0.2, 1.85, 0.02, 3, mat(0xa99d95, 0.72), 0.02, 0.88, 0.58);
   rbox(g, 0.4, 0.18, 0.72, 0.03, 3, mat(0xbdb3aa, 0.68), 0.02, 1.02, 1.02);
-  box(g, 0.025, 0.02, 0.72, stitch, 0.02, 1.125, 1.02, { cast: false });
+  
+  // Premium French double stitching on the leather armrest
+  box(g, 0.01, 0.01, 0.72, stitch, -0.15, 1.112, 1.02, { cast: false });
+  box(g, 0.01, 0.01, 0.72, stitch, 0.19, 1.112, 1.02, { cast: false });
 
   // Console donut snack
   prop(g, "food/donut-sprinkles", 0.02, 1.135, 1.02, { s: 0.45, ry: 0.3 });
@@ -1191,8 +1227,33 @@ function buildCar() {
   prop(g, "food/soda-can", -0.12, 1.04, 0.52, { s: 0.6, ry: -0.8 });
   cyl(g, 0.095, 0.095, 0.035, darkTrim, 0.14, 1.04, 0.38, { seg: 24 });
   for (let i = 0; i < 5; i++) carButton(g, -0.15 + i * 0.075, 1.07, 0.17, 0.052, 0.04);
-  box(g, 0.34, 0.035, 0.52, mat(0xefe4d8, 0.7), 0.02, 1.13, 0.66, { cast: false });
-  box(g, 0.3, 0.018, 0.48, stitch, 0.02, 1.155, 0.66, { cast: false });
+  
+  // Recessed console storage tray
+  rbox(g, 0.34, 0.04, 0.52, 0.015, 3, mat(0x202428, 0.62), 0.02, 1.12, 0.66, { cast: false });
+
+  // Smartphone lying in the tray with a glowing lock screen
+  const phoneCanvas = document.createElement("canvas");
+  phoneCanvas.width = 64;
+  phoneCanvas.height = 128;
+  const pCtx = phoneCanvas.getContext("2d");
+  pCtx.fillStyle = "#1e293b";
+  pCtx.fillRect(0, 0, 64, 128);
+  pCtx.fillStyle = "#38bdf8";
+  pCtx.beginPath(); pCtx.arc(32, 128, 45, 0, Math.PI, true); pCtx.fill();
+  pCtx.fillStyle = "#ffffff";
+  pCtx.font = "bold 15px sans-serif";
+  pCtx.textAlign = "center";
+  pCtx.fillText("12:48", 32, 32);
+  pCtx.font = "8px sans-serif";
+  pCtx.fillText("Tuesday", 32, 44);
+
+  const phoneTex = new THREE.CanvasTexture(phoneCanvas);
+  const phoneMat = new THREE.MeshBasicMaterial({ map: phoneTex });
+
+  // Phone body
+  rbox(g, 0.09, 0.012, 0.16, 0.006, 3, mat(0x0f172a, 0.2, { metalness: 0.8 }), 0.05, 1.13, 0.62, { ry: 0.28 });
+  // Phone screen
+  box(g, 0.082, 0.002, 0.152, phoneMat, 0.05, 1.137, 0.62, { ry: 0.28 });
 
   // door cards, speaker rings, and window/roof structure
   box(g, 0.08, 0.48, 1.38, lowerTrim, -0.96, 0.98, 0.08);
