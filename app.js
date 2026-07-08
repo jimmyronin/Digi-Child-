@@ -2266,12 +2266,47 @@ document.querySelector("#reportBtn").addEventListener("click", () => openInsight
 document.querySelector("#ageBtn").addEventListener("click", ageUp);
 document.querySelector("#closeInsight").addEventListener("click", () => insightPanel.classList.remove("is-open"));
 
+let sessionExchanges = 0;
+
 async function handleSubmit(event) {
   event.preventDefault();
   const message = input.value.trim();
   if (!message) return;
   input.value = "";
   ensureAudio(); // this counts as a user gesture, so sounds can play
+  
+  sessionExchanges++;
+  
+  // Trigger age-specific conflicts after 3 exchanges in stand/pose scenes
+  if (activeSessionId && sessionExchanges === 3) {
+    const age = state.age;
+    const loc = state.location;
+    let conflictText = "";
+    if (age === 5 && loc === "home") {
+      conflictText = `*Mira grabs a red crayon and starts scribbling all over the living room wall!* "Look at my art!"`;
+    } else if (age === 5 && loc === "park") {
+      conflictText = `*Mira starts standing up on the moving swing, laughing.* "Higher! Look, no hands!"`;
+    } else if (age === 15 && loc === "car") {
+      conflictText = `*Mira pulls out her phone, scrolling through social media, ignoring you.*`;
+    }
+    
+    if (conflictText) {
+      state.childLine = conflictText;
+      state.mood = "resistant";
+      // Log the event to the history
+      await sendToBackend({
+        message: "[Triggered Behavioral Conflict Scenario]",
+        day: state.day,
+        age: state.age,
+        band: state.band,
+        location: state.location,
+        values: { ...state.values }
+      });
+      syncUi();
+      return;
+    }
+  }
+
   const result = await sendToBackend({
     message,
     day: state.day,
@@ -2839,6 +2874,14 @@ function initClinicianHub() {
       <input type="text" id="cParentId" placeholder="Parent ID (e.g. parent_test)" value="parent_test" />
       <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
       <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
+      
+      <label>Child Personality Profile</label>
+      <select id="cTemperamentProfile">
+        <option value="cooperative">Cooperative (Trust: 80, Volatility: 10)</option>
+        <option value="oppositional">Oppositional (Trust: 40, Volatility: 75)</option>
+        <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
+      </select>
+      
       <button id="cCreateBtn">Generate Outreach & Book</button>
     </div>
 
@@ -2854,6 +2897,7 @@ function initClinicianHub() {
       <button id="cPauseBtn" class="btn-secondary">Pause Simulation</button>
       <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume Simulation</button>
       <button id="cCompleteBtn" class="btn-danger">Complete Session</button>
+      <button id="cDownloadReportBtn" class="btn-secondary" style="margin-top: 10px;">Download Session Report</button>
       
       <!-- Metrics -->
       <div class="live-metrics-panel">
@@ -2893,7 +2937,8 @@ function initClinicianHub() {
           clinician_id: document.querySelector("#cClinicianId").value,
           monitor_id: document.querySelector("#cMonitorId").value,
           clinician_avail: clinicianAvail,
-          monitor_avail: monitorAvail
+          monitor_avail: monitorAvail,
+          temperament_profile: document.querySelector("#cTemperamentProfile").value
         })
       });
       const data = await res.json();
@@ -2908,6 +2953,26 @@ function initClinicianHub() {
   document.querySelector("#cPauseBtn").addEventListener("click", () => sendControlAction("pause"));
   document.querySelector("#cResumeBtn").addEventListener("click", () => sendControlAction("resume"));
   document.querySelector("#cCompleteBtn").addEventListener("click", () => sendControlAction("complete"));
+
+  // Bind report download
+  document.querySelector("#cDownloadReportBtn").addEventListener("click", async () => {
+    if (!selectedClinicianSession) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/session/report?sessionId=${selectedClinicianSession.session_id}`);
+      if (res.ok) {
+        const result = await res.json();
+        const blob = new Blob([result.reportText], { type: "text/plain" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `clinical_session_report_${selectedClinicianSession.session_id}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   // Start polling session list
   setInterval(refreshSessionList, 2000);
