@@ -91,6 +91,28 @@ def generate_child_response(state, req, treatment, history):
 
     selected_line = random.choice(lines)
     
+    # Temperament Profile Overrides
+    profile = state.get("temperament_profile", "cooperative")
+    if profile == "oppositional" and intent != "nurturing":
+        framework = "The Explosive Child (Ross Greene)"
+        reasoning = "Child has an Oppositional Temperament Profile and parent did not use nurturing de-escalation."
+        if age <= 7:
+            selected_line = random.choice(["No way!", "I hate that!", "Make me!", "*Stamps feet* I won't!"])
+        elif age <= 12:
+            selected_line = random.choice(["You're not the boss of me!", "Why should I listen to you?", "This is stupid! I don't care."])
+        else:
+            selected_line = random.choice(["Stop talking to me.", "Whatever. You're just trying to control me.", "I'm going to do what I want anyway."])
+            
+    elif profile == "withdrawn" and intent != "nurturing":
+        framework = "Attachment Theory (Bowlby)"
+        reasoning = "Child has a Withdrawn/Avoidant Temperament Profile."
+        if age <= 7:
+            selected_line = random.choice(["*turns away*", "...okay...", "*shrugs and stays quiet*"])
+        elif age <= 12:
+            selected_line = random.choice(["I guess.", "*stares at floor*", "Leave me alone."])
+        else:
+            selected_line = random.choice(["Don't talk to me.", "It doesn't matter.", "*shuts door / looks away*"])
+            
     return {
         "childLine": selected_line,
         "reasoning": reasoning,

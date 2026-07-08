@@ -19,7 +19,8 @@ def init_db():
             logic INTEGER,
             security INTEGER,
             autonomy INTEGER,
-            volatility INTEGER
+            volatility INTEGER,
+            temperament_profile TEXT
         )
     ''')
     cursor.execute('''
@@ -45,7 +46,8 @@ def init_db():
             parent_availability TEXT,
             clinician_availability TEXT,
             monitor_availability TEXT,
-            state_json_snapshot TEXT
+            state_json_snapshot TEXT,
+            temperament_profile TEXT
         )
     ''')
     conn.commit()
@@ -74,7 +76,8 @@ def get_state(child_id):
         "logic": 41,
         "security": 68,
         "autonomy": 27,
-        "volatility": 22
+        "volatility": 22,
+        "temperament_profile": "cooperative"
     }
     save_state(child_id, default_state)
     return default_state
@@ -85,8 +88,8 @@ def save_state(child_id, state):
     cursor.execute('''
         INSERT INTO session_state (
             child_id, day, child_age, temperament, consecutive_mistreatments,
-            trust, curiosity, logic, security, autonomy, volatility
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            trust, curiosity, logic, security, autonomy, volatility, temperament_profile
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(child_id) DO UPDATE SET
             day=excluded.day,
             child_age=excluded.child_age,
@@ -97,12 +100,14 @@ def save_state(child_id, state):
             logic=excluded.logic,
             security=excluded.security,
             autonomy=excluded.autonomy,
-            volatility=excluded.volatility
+            volatility=excluded.volatility,
+            temperament_profile=excluded.temperament_profile
     ''', (
         child_id, state["day"], state["child_age"], state["temperament"],
         state.get("consecutive_mistreatments", 0),
         state["trust"], state["curiosity"], state["logic"],
-        state["security"], state["autonomy"], state["volatility"]
+        state["security"], state["autonomy"], state["volatility"],
+        state.get("temperament_profile", "cooperative")
     ))
     conn.commit()
     conn.close()
@@ -136,17 +141,17 @@ def get_recent_history(child_id, limit=5):
         history.append({"parent": row["parent_message"], "mira": row["child_response"]})
     return history
 
-def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail):
+def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail, temperament_profile="cooperative"):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT OR REPLACE INTO clinician_session (
             session_id, parent_id, clinician_id, monitor_id, status,
-            parent_availability, clinician_availability, monitor_availability
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            parent_availability, clinician_availability, monitor_availability, temperament_profile
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         session_id, parent_id, clinician_id, monitor_id, "pending_outreach",
-        json.dumps(parent_avail), json.dumps(clinician_avail), json.dumps(monitor_avail)
+        json.dumps(parent_avail), json.dumps(clinician_avail), json.dumps(monitor_avail), temperament_profile
     ))
     conn.commit()
     conn.close()

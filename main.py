@@ -144,6 +144,7 @@ class CreateSessionReq(BaseModel):
     monitor_id: str
     clinician_avail: list
     monitor_avail: list
+    temperament_profile: str = "cooperative"
 
 class ParentAvailReq(BaseModel):
     session_id: str
@@ -160,7 +161,8 @@ async def api_create_session(req: CreateSessionReq):
     session_id = str(uuid4())[:8] # short id
     database.create_session(
         session_id, req.parent_id, req.clinician_id, req.monitor_id,
-        parent_avail=[], clinician_avail=req.clinician_avail, monitor_avail=req.monitor_avail
+        parent_avail=[], clinician_avail=req.clinician_avail, monitor_avail=req.monitor_avail,
+        temperament_profile=req.temperament_profile
     )
     return {"status": "ok", "sessionId": session_id}
 
@@ -239,6 +241,27 @@ async def api_provision_session(req: SessionControlReq):
     # Load parent's history or init
     parent_state = database.get_state(session["parent_id"])
     
+    # Overwrite profile and initialize metrics accordingly
+    prof = session.get("temperament_profile", "cooperative")
+    parent_state["temperament_profile"] = prof
+    if prof == "oppositional":
+        parent_state["volatility"] = 75
+        parent_state["trust"] = 40
+        parent_state["temperament"] = "transgressed"
+        parent_state["consecutive_mistreatments"] = 0
+    elif prof == "withdrawn":
+        parent_state["volatility"] = 25
+        parent_state["trust"] = 30
+        parent_state["temperament"] = "neutral"
+        parent_state["consecutive_mistreatments"] = 0
+    else: # cooperative
+        parent_state["volatility"] = 10
+        parent_state["trust"] = 80
+        parent_state["temperament"] = "secure"
+        parent_state["consecutive_mistreatments"] = 0
+        
+    database.save_state(session["parent_id"], parent_state)
+    
     # Set status to live and save snapshot
     database.update_session(
         req.session_id,
@@ -247,4 +270,44 @@ async def api_provision_session(req: SessionControlReq):
     )
     session_controls[req.session_id] = {"paused": False}
     return {"status": "ok", "state": parent_state}
+
+@app.get("/api/session/report")
+async def api_session_report(sessionId: str):
+    session = database.get_session(sessionId)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+        
+    parent_state = database.get_state(session["parent_id"])
+    history = database.get_recent_history(session["parent_id"], limit=100)
+    
+    # Compile a beautiful, structured text report
+    report = []
+    report.append("==================================================")
+    report.append("  DIGI-CHILD SIMULATION CLINICAL SESSION REPORT   ")
+    report.append("==================================================")
+    report.append(f"Session ID:       {session['session_id']}")
+    report.append(f"Parent ID:        {session['parent_id']}")
+    report.append(f"Clinician ID:     {session['clinician_id']}")
+    report.append(f"Court Monitor ID: {session['monitor_id']}")
+    report.append(f"Scheduled Time:   {session['scheduled_time']}")
+    report.append(f"Session Status:   {session['status']}")
+    report.append(f"Temperament Profile: {session.get('temperament_profile', 'cooperative').upper()}")
+    report.append("--------------------------------------------------")
+    report.append("FINAL BEHAVIORAL METRICS:")
+    report.append(f"  Trust Level:     {parent_state['trust']}/100")
+    report.append(f"  Volatility:      {parent_state['volatility']}/100")
+    report.append(f"  Security:        {parent_state['security']}/100")
+    report.append(f"  Curiosity:       {parent_state['curiosity']}/100")
+    report.append(f"  Autonomy:        {parent_state['autonomy']}/100")
+    report.append(f"  Logic:           {parent_state['logic']}/100")
+    report.append(f"  Consecutive Mistreatments: {parent_state.get('consecutive_mistreatments', 0)}")
+    report.append(f"  Assessment Temperament:   {parent_state['temperament'].upper()}")
+    report.append("--------------------------------------------------")
+    report.append("CONVERSATION TRANSCRIPT:")
+    for idx, h in enumerate(history, 1):
+        report.append(f"  [{idx}] PARENT: {h['parent']}")
+        report.append(f"      CHILD:  {h['mira']}")
+    report.append("==================================================")
+    
+    return {"status": "ok", "reportText": "\n".join(report)}
 
