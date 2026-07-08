@@ -171,11 +171,61 @@ h1 {
 
 .state-panel {
   position: absolute;
-  z-index: 2;
-  top: 110px;
+  z-index: 99;
+  top: 84px;
   right: 24px;
   width: min(330px, calc(100vw - 48px));
   padding: 14px;
+  transform: translateX(120%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.state-panel.is-open {
+  transform: translateX(0);
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(247, 245, 239, 0.2);
+  background: var(--mist);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 12px var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.hamburger-bar {
+  width: 20px;
+  height: 2px;
+  background: var(--teal);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle.is-open .hamburger-bar:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.sidebar-toggle.is-open .hamburger-bar:nth-child(2) {
+  opacity: 0;
+}
+.sidebar-toggle.is-open .hamburger-bar:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 .panel-title {
@@ -333,6 +383,11 @@ button:hover {
   transition:
     opacity 180ms ease,
     transform 180ms ease;
+  background: rgba(18, 18, 18, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
 }
 
 .insight-panel.is-open {
@@ -557,8 +612,10 @@ body.is-debug-view .crosshair {
   bottom: 12px;
   width: 420px;
   z-index: 1000;
-  background: rgba(14, 13, 11, 0.95);
-  border: 1px solid rgba(247, 245, 239, 0.15);
+  background: rgba(18, 18, 18, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 8px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   display: flex;
@@ -685,8 +742,10 @@ body.is-debug-view .crosshair {
 
 .portal-card {
   width: 480px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(18, 18, 18, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 8px;
   padding: 24px;
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.8);
@@ -715,13 +774,15 @@ body.is-debug-view .crosshair {
 .pause-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(14, 13, 11, 0.85);
+  background: rgba(18, 18, 18, 0.55) !important;
   z-index: 3000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #fff;
   animation: pulse-glow 2s infinite alternate;
 }
