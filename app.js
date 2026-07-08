@@ -2440,32 +2440,93 @@ function mockGovernor({ message, values, band, location }) {
 function chooseLine(mood, band) {
   const lines = {
     curious: {
-      "Age 5-7": "If I ask why twice, will you still answer me?",
-      "Age 10-12": "I get what you mean, but how do I know when a rule is fair?",
-      "Age 14-16": "I hear you. I just need the reason to make sense before I follow it.",
+      "Age 5-7": [
+        "If I ask why twice, will you still answer me?",
+        "Why does the sun go down? Is it sleeping?",
+        "How many stars are in the sky? Can we count them?"
+      ],
+      "Age 10-12": [
+        "I get what you mean, but how do I know when a rule is fair?",
+        "Why do I have to do this chore if my friends don't?",
+        "How does this work? Can I try to take it apart?"
+      ],
+      "Age 14-16": [
+        "I hear you. I just need the reason to make sense before I follow it.",
+        "Why are the rules different for me than they are for you?",
+        "What's the point of learning this if I won't use it in real life?"
+      ],
     },
     open: {
-      "Age 5-7": "Okay. I feel like I can try it with you watching.",
-      "Age 10-12": "That made sense. I think I can remember the pattern next time.",
-      "Age 14-16": "I respect that. You gave me room and still kept the boundary clear.",
+      "Age 5-7": [
+        "Okay. I feel like I can try it with you watching.",
+        "I like when you help me with this. Let's do it together!",
+        "Okay, I will try my best!"
+      ],
+      "Age 10-12": [
+        "That made sense. I think I can remember the pattern next time.",
+        "Thanks for explaining it that way. I'll get started.",
+        "I appreciate you asking me first. I can do that."
+      ],
+      "Age 14-16": [
+        "I respect that. You gave me room and still kept the boundary clear.",
+        "Yeah, that makes sense. I'll take care of it.",
+        "Thanks for treating me like an adult. I'll handle it."
+      ],
     },
     analytical: {
-      "Age 5-7": "So if I do this, then that happens? I want to test it.",
-      "Age 10-12": "That is a cause and effect thing. I can track that.",
-      "Age 14-16": "Your logic is consistent. I do not fully agree, but I can work with it.",
+      "Age 5-7": [
+        "So if I do this, then that happens? I want to test it.",
+        "If I drop this ball, will it bounce higher than me?",
+        "How does the toy make that sound? Show me!"
+      ],
+      "Age 10-12": [
+        "That is a cause and effect thing. I can track that.",
+        "If we change this variable, will the outcome change too?",
+        "I calculated how long this will take. I'm ready."
+      ],
+      "Age 14-16": [
+        "Your logic is consistent. I do not fully agree, but I can work with it.",
+        "If we look at the data, this approach makes the most sense.",
+        "Let's break down the pros and cons before we decide."
+      ],
     },
     guarded: {
-      "Age 5-7": "I don't know if I want to ask now.",
-      "Age 10-12": "You changed the rule again. Which version am I supposed to trust?",
-      "Age 14-16": "You want honesty, but you punish the questions that get us there.",
+      "Age 5-7": [
+        "I don't know if I want to ask now.",
+        "Are you going to be mad at me?",
+        "*hides behind the toy* I don't want to talk."
+      ],
+      "Age 10-12": [
+        "You changed the rule again. Which version am I supposed to trust?",
+        "Why are you using that tone with me?",
+        "I don't think you're actually listening to me."
+      ],
+      "Age 14-16": [
+        "You want honesty, but you punish the questions that get us there.",
+        "It feels like whatever I say is going to be used against me.",
+        "You're not trying to understand; you're just trying to win."
+      ],
     },
     "testing boundaries": {
-      "Age 5-7": "Can I pick first and then you help if I mess up?",
-      "Age 10-12": "What happens if I choose a different answer than yours?",
-      "Age 14-16": "I can own the decision. I need you to let me own the consequence too.",
+      "Age 5-7": [
+        "Can I pick first and then you help if I mess up?",
+        "What if I color on this page instead of that one?",
+        "Just five more minutes of playtime, please?"
+      ],
+      "Age 10-12": [
+        "What happens if I choose a different answer than yours?",
+        "Can I do my homework after dinner instead of right now?",
+        "Why is this the limit? Who decided it?"
+      ],
+      "Age 14-16": [
+        "I can own the decision. I need you to let me own the consequence too.",
+        "I want to stay out an hour later. I'll text you when I move locations.",
+        "I need some privacy in my room. Can you knock first?"
+      ],
     },
   };
-  return lines[mood][band];
+  const list = lines[mood]?.[band] || ["Okay."];
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 function ageUp() {
