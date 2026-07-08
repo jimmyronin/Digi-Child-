@@ -26,7 +26,7 @@ Enable therapeutic networks to completely automate multi-party panel scheduling 
 
 ### Key User Needs
 * **As a parent**, I need a simulation that feels unpredictable and challenging so I can practice responding to genuine behavioral friction rather than theoretical questions.
-* **As a clinician**, I need clear data on user input and system response so I can objectively evaluate a patient's progress toward healthy parenting benchmarks.
+* **As a clinician**, I need data on user input and system response so I can objectively evaluate a patient's progress toward healthy parenting benchmarks.
 * **As a clinician**, I need the system to automatically handle session booking and simulation environment setup so I can focus entirely on behavioral evaluation instead of manual calendar logistics.
 
 ---
@@ -59,37 +59,98 @@ Clinicians and court-ordered parents who struggle with manual scheduling bottlen
 
 ---
 
-## 3. REQUIREMENTS
+## 3. REQUIREMENTS & TEMPERAMENT SCHEMA
 
-### User Journey 1: Parent practicing behavioral management
-* **Context**: The parent must react to the child in a way that prioritizes stability and de-escalation while interacting with the digital child agent.
-* **Sub-journey: Responding to behavioral friction**:
+### 3a. Child Temperament & Personality Profiles
+The simulator instantiates three customized developmental profiles based on attachment theory and behavioral diagnostics:
+
+1. **Cooperative (Secure Pattern)**:
+   * *Initial Metrics*: Trust: 80, Volatility: 10, Temperament: `secure`.
+   * *Description*: Calm, receptive to boundaries, and conversational. Shows resilience to minor parenting missteps but requires active validation to maintain high trust.
+2. **Oppositional (Volatile Plan B Pattern)**:
+   * *Initial Metrics*: Trust: 40, Volatility: 75, Temperament: `transgressed`.
+   * *Description*: Highly resistant and defensive. Rooted in Ross Greene's "Explosive Child" framework—defiance is triggered by lagging cognitive flexibility. Responds to direct commands with verbal spikes; requires structured collaboration ("Plan B") to pacify.
+3. **Withdrawn (Avoidant Passive Pattern)**:
+   * *Initial Metrics*: Trust: 30, Volatility: 25, Temperament: `neutral`.
+   * *Description*: Passive-aggressive silence and disengagement. Rooted in avoidant attachment theory. Unresponsive to interrogation; requires high safety/nurturing cues to open up.
+
+### 3b. Age-Specific Defiance Scenarios
+Defiant behavioral triggers activate dynamically after **3 conversational turns** based on the setting and the age band:
+* **Toddler (Age 5–7) + Living Room**: Child scribbles on the wall with crayons.
+* **Toddler (Age 5–7) + Public Park**: Child stands up dangerously on the swings, ignoring warning boundaries.
+* **Teenager (Age 14–16) + Car Cabin**: Child pulls out phone, disengages completely, and refuses to talk.
+
+### 3c. User Journeys
+* **User Journey 1: Parent practicing behavioral management**:
   * **[P0]** User can input verbal or written responses to the child agent.
-  * **[P0]** System must process the input and update `trust_level` in `state.json`.
-  * **[P0]** User can observe the child agent's reaction (e.g., drawing on the wall, saying "no") in the user interface.
+  * **[P0]** System must process the input and update `trust_level` in the database.
+  * **[P0]** User can observe the child agent's reaction in the UI.
   * **[P1]** User can pause the simulation if immediate instruction or clinical intervention is required by the live observer.
 
-### User Journey 2: Clinician evaluating progress and managing logistics
-* **Context**: Streamlining administrative scheduling and reviewing simulation metrics to assess therapeutic progress without logistical delays.
-* **Sub-journey: Administrative Coordination & Session Launch**:
-  * **[P0]** System must autonomously cross-reference external parent availability with internal clinician and court monitor calendars to book multi-person panel evaluation sessions.
-  * **[P0]** Upon session confirmation, the system must automatically spin up the simulation UI and instantiate the parent's current `state.json` data history.
-  * **[P1]** System must send automated reminders to the parent via email or SMS to minimize session no-shows.
-* **Sub-journey: Monitoring system state**:
+* **User Journey 2: Clinician evaluating progress and managing logistics**:
+  * **[P0]** System must autonomously cross-reference availability to book panel evaluation sessions.
+  * **[P0]** Upon session confirmation, the system must automatically spin up the simulation UI and instantiate the parent's current history.
   * **[P0]** System must record every instance of `consecutive_mistreatments` for clinical review.
-  * **[P0]** System must display an accurate history of the child-parent interaction via the history log in `state.json`.
+  * **[P0]** System must display an accurate history of the child-parent interaction via the history log.
 
 ---
 
-## 4. APPENDIX
-* **Technical Constraints**: Data must be fully encrypted and handled according to stringent privacy standards required for clinical and court-ordered data handling.
-* **Ethical Guidelines**: Any behavioral "friction" triggers within the simulation must be calibrated to ensure they remain age-appropriate and representative of common developmental challenges rather than severe trauma, ensuring the system remains a constructive teaching tool.
+## 4. TECHNICAL SPECIFICATIONS & SCHEMAS
+
+### 4.1 Database Schemas (SQLite)
+
+#### Table: `sessions`
+Tracks logistical metadata and live session state.
+```sql
+CREATE TABLE sessions (
+    session_id TEXT PRIMARY KEY,
+    parent_id TEXT NOT NULL,
+    clinician_id TEXT NOT NULL,
+    monitor_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('pending', 'booked', 'live', 'completed', 'paused')),
+    scheduled_time TEXT,
+    child_age INTEGER DEFAULT 5,
+    temperament_profile TEXT DEFAULT 'cooperative',
+    trust INTEGER DEFAULT 50,
+    volatility INTEGER DEFAULT 50,
+    security INTEGER DEFAULT 50,
+    curiosity INTEGER DEFAULT 50,
+    autonomy INTEGER DEFAULT 50,
+    logic INTEGER DEFAULT 50,
+    consecutive_mistreatments INTEGER DEFAULT 0
+);
+```
+
+#### Table: `interaction_history`
+Tracks the chronological conversation stream and clinical audits.
+```sql
+CREATE TABLE interaction_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    speaker TEXT NOT NULL CHECK(speaker IN ('parent', 'child', 'system')),
+    message TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    metrics_snapshot TEXT, -- JSON string storing Trust, Volatility, etc. at this turn
+    FOREIGN KEY(session_id) REFERENCES sessions(session_id)
+);
+```
+
+### 4.2 System API Endpoints
+
+| Method | Endpoint | Description | Payloads / Returns |
+| :--- | :--- | :--- | :--- |
+| **POST** | `/api/schedule/create` | Generates outreach booking link | **Input**: IDs, availability calendars<br>**Return**: `sessionId` |
+| **POST** | `/api/schedule/book` | Confirms parent slot, sets simulator live | **Input**: `sessionId`, selected slot<br>**Return**: Booking details |
+| **GET** | `/api/session/status` | Polled by UI to sync pause/resume states | **Return**: Current status, active metrics |
+| **POST** | `/api/chat` | Sends parent text to simulator | **Input**: text, location<br>**Return**: Child reaction & mood |
+| **POST** | `/api/session/control` | Clinician overrides simulation state | **Input**: action (`pause` / `resume` / `complete`) |
+| **GET** | `/api/session/report` | Pulls compiled clinical session report | **Return**: Session metadata, logs, metrics |
 
 ---
 
 ## 5. AGENTIC ALIGNMENT AUDIT (SATURDAY PRESENTATION PREP)
 
-This section maps our system design directly to the required L2L Agentic Presentation guidelines.
+This section details how the platform aligns with the L2L Agentic Presentation framework.
 
 ### 5.1 Role & Pain Point
 * **Role**: Customer-Success style scheduling and digital therapeutic orchestrator for clinic networks.
@@ -97,9 +158,17 @@ This section maps our system design directly to the required L2L Agentic Present
 * **Agent Impact**: Instantly maps parent slots with clinician/monitor availability, provisions the simulation sandbox, and begins capturing metric data.
 
 ### 5.2 Observe-Decide-Act (ODA) Core Loop
-1. **Observe**: Retrieves calendar slots (clinician, monitor, parent), state metrics (Trust, Volatility, Security), and live transcript arrays.
-2. **Decide**: Evaluates calendar overlaps to output a matching time slot; calculates the next-state parameters for Mira using live Claude API reasoning.
-3. **Act**: Books the session, instantiates the sandbox simulation URL, triggers alert warnings, and downloads clinical reports.
+```mermaid
+graph LR
+    A[Observe: Gather Availability & State] --> B[Decide: Match Calendars & Set Persona]
+    B --> C[Act: Book, Launch & Play Sim]
+    style A fill:#e1f5fe,stroke:#0288d1
+    style B fill:#fff9c4,stroke:#fbc02d
+    style C fill:#e8f5e9,stroke:#388e3c
+```
+* **Observe**: Retrieves calendar slots (clinician, monitor, parent), state metrics (Trust, Volatility, Security), and live transcript arrays.
+* **Decide**: Evaluates calendar overlaps to output a matching time slot; calculates the next-state parameters for Mira using live Claude API reasoning.
+* **Act**: Books the session, instantiates the sandbox simulation URL, triggers alert warnings, and downloads clinical reports.
 
 ### 5.3 Blast Radius & Human-in-the-Loop Checkpoint
 * **Blast Radius Analysis**:
