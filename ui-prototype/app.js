@@ -2977,7 +2977,7 @@ function initClinicianHub() {
         })
       });
       const data = await res.json();
-      alert(`Session created successfully! Outreach Link:\nhttp://127.0.0.1:5179/?session=${data.sessionId}`);
+      window.open(`http://127.0.0.1:5179/?session=${data.sessionId}`, '_blank');
       refreshSessionList();
     } catch (e) {
       console.error(e);
