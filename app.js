@@ -3119,6 +3119,16 @@ if (activeSessionId) {
 /* ============================================================
    Boot
    ============================================================ */
+// Sidebar Hamburger Toggle
+const toggleBtn = document.querySelector("#sidebarToggle");
+const statePanel = document.querySelector(".state-panel");
+if (toggleBtn && statePanel) {
+  toggleBtn.addEventListener("click", () => {
+    toggleBtn.classList.toggle("is-open");
+    statePanel.classList.toggle("is-open");
+  });
+}
+
 initClinicianHub();
 buildLocationBar();
 setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : "home");
