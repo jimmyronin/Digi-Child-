@@ -2268,12 +2268,35 @@ document.querySelector("#closeInsight").addEventListener("click", () => insightP
 
 let sessionExchanges = 0;
 
+function playCautionBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
   const message = input.value.trim();
   if (!message) return;
   input.value = "";
   ensureAudio(); // this counts as a user gesture, so sounds can play
+
+  // Clean up active conflict styling and banners if they exist
+  document.body.classList.remove("conflict-active");
+  const oldBanner = document.querySelector("#activeConflictBanner");
+  if (oldBanner) oldBanner.remove();
   
   sessionExchanges++;
   
@@ -2293,6 +2316,18 @@ async function handleSubmit(event) {
     if (conflictText) {
       state.childLine = conflictText;
       state.mood = "resistant";
+      
+      // Play Caution audio sound
+      playCautionBeep();
+      
+      // Add pulsing red overlay styling and append warning banner
+      document.body.classList.add("conflict-active");
+      const banner = document.createElement("div");
+      banner.id = "activeConflictBanner";
+      banner.className = "conflict-banner";
+      banner.innerHTML = `⚠️ DE-ESCALATION EVENT ACTIVATED. ENGAGE PATIENTLY!`;
+      document.body.appendChild(banner);
+
       // Log the event to the history
       await sendToBackend({
         message: "[Triggered Behavioral Conflict Scenario]",
