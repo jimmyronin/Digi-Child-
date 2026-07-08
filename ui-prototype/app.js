@@ -9,11 +9,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
+const backendHost = window.location.hostname === "localhost" ? "localhost" : "127.0.0.1";
+const API_BASE = `http://${backendHost}:8000`;
+
 // Redirect client console.log to backend uvicorn log
 const originalLog = console.log;
 console.log = function(...args) {
   originalLog.apply(console, args);
-  fetch("http://localhost:8000/api/log", {
+  fetch(`${API_BASE}/api/log`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: args.join(" ") })
@@ -2384,7 +2387,7 @@ async function sendToBackend(payload) {
   };
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/interact", {
+    const response = await fetch(`${API_BASE}/api/interact`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestPayload)
@@ -2871,7 +2874,7 @@ const pauseOverlay = document.querySelector("#pauseOverlay");
 async function checkSessionStatus() {
   if (!activeSessionId) return;
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/session/status?sessionId=${activeSessionId}`);
+    const res = await fetch(`${API_BASE}/api/session/status?sessionId=${activeSessionId}`);
     if (res.ok) {
       const data = await res.json();
       sessionPaused = data.paused;
@@ -2931,7 +2934,7 @@ function renderAvailabilityPortal() {
     const slot = document.querySelector("#availSlotSelect").value.split("|");
     const parentAvail = [{ start: slot[0], end: slot[1] }];
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/schedule/availability", {
+      const res = await fetch(`${API_BASE}/api/schedule/availability`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3025,7 +3028,7 @@ function initClinicianHub() {
     ];
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/schedule/create", {
+      const res = await fetch(`${API_BASE}/api/schedule/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3038,7 +3041,7 @@ function initClinicianHub() {
         })
       });
       const data = await res.json();
-      window.open(`http://127.0.0.1:5179/?session=${data.sessionId}`, '_blank');
+      window.open(`http://${window.location.host}/?session=${data.sessionId}`, '_blank');
       refreshSessionList();
     } catch (e) {
       console.error(e);
@@ -3054,7 +3057,7 @@ function initClinicianHub() {
   document.querySelector("#cDownloadReportBtn").addEventListener("click", async () => {
     if (!selectedClinicianSession) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/session/report?sessionId=${selectedClinicianSession.session_id}`);
+      const res = await fetch(`${API_BASE}/api/session/report?sessionId=${selectedClinicianSession.session_id}`);
       if (res.ok) {
         const result = await res.json();
         const blob = new Blob([result.reportText], { type: "text/plain" });
@@ -3078,7 +3081,7 @@ function initClinicianHub() {
 async function sendControlAction(action) {
   if (!selectedClinicianSession) return;
   try {
-    await fetch("http://127.0.0.1:8000/api/session/control", {
+    await fetch(`${API_BASE}/api/session/control`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -3094,7 +3097,7 @@ async function sendControlAction(action) {
 
 async function refreshSessionList() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/schedule/sessions");
+    const res = await fetch(`${API_BASE}/api/schedule/sessions`);
     if (!res.ok) return;
     const data = await res.json();
     const listEl = document.querySelector("#cSessionList");
@@ -3118,14 +3121,14 @@ async function refreshSessionList() {
 
 window.__provisionSession = async (sid) => {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/session/provision", {
+    const res = await fetch(`${API_BASE}/api/session/provision`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sid, action: "provision" })
     });
     if (res.ok) {
       alert("Session launched! Redirecting to parent view...");
-      window.open(`http://127.0.0.1:5179/?session=${sid}`, "_blank");
+      window.open(`http://${window.location.host}/?session=${sid}`, "_blank");
       window.__selectSession(sid);
     }
   } catch (e) {
@@ -3135,7 +3138,7 @@ window.__provisionSession = async (sid) => {
 
 window.__selectSession = async (sid) => {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/session/status?sessionId=${sid}`);
+    const res = await fetch(`${API_BASE}/api/session/status?sessionId=${sid}`);
     if (res.ok) {
       const data = await res.json();
       selectedClinicianSession = { session_id: sid, ...data };
