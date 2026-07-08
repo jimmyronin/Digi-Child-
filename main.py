@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import local_ai
+import claude_ai
 
 # Import logic from the existing scripts
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -112,7 +113,19 @@ async def interact(req: InteractRequest):
     # 3. Child Agent Logic (Brain)
     persona = get_age_persona(state["child_age"], state["temperament"])
     history = get_recent_history(child_id, limit=6)
-    ai_response = local_ai.generate_child_response(state, req, treatment, history)
+    
+    ai_response = None
+    if claude_ai.available():
+        try:
+            ai_response = claude_ai.generate_child_response(state, req, treatment, history, persona=persona)
+            if ai_response.get("mood"):
+                mood = ai_response["mood"]
+        except Exception as e:
+            print("Claude AI error, falling back to local:", e)
+            
+    if not ai_response:
+        ai_response = local_ai.generate_child_response(state, req, treatment, history)
+        
     child_line = ai_response.get("childLine", "...")
     
     development_note = f"REASONING: {ai_response.get('reasoning', '')}\n\nCITATION: {ai_response.get('framework_cited', '')}"
