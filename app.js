@@ -2296,6 +2296,8 @@ async function handleSubmit(event) {
   syncUi();
 }
 
+let sessionParentId = "mira";
+
 async function sendToBackend(payload) {
   const requestPayload = {
     message: payload.message,
@@ -2306,8 +2308,8 @@ async function sendToBackend(payload) {
     location: payload.location,
     values: payload.values,
     session: {
-      childId: "mira",
-      runId: "local-demo"
+      childId: sessionParentId,
+      runId: activeSessionId || "local-demo"
     }
   };
 
@@ -2442,6 +2444,7 @@ const clock = new THREE.Clock();
 const camWorld = new THREE.Vector3();
 
 function updateFrame(dt, t) {
+  if (sessionPaused) return; // Freeze simulation!
   updateMovement(dt);
   if (current.tick) current.tick(t, dt);
 
@@ -2722,8 +2725,301 @@ function animate() {
 }
 
 /* ============================================================
+   Clinical Orchestrator Logic
+   ============================================================ */
+let activeSessionId = queryParams.get("session");
+let sessionRole = queryParams.get("role"); // "clinician"
+let sessionPaused = false;
+let selectedClinicianSession = null;
+
+// DOM Elements
+const clinicianHub = document.querySelector("#clinicianHub");
+const availabilityPortal = document.querySelector("#availabilityPortal");
+const pauseOverlay = document.querySelector("#pauseOverlay");
+
+async function checkSessionStatus() {
+  if (!activeSessionId) return;
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/session/status?sessionId=${activeSessionId}`);
+    if (res.ok) {
+      const data = await res.json();
+      sessionPaused = data.paused;
+      
+      // Update UI based on pause state
+      if (sessionPaused) {
+        pauseOverlay.style.display = "flex";
+        form.querySelector("input").disabled = true;
+        form.querySelector("button").disabled = true;
+      } else {
+        pauseOverlay.style.display = "none";
+        form.querySelector("input").disabled = false;
+        form.querySelector("button").disabled = false;
+      }
+      
+      if (data.status === "pending_outreach") {
+        renderAvailabilityPortal();
+      } else {
+        availabilityPortal.style.display = "none";
+      }
+      
+      // Update state values if the session is live
+      if (data.status === "live" || data.status === "live_paused") {
+        sessionParentId = data.status === "live" ? "parent_test" : sessionParentId;
+        Object.assign(state.values, data.metrics);
+        syncUi();
+      }
+    }
+  } catch (err) {
+    console.error("Error checking session status:", err);
+  }
+}
+
+function renderAvailabilityPortal() {
+  availabilityPortal.style.display = "flex";
+  availabilityPortal.innerHTML = `
+    <div class="portal-card">
+      <h2>Digi-Child Scheduling Portal</h2>
+      <p>Please enter your availability below to book the evaluation session with the clinician and court monitor.</p>
+      
+      <label>Your Name/ID</label>
+      <input type="text" id="parentNameInput" value="parent_test" readonly />
+
+      <label>Select Availability Slot (Day & Time)</label>
+      <select id="availSlotSelect">
+        <option value="2026-07-08T10:00:00|2026-07-08T11:00:00">Wednesday, July 8, 10:00 AM - 11:00 AM</option>
+        <option value="2026-07-08T14:00:00|2026-07-08T15:00:00">Wednesday, July 8, 2:00 PM - 3:00 PM</option>
+        <option value="2026-07-09T09:00:00|2026-07-09T10:00:00">Thursday, July 9, 9:00 AM - 10:00 AM</option>
+      </select>
+
+      <button id="submitAvailBtn">Match & Book Session</button>
+      <p id="portalStatusMsg" style="margin-top:12px; font-size:12px; color:var(--warm);"></p>
+    </div>
+  `;
+  
+  document.querySelector("#submitAvailBtn").addEventListener("click", async () => {
+    const slot = document.querySelector("#availSlotSelect").value.split("|");
+    const parentAvail = [{ start: slot[0], end: slot[1] }];
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/schedule/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          parent_avail: parentAvail
+        })
+      });
+      const result = await res.json();
+      const msgEl = document.querySelector("#portalStatusMsg");
+      if (result.status === "booked") {
+        msgEl.innerHTML = `Success! Session booked for:<br><strong>${result.match.start}</strong>`;
+        setTimeout(() => {
+          availabilityPortal.style.display = "none";
+          window.location.reload();
+        }, 3000);
+      } else {
+        msgEl.textContent = "Availability submitted. Waiting for calendar match.";
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
+function initClinicianHub() {
+  if (sessionRole !== "clinician") return;
+  clinicianHub.style.display = "flex";
+  
+  // Render hub layout
+  clinicianHub.innerHTML = `
+    <h2>Clinician Control Hub</h2>
+    
+    <!-- Section 1: Create Session -->
+    <div class="section">
+      <label>New Session Setup</label>
+      <input type="text" id="cParentId" placeholder="Parent ID (e.g. parent_test)" value="parent_test" />
+      <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
+      <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
+      <button id="cCreateBtn">Generate Outreach & Book</button>
+    </div>
+
+    <!-- Section 2: Session List -->
+    <div class="section">
+      <label>Session List & Status</label>
+      <div id="cSessionList">Loading sessions...</div>
+    </div>
+
+    <!-- Section 3: Live Session Controls -->
+    <div id="cLiveControls" class="section" style="display: none;">
+      <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
+      <button id="cPauseBtn" class="btn-secondary">Pause Simulation</button>
+      <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume Simulation</button>
+      <button id="cCompleteBtn" class="btn-danger">Complete Session</button>
+      
+      <!-- Metrics -->
+      <div class="live-metrics-panel">
+        <label>Live Metrics</label>
+        <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
+        <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
+        <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
+        <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+      </div>
+
+      <!-- History log -->
+      <div style="margin-top: 10px;">
+        <label>Interaction History</label>
+        <div id="cAuditLogBox" class="audit-log-box"></div>
+      </div>
+    </div>
+  `;
+
+  // Bind Create Session
+  document.querySelector("#cCreateBtn").addEventListener("click", async () => {
+    // Generate pre-loaded mock clinician/monitor availability
+    const clinicianAvail = [
+      { start: "2026-07-08T10:00:00", end: "2026-07-08T12:00:00" },
+      { start: "2026-07-08T14:00:00", end: "2026-07-08T16:00:00" }
+    ];
+    const monitorAvail = [
+      { start: "2026-07-08T09:00:00", end: "2026-07-08T12:00:00" },
+      { start: "2026-07-08T14:00:00", end: "2026-07-08T18:00:00" }
+    ];
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/schedule/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parent_id: document.querySelector("#cParentId").value,
+          clinician_id: document.querySelector("#cClinicianId").value,
+          monitor_id: document.querySelector("#cMonitorId").value,
+          clinician_avail: clinicianAvail,
+          monitor_avail: monitorAvail
+        })
+      });
+      const data = await res.json();
+      alert(`Session created successfully! Outreach Link:\nhttp://127.0.0.1:5179/?session=${data.sessionId}`);
+      refreshSessionList();
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  // Bind controls
+  document.querySelector("#cPauseBtn").addEventListener("click", () => sendControlAction("pause"));
+  document.querySelector("#cResumeBtn").addEventListener("click", () => sendControlAction("resume"));
+  document.querySelector("#cCompleteBtn").addEventListener("click", () => sendControlAction("complete"));
+
+  // Start polling session list
+  setInterval(refreshSessionList, 2000);
+  refreshSessionList();
+}
+
+async function sendControlAction(action) {
+  if (!selectedClinicianSession) return;
+  try {
+    await fetch("http://127.0.0.1:8000/api/session/control", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: selectedClinicianSession.session_id,
+        action: action
+      })
+    });
+    refreshSessionList();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function refreshSessionList() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/schedule/sessions");
+    if (!res.ok) return;
+    const data = await res.json();
+    const listEl = document.querySelector("#cSessionList");
+    
+    listEl.innerHTML = data.sessions.map(s => `
+      <div class="session-list-item">
+        <div class="meta">
+          <strong>ID: ${s.session_id}</strong>
+          <span class="status ${s.status}">${s.status}</span>
+        </div>
+        <div>Parent: ${s.parent_id}</div>
+        <div>Time: ${s.scheduled_time || "Not matched yet"}</div>
+        ${s.status === "scheduled" ? `<button class="btn-action" onclick="window.__provisionSession('${s.session_id}')">Launch Sim</button>` : ""}
+        <button class="btn-action btn-secondary" onclick="window.__selectSession('${s.session_id}')">Monitor</button>
+      </div>
+    `).join("");
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+window.__provisionSession = async (sid) => {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/session/provision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid, action: "provision" })
+    });
+    if (res.ok) {
+      alert("Session launched! Redirecting to parent view...");
+      window.open(`http://127.0.0.1:5179/?session=${sid}`, "_blank");
+      window.__selectSession(sid);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+window.__selectSession = async (sid) => {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/session/status?sessionId=${sid}`);
+    if (res.ok) {
+      const data = await res.json();
+      selectedClinicianSession = { session_id: sid, ...data };
+      
+      document.querySelector("#cLiveControls").style.display = "block";
+      document.querySelector("#cActiveSessionLabel").textContent = sid;
+      
+      // Update buttons
+      if (data.paused) {
+        document.querySelector("#cPauseBtn").style.display = "none";
+        document.querySelector("#cResumeBtn").style.display = "block";
+      } else {
+        document.querySelector("#cPauseBtn").style.display = "block";
+        document.querySelector("#cResumeBtn").style.display = "none";
+      }
+      
+      // Update metrics
+      document.querySelector("#cMetricTrust").textContent = data.metrics.trust;
+      document.querySelector("#cMetricVol").textContent = data.metrics.volatility;
+      document.querySelector("#cMetricMistreat").textContent = data.metrics.consecutive_mistreatments || 0;
+      document.querySelector("#cMetricTemp").textContent = data.metrics.temperament;
+      
+      // Update audit logs
+      const logBox = document.querySelector("#cAuditLogBox");
+      logBox.innerHTML = data.history.map(h => `
+        <div class="audit-log-line parent"><span class="speaker">Parent:</span> ${h.parent}</div>
+        <div class="audit-log-line"><span class="speaker">Mira:</span> ${h.mira}</div>
+      `).join("");
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+// Start checking session status if parent mode
+if (activeSessionId) {
+  setInterval(checkSessionStatus, 1500);
+  checkSessionStatus();
+}
+
+/* ============================================================
    Boot
    ============================================================ */
+initClinicianHub();
 buildLocationBar();
 setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : "home");
 renderStats();
