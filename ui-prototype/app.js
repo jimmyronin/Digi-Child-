@@ -547,6 +547,9 @@ let exprAngry = 0;
    Sounds are synthesized with the Web Audio API so they always
    work (no network, matches the project's offline-first goal).
    ============================================================ */
+const audioCry = new Audio("./assets/baby_cry.ogg");
+const audioLaugh = new Audio("./assets/baby_laugh.ogg");
+
 let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) {
@@ -569,13 +572,45 @@ function triggerReaction(type) {
 
 function playChildSound(type) {
   const ctx = ensureAudio();
-  if (!ctx) return;
-  const now = ctx.currentTime;
-  if (type === "cry" || type === "upset") childWail(ctx, now, 5.2, 0.5);
-  else if (type === "scream") {
-    childScream(ctx, now);
-    childWail(ctx, now + 0.75, 4.2, 0.55);
-  } else if (type === "happy") childGiggle(ctx, now);
+  const now = ctx ? ctx.currentTime : 0;
+  
+  try {
+    if (type === "cry" || type === "upset" || type === "scream") {
+      audioLaugh.pause();
+      audioCry.currentTime = 0;
+      audioCry.play()
+        .catch(e => {
+          console.warn("Real cry audio play blocked, falling back to synth:", e);
+          if (ctx) {
+            if (type === "scream") {
+              childScream(ctx, now);
+              childWail(ctx, now + 0.75, 4.2, 0.55);
+            } else {
+              childWail(ctx, now, 5.2, 0.5);
+            }
+          }
+        });
+    } else if (type === "happy") {
+      audioCry.pause();
+      audioLaugh.currentTime = 0;
+      audioLaugh.play()
+        .catch(e => {
+          console.warn("Real laugh audio play blocked, falling back to synth:", e);
+          if (ctx) childGiggle(ctx, now);
+        });
+    }
+  } catch (e) {
+    console.warn("Audio play failed:", e);
+    if (ctx) {
+      if (type === "cry" || type === "upset") childWail(ctx, now, 5.2, 0.5);
+      else if (type === "scream") {
+        childScream(ctx, now);
+        childWail(ctx, now + 0.75, 4.2, 0.55);
+      } else if (type === "happy") {
+        childGiggle(ctx, now);
+      }
+    }
+  }
 }
 
 function childWail(ctx, start, duration, level) {
@@ -658,6 +693,17 @@ function detectReaction(message, result) {
   if (/(hit|slap|spank|smack|beat|punch|shake you|hurt you|hit you)/.test(m)) return "scream";
   if (/(stupid|shut up|shut it|hate you|i hate|dumb|idiot|ugly|worthless|useless|bad kid|annoying|go away|don'?t love you|you'?re nothing|crybaby)/.test(m)) return "cry";
   if (/(love you|so proud|proud of you|good girl|good boy|good job|well done|you'?re amazing|hug|beautiful|so smart|my sweet|sweetheart|let'?s play|play with|good idea)/.test(m)) return "happy";
+  
+  if (result && result.childLine) {
+    const cl = result.childLine.toLowerCase();
+    if (cl.includes("cry") || cl.includes("sob") || cl.includes("sniffle") || cl.includes("tears") || cl.includes("wail") || cl.includes("*looks down*") || cl.includes("*cries*")) {
+      return "cry";
+    }
+    if (cl.includes("laugh") || cl.includes("giggle") || cl.includes("smile") || cl.includes("happy") || cl.includes("yay!")) {
+      return "happy";
+    }
+  }
+  
   if (result && result.values) {
     if (result.values.volatility > 66) return "upset";
     if (result.values.trust > 76 && result.values.security > 72) return "happy";
@@ -2612,7 +2658,20 @@ function updateFrame(dt, t) {
   const dzp = camWorld.z - childWorld.z;
   const distP = Math.hypot(dxp, dzp) || 0.001;
   const canWalk = childPose === "stand" && effType !== "cry" && effType !== "scream" && effType !== "upset";
-  const goodMood = state.values.volatility < 45 && state.values.trust > 50;
+  const isCryingText = state.childLine && (
+    state.childLine.toLowerCase().includes("cry") || 
+    state.childLine.toLowerCase().includes("sob") || 
+    state.childLine.toLowerCase().includes("sniffle") || 
+    state.childLine.toLowerCase().includes("tears") || 
+    state.childLine.toLowerCase().includes("wail") ||
+    state.childLine.toLowerCase().includes("shout") ||
+    state.childLine.toLowerCase().includes("scream") ||
+    state.childLine.toLowerCase().includes("hate") ||
+    state.childLine.toLowerCase().includes("no!") ||
+    state.childLine.toLowerCase().includes("whatever")
+  );
+  const isSadOrUpset = isCryingText || state.mood === "resistant" || state.mood === "guarded" || state.mood === "upset" || state.temperament === "transgressed";
+  const goodMood = state.values.volatility < 45 && state.values.trust > 50 && !isSadOrUpset;
 
   if (canWalk) {
     // If parent is too far away, prioritize following the parent to stay near
@@ -2673,6 +2732,8 @@ function updateFrame(dt, t) {
     tH = 0; tS = 0.2; tA = 0.45; tSurp = 1; tAa = 1;
   } else if (effType === "happy") {
     tH = 1; tS = 0; tA = 0;
+  } else if (isSadOrUpset) {
+    tH = 0; tS = 0.85; tA = 0.15;
   }
   if (rType) {
     tH = exprHappy + (tH - exprHappy) * rk;
