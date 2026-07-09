@@ -3994,8 +3994,11 @@ function renderAgent2ProvisionCard(data, context = {}) {
   if (badge) badge.style.display = "none";
   if (window.switchClinicianTab) window.switchClinicianTab("approvals");
   
-  const baseline = data.baseline_state || {};
+  // Unwrap nested provisioning data if present
+  const prov = data.provisioning || data || {};
+  const baseline = prov.baseline_state || {};
   const slotLabel = context.chosenSlot ? context.chosenSlot.start.replace("T", " ") : "Scheduled";
+  const sid = prov.session_id || data.session_id || context.sessionId || "";
   
   // Build email delivery notifications
   const emails = [
@@ -4018,15 +4021,15 @@ function renderAgent2ProvisionCard(data, context = {}) {
     <h3><svg class="header-svg-icon" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.1a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>Agent 2 Environment Calibrated</h3>
     <div class="card-summary-row">
       <label>Status</label>
-      <p class="text-green">${(data.status || "provisioned").toUpperCase()}</p>
+      <p class="text-green">${(prov.status || "provisioned").toUpperCase()}</p>
     </div>
     
     <label>Simulated Child Baselines Set</label>
     <div class="provision-metrics">
-      <div class="prov-metric-item">Trust: <strong class="text-green">${baseline.trust}%</strong></div>
-      <div class="prov-metric-item">Volatility: <strong class="text-red">${baseline.volatility}%</strong></div>
-      <div class="prov-metric-item">Temperament: <strong class="${baseline.temperament === 'secure' ? 'text-green' : baseline.temperament === 'transgressed' ? 'text-red' : ''}">${baseline.temperament}</strong></div>
-      <div class="prov-metric-item">Profile: <strong>${data.temperament_profile}</strong></div>
+      <div class="prov-metric-item">Trust: <strong class="text-green">${baseline.trust || 0}%</strong></div>
+      <div class="prov-metric-item">Volatility: <strong class="text-red">${baseline.volatility || 0}%</strong></div>
+      <div class="prov-metric-item">Temperament: <strong class="${baseline.temperament === 'secure' ? 'text-green' : baseline.temperament === 'transgressed' ? 'text-red' : ''}">${baseline.temperament || "neutral"}</strong></div>
+      <div class="prov-metric-item">Profile: <strong>${prov.temperament_profile || "cooperative"}</strong></div>
     </div>
 
     <label>📧 Calendar Invite Notifications</label>
@@ -4034,7 +4037,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
       ${emailHtml}
     </div>
 
-    <button class="btn-launch" onclick="window.open('http://' + window.location.host + '/?session=${data.session_id || ''}', '_blank')">Launch Simulation Sandbox</button>
+    <button class="btn-launch" onclick="window.open('http://' + window.location.host + '/?session=${sid}', '_blank')">Launch Simulation Sandbox</button>
   `;
 }
 
