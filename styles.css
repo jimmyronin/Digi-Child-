@@ -206,7 +206,7 @@ h1 {
 .state-panel {
   position: absolute;
   z-index: 99;
-  top: 84px;
+  top: 156px;
   right: 24px;
   width: min(330px, calc(100vw - 48px));
   padding: 14px;
@@ -220,13 +220,13 @@ h1 {
 
 .sidebar-toggle {
   position: absolute;
-  top: 24px;
+  top: 96px;
   right: 24px;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 1px solid rgba(247, 245, 239, 0.2);
-  background: var(--mist);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 18, 0.4);
   backdrop-filter: blur(12px);
   cursor: pointer;
   z-index: 100;
@@ -234,7 +234,7 @@ h1 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 4px;
+  gap: 3.5px;
   box-shadow: 0 4px 12px var(--shadow);
   transition: all 0.2s ease;
 }
@@ -245,21 +245,21 @@ h1 {
 }
 
 .hamburger-bar {
-  width: 20px;
-  height: 2px;
-  background: var(--teal);
+  width: 16px;
+  height: 1.5px;
+  background: #ffffff;
   border-radius: 2px;
   transition: all 0.2s ease;
 }
 
 .sidebar-toggle.is-open .hamburger-bar:nth-child(1) {
-  transform: translateY(6px) rotate(45deg);
+  transform: translateY(5px) rotate(45deg);
 }
 .sidebar-toggle.is-open .hamburger-bar:nth-child(2) {
   opacity: 0;
 }
 .sidebar-toggle.is-open .hamburger-bar:nth-child(3) {
-  transform: translateY(-6px) rotate(-45deg);
+  transform: translateY(-5px) rotate(-45deg);
 }
 
 .panel-title {
@@ -271,10 +271,12 @@ h1 {
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .panel-title strong {
-  color: var(--teal);
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .stats {
@@ -287,15 +289,23 @@ h1 {
   grid-template-columns: 94px 1fr 34px;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  color: rgba(255, 255, 255, 0.6) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat span:last-child {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 800;
 }
 
 .bar {
   position: relative;
-  height: 8px;
+  height: 6px;
   border-radius: 99px;
-  background: rgba(22, 20, 17, 0.14);
+  background: rgba(255, 255, 255, 0.1) !important;
   overflow: hidden;
 }
 
@@ -304,7 +314,8 @@ h1 {
   inset: 0 auto 0 0;
   width: 50%;
   border-radius: inherit;
-  background: var(--teal);
+  background: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
 .conversation-panel {
@@ -682,6 +693,11 @@ body.is-debug-view .crosshair {
     left: 12px;
     top: 126px;
     height: 230px;
+  }
+
+  .sidebar-toggle {
+    top: 90px;
+    right: 12px;
   }
 
   .state-panel {
