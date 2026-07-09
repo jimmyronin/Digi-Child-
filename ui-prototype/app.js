@@ -3696,7 +3696,15 @@ window.__selectSession = async (sid) => {
       document.querySelector("#cMetricTrust").textContent = data.metrics.trust;
       document.querySelector("#cMetricVol").textContent = data.metrics.volatility;
       document.querySelector("#cMetricMistreat").textContent = data.metrics.consecutive_mistreatments || 0;
-      document.querySelector("#cMetricTemp").textContent = data.metrics.temperament;
+      const tempEl = document.querySelector("#cMetricTemp");
+      tempEl.textContent = data.metrics.temperament;
+      if (data.metrics.temperament === "secure") {
+        tempEl.className = "text-green";
+      } else if (data.metrics.temperament === "transgressed") {
+        tempEl.className = "text-red";
+      } else {
+        tempEl.className = "";
+      }
 
       // Update progress bar fills
       const trustFill = document.querySelector("#cMetricTrustFill");
@@ -3951,14 +3959,14 @@ function renderAgent2ProvisionCard(data, context = {}) {
     <h3><span class="icon">⚙️</span> Agent 2 Environment Calibrated</h3>
     <div class="card-summary-row">
       <label>Status</label>
-      <p style="color:var(--teal); font-weight:bold;">${(data.status || "provisioned").toUpperCase()}</p>
+      <p class="text-green">${(data.status || "provisioned").toUpperCase()}</p>
     </div>
     
     <label>Simulated Child Baselines Set</label>
     <div class="provision-metrics">
-      <div class="prov-metric-item">Trust: <strong>${baseline.trust}%</strong></div>
-      <div class="prov-metric-item">Volatility: <strong>${baseline.volatility}%</strong></div>
-      <div class="prov-metric-item">Temperament: <strong>${baseline.temperament}</strong></div>
+      <div class="prov-metric-item">Trust: <strong class="text-green">${baseline.trust}%</strong></div>
+      <div class="prov-metric-item">Volatility: <strong class="text-red">${baseline.volatility}%</strong></div>
+      <div class="prov-metric-item">Temperament: <strong class="${baseline.temperament === 'secure' ? 'text-green' : baseline.temperament === 'transgressed' ? 'text-red' : ''}">${baseline.temperament}</strong></div>
       <div class="prov-metric-item">Profile: <strong>${data.temperament_profile}</strong></div>
     </div>
 
