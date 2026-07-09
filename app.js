@@ -2912,14 +2912,18 @@ function updateFrame(dt, t) {
   // body pose targets (blended from rest by reaction strength rk)
   let LuZ = -1.32, LuX = 0, LuY = 0, RuZ = 1.32, RuX = 0, RuY = 0;
   let LlZ = 0, LlX = 0, LlY = 0, RlZ = 0, RlX = 0, RlY = 0;
+  let RhZ = 0, RhX = 0, RhY = 0;
   
   if (t < waveUntil) {
-    RuZ = 0.5;
-    RuX = -0.6;
-    RuY = 0;
-    RlX = -1.2;
-    RlZ = Math.sin(t * 11) * 0.35;
-    RlY = Math.sin(t * 11) * 0.15;
+    RuZ = 0.3;      // raise upper arm high
+    RuX = -1.0;
+    RuY = -0.2;
+    RlX = -1.6;     // bend elbow
+    RlZ = 0;
+    RlY = 0;
+    RhZ = Math.sin(t * 14) * 0.5;   // wave hand from wrist (Z-axis)
+    RhX = 0.3;
+    RhY = Math.sin(t * 14) * 0.15;  // wave hand from wrist (Y-axis)
   }
   let LUpLegX = 0, RUpLegX = 0, LLoLegX = 0, RLoLegX = 0;
   let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOZ = 0, posOY = 0;
@@ -2983,6 +2987,7 @@ function updateFrame(dt, t) {
     eb(hb.getNormalizedBoneNode("rightUpperArm"), RuX, RuY, RuZ);
     eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, LlY, LlZ);
     eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, RlY, RlZ);
+    eb(hb.getNormalizedBoneNode("rightHand"), RhX, RhY, RhZ);
     // legs: only drive them when standing (sitting pose is set elsewhere)
     if (childPose === "stand") {
       eb(hb.getNormalizedBoneNode("leftUpperLeg"), LUpLegX, 0, 0);
