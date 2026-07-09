@@ -3197,6 +3197,7 @@ function initClinicianHub() {
   if (sessionRole !== "clinician") return;
   document.body.classList.add("clinician-mode");
   clinicianHub.style.display = "flex";
+  child.visible = false;
   
   // Render hub layout
   clinicianHub.innerHTML = `

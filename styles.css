@@ -763,7 +763,12 @@ body.is-debug-view .crosshair {
 .clinician-mode .help-container,
 .clinician-mode .timeline,
 .clinician-mode .conversation-panel,
-.clinician-mode .state-panel {
+.clinician-mode .state-panel,
+.clinician-mode .topbar,
+.clinician-mode .insight-container,
+.clinician-mode #locationBar,
+.clinician-mode .availability-portal,
+.clinician-mode .pause-overlay {
   display: none !important;
 }
 
@@ -777,9 +782,9 @@ body.is-debug-view .crosshair {
   height: 90%;
   max-height: 720px;
   z-index: 2000;
-  background: rgba(18, 20, 22, 0.76) !important;
-  backdrop-filter: blur(30px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(160%) !important;
+  background: rgba(18, 20, 22, 0.58) !important;
+  backdrop-filter: blur(25px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(160%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 18px;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85);
