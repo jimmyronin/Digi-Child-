@@ -2794,14 +2794,16 @@ function updateFrame(dt, t) {
   expr.aa += (tAa - expr.aa) * esm;
 
   // body pose targets (blended from rest by reaction strength rk)
-  let LuZ = -1.32, LuX = 0, RuZ = 1.32, RuX = 0;
-  let LlZ = 0, LlX = 0, RlZ = 0, RlX = 0;
+  let LuZ = -1.32, LuX = 0, LuY = 0, RuZ = 1.32, RuX = 0, RuY = 0;
+  let LlZ = 0, LlX = 0, LlY = 0, RlZ = 0, RlX = 0, RlY = 0;
   
   if (t < waveUntil) {
-    RuZ = 0.4 + Math.sin(t * 9) * 0.3;
-    RuX = -0.5;
-    RlX = -0.3;
-    RlZ = Math.sin(t * 9) * 0.2;
+    RuZ = 0.5;
+    RuX = -0.6;
+    RuY = 0;
+    RlX = -1.2;
+    RlZ = Math.sin(t * 11) * 0.35;
+    RlY = Math.sin(t * 11) * 0.15;
   }
   let LUpLegX = 0, RUpLegX = 0, LLoLegX = 0, RLoLegX = 0;
   let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOZ = 0, posOY = 0;
@@ -2861,10 +2863,10 @@ function updateFrame(dt, t) {
       bone.rotation.z += (z - bone.rotation.z) * k;
     };
     const hb = vrm.humanoid;
-    eb(hb.getNormalizedBoneNode("leftUpperArm"), LuX, 0, LuZ);
-    eb(hb.getNormalizedBoneNode("rightUpperArm"), RuX, 0, RuZ);
-    eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, 0, LlZ);
-    eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, 0, RlZ);
+    eb(hb.getNormalizedBoneNode("leftUpperArm"), LuX, LuY, LuZ);
+    eb(hb.getNormalizedBoneNode("rightUpperArm"), RuX, RuY, RuZ);
+    eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, LlY, LlZ);
+    eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, RlY, RlZ);
     // legs: only drive them when standing (sitting pose is set elsewhere)
     if (childPose === "stand") {
       eb(hb.getNormalizedBoneNode("leftUpperLeg"), LUpLegX, 0, 0);
