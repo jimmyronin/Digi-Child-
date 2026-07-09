@@ -2806,7 +2806,7 @@ function updateFrame(dt, t) {
       childTarget.z = camWorld.z - (dzp / distP) * 1.25;
     } else {
       // If parent is close, explore play points periodically
-      if (goodMood && t > nextWanderAt) {
+      if (t > nextWanderAt) {
         const points = playPoints[currentId];
         if (points && points.length > 0) {
           const pt = points[Math.floor(Math.random() * points.length)];
