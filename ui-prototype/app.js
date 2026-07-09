@@ -3218,21 +3218,21 @@ function initClinicianHub() {
       <div class="hub-sidebar">
         <div class="sidebar-menu">
           <button class="sidebar-tab-btn active" data-tab="schedule">
-            <span class="tab-icon">📅</span>
+            <svg class="nav-svg-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             <span class="tab-label">Setup & Schedule</span>
           </button>
           <button class="sidebar-tab-btn" data-tab="approvals">
-            <span class="tab-icon">⚖️</span>
+            <svg class="nav-svg-icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
             <span class="tab-label">Case Approvals</span>
             <span class="badge" id="cApprovalCountBadge" style="display:none;">0</span>
           </button>
           <button class="sidebar-tab-btn" data-tab="monitor">
-            <span class="tab-icon">🖥️</span>
+            <svg class="nav-svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line><path d="M6 10h2l2-3 2 6 2-3h2"></path></svg>
             <span class="tab-label">Active Monitor</span>
             <span class="active-dot" id="cActiveMonitorDot" style="display:none;"></span>
           </button>
           <button class="sidebar-tab-btn" data-tab="analytics">
-            <span class="tab-icon">📈</span>
+            <svg class="nav-svg-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line><path d="M3 3v18h18"></path></svg>
             <span class="tab-label">Case Analytics</span>
           </button>
         </div>
@@ -3344,7 +3344,7 @@ function initClinicianHub() {
                 <div class="section" id="cAdviceSection" style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px;">
                   <span class="section-title" style="font-size: 11px; margin-bottom: 6px;">Live Clinical Advisor</span>
                   <div class="clinical-tip" id="cLiveAdviceBox" style="background: rgba(23, 143, 134, 0.06); border-color: rgba(23, 143, 134, 0.2); margin-bottom: 0;">
-                    <span class="icon" id="cLiveAdviceIcon">💡</span>
+                    <span class="icon" id="cLiveAdviceIcon" style="display:flex; align-items:center;"><svg class="header-svg-icon" style="margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg></span>
                     <p id="cLiveAdviceText" style="font-size: 11px;">Awaiting active simulation message...</p>
                   </div>
                 </div>
@@ -3416,11 +3416,11 @@ function initClinicianHub() {
               <span class="section-title">Clinical AI Insights</span>
               <div style="margin-top: 10px;">
                 <div class="clinical-tip">
-                  <span class="icon">💡</span>
+                  <span class="icon" style="display:flex; align-items:center;"><svg class="header-svg-icon" style="margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg></span>
                   <p><strong>De-escalation Strategy:</strong> Offering parent options (autonomy) reduces opposition volatility by ~30% in high-resistance stages.</p>
                 </div>
                 <div class="clinical-tip">
-                  <span class="icon">⚖️</span>
+                  <span class="icon" style="display:flex; align-items:center;"><svg class="header-svg-icon" style="margin-right:0;" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><path d="M12 6v6l4 2"></path></svg></span>
                   <p><strong>Case Checkpoint:</strong> Ensure the Court Monitor's active availability streams are checked prior to finalizing the scheduled slot.</p>
                 </div>
               </div>
@@ -3780,17 +3780,17 @@ window.__selectSession = async (sid) => {
           adviceText.innerHTML = "<strong>⚠️ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
           adviceBox.style.background = "rgba(239, 68, 68, 0.08)";
           adviceBox.style.borderColor = "rgba(239, 68, 68, 0.25)";
-          adviceIcon.textContent = "⚠️";
+          adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,0.5)); margin-right:0;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>`;
         } else if (data.metrics.temperament === "secure") {
           adviceText.innerHTML = "<strong>✅ SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
           adviceBox.style.background = "rgba(34, 197, 94, 0.08)";
           adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
-          adviceIcon.textContent = "✅";
+          adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#22c55e; filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); margin-right:0;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         } else {
           adviceText.innerHTML = "<strong>💡 NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
           adviceBox.style.background = "rgba(23, 143, 134, 0.08)";
           adviceBox.style.borderColor = "rgba(23, 143, 134, 0.25)";
-          adviceIcon.textContent = "💡";
+          adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:var(--teal); margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>`;
         }
       }
       
@@ -3878,7 +3878,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
   `;
 
   card.innerHTML = `
-    <h3><span class="icon">⚖️</span> Agent 1 Intake Checkpoint</h3>
+    <h3><svg class="header-svg-icon" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><path d="M12 6v6l4 2"></path></svg>Agent 1 Intake Checkpoint</h3>
     <div class="card-summary-row">
       <label>Parent Availability Summary</label>
       <p>${data.parentAvailabilitySummary || "No description parsed"}</p>
@@ -4015,7 +4015,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
   `).join("");
 
   card.innerHTML = `
-    <h3><span class="icon">⚙️</span> Agent 2 Environment Calibrated</h3>
+    <h3><svg class="header-svg-icon" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.1a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>Agent 2 Environment Calibrated</h3>
     <div class="card-summary-row">
       <label>Status</label>
       <p class="text-green">${(data.status || "provisioned").toUpperCase()}</p>

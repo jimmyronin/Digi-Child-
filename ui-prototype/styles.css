@@ -1896,4 +1896,33 @@ body.is-debug-view .crosshair {
   text-shadow: 0 0 4px rgba(23, 143, 134, 0.5);
 }
 
+/* Custom SVG Icons styling */
+.nav-svg-icon {
+  width: 15px;
+  height: 15px;
+  stroke: rgba(255, 255, 255, 0.65);
+  fill: none;
+  stroke-width: 2px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.sidebar-tab-btn:hover .nav-svg-icon,
+.sidebar-tab-btn.active .nav-svg-icon {
+  stroke: #ffffff;
+  filter: drop-shadow(0 0 5px var(--teal));
+}
+
+.header-svg-icon {
+  width: 18px;
+  height: 18px;
+  stroke: var(--teal);
+  fill: none;
+  stroke-width: 2.2px;
+  vertical-align: middle;
+  margin-right: 8px;
+  filter: drop-shadow(0 0 4px rgba(23, 143, 134, 0.4));
+}
+
 
