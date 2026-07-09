@@ -731,12 +731,14 @@ window.addEventListener("keydown", resetParentIdle);
 window.addEventListener("click", resetParentIdle);
 
 function triggerIdleChildAction() {
-  const dx = camWorld.x - childWorld.x;
-  const dz = camWorld.z - childWorld.z;
-  const d = Math.hypot(dx, dz) || 0.1;
-  
-  childTarget.x = camWorld.x - (dx / d) * 1.1;
-  childTarget.z = camWorld.z - (dz / d) * 1.1;
+  if (currentId !== "car") {
+    const dx = camWorld.x - childWorld.x;
+    const dz = camWorld.z - childWorld.z;
+    const d = Math.hypot(dx, dz) || 0.1;
+    
+    childTarget.x = camWorld.x - (dx / d) * 1.1;
+    childTarget.z = camWorld.z - (dz / d) * 1.1;
+  }
   
   let text = "";
   const vol = state.values.volatility;
@@ -2175,6 +2177,7 @@ function setLocation(id) {
   // child reacts to the new place
   state.childLine = arrivalLines[id][state.band];
   input.placeholder = `Speak to Mira — ${locationDefs[id].label}...`;
+  resetParentIdle();
 
   for (const btn of locationBar.querySelectorAll("button")) {
     btn.classList.toggle("is-active", btn.dataset.loc === id);
