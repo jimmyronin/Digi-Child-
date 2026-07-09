@@ -245,6 +245,39 @@ async def api_agent1_decision(req: DecisionReq):
         return agent1.confirm(req.session_id, req.chosen_slot)
     return agent1.reject(req.session_id)
 
+@app.get("/api/agent1/review")
+async def api_agent1_review(sessionId: str):
+    """Re-fetch stored proposal data for an awaiting_approval session so the
+    clinician can re-open the approval card after navigating away or refreshing."""
+    session = database.get_session(sessionId)
+    if not session:
+        return {"status": "error", "message": "Session not found"}
+    if session["status"] != "awaiting_approval":
+        return {"status": "error", "message": f"Session is {session['status']}, not awaiting_approval"}
+
+    parent_windows = session.get("parent_availability", [])
+    clinician_windows = session.get("clinician_availability", [])
+    monitor_windows = session.get("monitor_availability", [])
+
+    slots = scheduling.calculate_conflict_free_slots(
+        parent_windows, clinician_windows, monitor_windows,
+        duration_hours=1, max_slots=3,
+    )
+
+    return {
+        "status": "awaiting_approval",
+        "checkpoint": True,
+        "sessionId": sessionId,
+        "parentAvailabilitySummary": [w.get("label") or w.get("start", "") for w in parent_windows],
+        "proposedSlots": slots,
+        "calendarOverlay": {
+            "parent": parent_windows,
+            "clinician": clinician_windows,
+            "monitor": monitor_windows,
+        },
+        "sources": {"parse": "stored", "streams": "stored"},
+    }
+
 @app.post("/api/session/control")
 async def api_control_session(req: SessionControlReq):
     session = database.get_session(req.session_id)
