@@ -3484,12 +3484,62 @@ function renderAgent1ApprovalCard(sessionId, data) {
 
   card.style.display = "block";
   
-  const slotsHtml = (data.proposedSlots || []).map((s, idx) => `
-    <div class="slot-option">
-      <input type="radio" name="chosenSlot" id="slot_${idx}" value='${JSON.stringify(s)}' ${idx === 0 ? "checked" : ""} />
-      <label for="slot_${idx}">${s.start.replace("T", " ")} to ${s.end.split("T")[1]}</label>
+  // Build scene6-style scheduling slot cards
+  const slots = data.proposedSlots || [];
+  const calOverlay = data.calendarOverlay || {};
+  
+  const slotsHtml = slots.map((s, idx) => {
+    const timeLabel = s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end);
+    return `
+      <div class="slot-card ${idx === 0 ? "selected" : ""}" data-slot-idx="${idx}" data-slot-value='${JSON.stringify(s)}'>
+        <div class="avatar-ring">📅</div>
+        <div class="slot-info">
+          <div class="slot-name">
+            Slot ${idx + 1}
+            <span class="role-badge clinician">#178f86</span>
+          </div>
+          <div class="slot-time">${timeLabel}</div>
+        </div>
+        <div class="slot-status">
+          <button class="approve-pill ${idx === 0 ? "confirmed" : "pending"}" data-pill-idx="${idx}">
+            ${idx === 0 ? "✓ Selected" : "Select"}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Build party overlay rows (scene6-style)
+  const parentId = document.querySelector("#cParentId")?.value || "parent_test";
+  const clinicianId = document.querySelector("#cClinicianId")?.value || "clinician_naquan";
+  const monitorId = document.querySelector("#cMonitorId")?.value || "monitor_jimmy";
+
+  const partyRows = `
+    <div class="slot-card">
+      <div class="avatar-ring">👤</div>
+      <div class="slot-info">
+        <div class="slot-name">${parentId} <span class="role-badge parent">#d98632</span></div>
+        <div class="slot-time">${(calOverlay.parent || []).length} availability windows parsed</div>
+      </div>
+      <div class="slot-status"><span class="role-badge parent" style="font-size:10px;">Parent</span></div>
     </div>
-  `).join("");
+    <div class="slot-card">
+      <div class="avatar-ring" style="border-color: var(--teal);">👩‍⚕️</div>
+      <div class="slot-info">
+        <div class="slot-name">${clinicianId} <span class="role-badge clinician">#178f86</span></div>
+        <div class="slot-time">${(calOverlay.clinician || []).length} free windows (${data.sources?.streams || "mock"})</div>
+      </div>
+      <div class="slot-status"><span class="role-badge clinician" style="font-size:10px;">Clinician</span></div>
+    </div>
+    <div class="slot-card">
+      <div class="avatar-ring" style="border-color: #F4F1EA;">⚖️</div>
+      <div class="slot-info">
+        <div class="slot-name">${monitorId} <span class="role-badge monitor">#F4F1EA</span></div>
+        <div class="slot-time">${(calOverlay.monitor || []).length} free windows (${data.sources?.streams || "mock"})</div>
+      </div>
+      <div class="slot-status"><span class="role-badge monitor" style="font-size:10px;">Monitor</span></div>
+    </div>
+  `;
 
   card.innerHTML = `
     <h3><span class="icon">⚖️</span> Agent 1 Intake Checkpoint</h3>
@@ -3498,11 +3548,13 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <p>${data.parentAvailabilitySummary || "No description parsed"}</p>
     </div>
     <div class="card-summary-row">
-      <label>Data Streams Sources</label>
-      <p>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></p>
+      <label>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></label>
     </div>
     
-    <label>Select Conflict-Free Overlap Slot</label>
+    <label>Calendar Overlay — All Parties</label>
+    ${partyRows}
+
+    <label style="margin-top: 12px;">Proposed Conflict-Free Slots</label>
     <div class="slot-selection-box">
       ${slotsHtml || "<p style='font-size:11px;color:rgba(255,255,255,0.4);margin:0;'>No overlap slots found.</p>"}
     </div>
@@ -3513,14 +3565,30 @@ function renderAgent1ApprovalCard(sessionId, data) {
     </div>
   `;
 
+  // Bind slot card click selection (scene6-style)
+  card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
+    slotCard.addEventListener("click", () => {
+      // Deselect all
+      card.querySelectorAll(".slot-card[data-slot-idx]").forEach(sc => {
+        sc.classList.remove("selected");
+        const pill = sc.querySelector(".approve-pill");
+        if (pill) { pill.className = "approve-pill pending"; pill.textContent = "Select"; }
+      });
+      // Select this one
+      slotCard.classList.add("selected");
+      const pill = slotCard.querySelector(".approve-pill");
+      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "✓ Selected"; }
+    });
+  });
+
   // Bind Approval Action
   document.querySelector("#cApproveIntakeBtn").addEventListener("click", async () => {
     const approveBtn = document.querySelector("#cApproveIntakeBtn");
     approveBtn.disabled = true;
     approveBtn.textContent = "Approving...";
 
-    const checkedInput = document.querySelector("input[name='chosenSlot']:checked");
-    const chosenSlot = checkedInput ? JSON.parse(checkedInput.value) : null;
+    const selectedCard = card.querySelector(".slot-card.selected");
+    const chosenSlot = selectedCard ? JSON.parse(selectedCard.dataset.slotValue) : (slots[0] || null);
 
     try {
       const res = await fetch(`${API_BASE}/api/agent1/decision`, {
@@ -3533,7 +3601,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
         })
       });
       const result = await res.json();
-      renderAgent2ProvisionCard(result);
+      renderAgent2ProvisionCard(result, { parentId, clinicianId, monitorId, chosenSlot });
       card.style.display = "none";
       refreshSessionList();
     } catch (e) {
@@ -3573,19 +3641,37 @@ function renderAgent1ApprovalCard(sessionId, data) {
   });
 }
 
-function renderAgent2ProvisionCard(data) {
+function renderAgent2ProvisionCard(data, context = {}) {
   const card = document.querySelector("#cAgent2Card");
   if (!card) return;
 
   card.style.display = "block";
   
   const baseline = data.baseline_state || {};
+  const slotLabel = context.chosenSlot ? context.chosenSlot.start.replace("T", " ") : "Scheduled";
   
+  // Build email delivery notifications
+  const emails = [
+    { icon: "👤", name: context.parentId || "Parent", role: "Parent" },
+    { icon: "👩‍⚕️", name: context.clinicianId || "Clinician", role: "Clinician" },
+    { icon: "⚖️", name: context.monitorId || "Monitor", role: "Court Monitor" },
+  ];
+  
+  const emailHtml = emails.map(e => `
+    <div class="email-notification">
+      <span class="email-icon">${e.icon}</span>
+      <div class="email-body">
+        <strong>${e.name}</strong> — ${e.role} invite for ${slotLabel}
+      </div>
+      <span class="email-status">✓ Delivered</span>
+    </div>
+  `).join("");
+
   card.innerHTML = `
     <h3><span class="icon">⚙️</span> Agent 2 Environment Calibrated</h3>
     <div class="card-summary-row">
       <label>Status</label>
-      <p style="color:var(--teal); font-weight:bold;">${data.status.toUpperCase()}</p>
+      <p style="color:var(--teal); font-weight:bold;">${(data.status || "provisioned").toUpperCase()}</p>
     </div>
     
     <label>Simulated Child Baselines Set</label>
@@ -3594,6 +3680,11 @@ function renderAgent2ProvisionCard(data) {
       <div class="prov-metric-item">Volatility: <strong>${baseline.volatility}%</strong></div>
       <div class="prov-metric-item">Temperament: <strong>${baseline.temperament}</strong></div>
       <div class="prov-metric-item">Profile: <strong>${data.temperament_profile}</strong></div>
+    </div>
+
+    <label>📧 Calendar Invite Notifications</label>
+    <div class="email-notifications">
+      ${emailHtml}
     </div>
 
     <button class="btn-launch" onclick="window.open('${data.launch_url}', '_blank')">Launch Simulation Sandbox</button>
