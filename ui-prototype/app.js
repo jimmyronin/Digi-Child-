@@ -1183,6 +1183,14 @@ function buildHome() {
   prop(g, "furniture/books", -3.2, 0.62, { s: 1.6, y: 0.37, ry: 0.4 });
   prop(g, "furniture/pillow", -2.35, 1.15, { s: 1.4, ry: -0.7 });
   solid(colliders, -3.1, 0.6, 1.2, 0.8);
+  // Toy cars and small items in Mira's corner from Kenney kits
+  prop(g, "car/kart-oopi", -2.7, 1.7, { s: 0.18, ry: 0.6 });
+  prop(g, "car/kart-ooli", -2.1, 0.8, { s: 0.16, ry: -0.8 });
+  prop(g, "food/cookie", -3.6, 0.85, { s: 0.55, y: 0.37 });
+  prop(g, "food/lollypop", -3.2, 0.85, { s: 0.55, y: 0.36, ry: 0.5 });
+  // Nature mushrooms as playful decorations
+  prop(g, "nature/mushroom_red", -4.5, 1.8, { s: 1.2 });
+  prop(g, "nature/mushroom_tan", -4.8, 2.4, { s: 1.0, ry: 0.6 });
 
   // painting on the west wall + warm floor lamp light
   box(g, 0.05, 1.0, 1.5, mat(0xd98632, 0.7), -6.87, 1.9, 1.5, { cast: false });
@@ -1583,6 +1591,11 @@ function buildCar() {
 
   // Grocery/shopping bag on driver's seat
   prop(g, "food/bag", -0.5, 0.85, 0.35, { s: 1.15, ry: 0.4 });
+  // Child's items on back seat: toy car, stuffed animals, coloring book
+  prop(g, "car/kart-oopi", 0.52, 1.07, -0.45, { s: 0.12, ry: Math.PI * 0.7 });
+  prop(g, "food/lollypop", 0.7, 1.09, -0.05, { s: 0.5, ry: 0.8 });
+  prop(g, "food/cookie", 0.42, 1.09, 0.55, { s: 0.55 });
+  prop(g, "food/soda", 0.75, 1.09, 0.62, { s: 0.55, ry: 0.3 });
 
   rbox(g, 1.7, 0.16, 0.62, 0.03, 3, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   rbox(g, 1.7, 0.7, 0.16, 0.03, 3, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
@@ -1816,6 +1829,29 @@ function buildPark() {
   box(g, 0.4, 0.32, 0.4, mat(0x8a8f94, 0.5), 5.2, 0.16, -2.4);
   solid(colliders, 5.2, -2.4, 3.4, 0.6);
 
+  // Kenney nature: picnic tables, benches and mushroom clusters as toadstools
+  prop(g, "nature/stump_round", -7.5, 2.8, { s: 2.0 });
+  prop(g, "nature/stump_round", -8.2, 1.5, { s: 1.6, ry: 1.1 });
+  prop(g, "nature/mushroom_redGroup", 7.8, -3.2, { s: 2.4 });
+  prop(g, "nature/mushroom_tanGroup", -8.5, -4.5, { s: 2.2 });
+  prop(g, "nature/log", 6.5, 3.8, { s: 2, ry: 0.5 });
+  prop(g, "nature/log", 7.2, 4.5, { s: 1.8, ry: -0.3 });
+  // Kenney nature: path stones leading to the playground
+  const stonePositions = [[-1.5, 4.5], [0, 4.0], [1.5, 4.5], [-0.8, 3.2], [0.8, 3.2]];
+  stonePositions.forEach(([px, pz], i) => {
+    prop(g, `nature/path_stone`, px, pz, { s: 1.5, ry: rnd(i * 7) * 6.28 });
+  });
+  // Extra park benches at different spots for realism
+  prop(g, "furniture/bench", 8.0, -5.8, { s: 2, ry: -Math.PI / 2 });
+  solid(colliders, 8.0, -5.8, 0.8, 2);
+  prop(g, "furniture/bench", -8.0, 5.0, { s: 2, ry: Math.PI / 2 });
+  solid(colliders, -8.0, 5.0, 0.8, 2);
+  // Small potted plants around sandbox
+  prop(g, "nature/pot_small", -9.2, -4.0, { s: 2 });
+  prop(g, "nature/pot_large", 9.5, 4.0, { s: 2 });
+  // fence gate at entrance
+  prop(g, "nature/fence_gate", 0, 8.5, { s: 2.5 });
+  solid(colliders, 0, 8.5, 2.0, 0.5);
   // real trees, bushes, flowers, rocks, benches (Kenney nature + furniture kits)
   const parkTrees = ["tree_default", "tree_oak", "tree_detailed", "tree_fat", "tree_pineRoundA", "tree_tall", "tree_simple"];
   const treeSpots = [[-12, -9], [-14, 2], [-10, 8], [-4, 12], [4, 13], [11, 9], [14, 1], [12, -7], [6, -12], [-3, -13], [-16, -4], [16, 5]];
@@ -1958,7 +1994,7 @@ function buildMarket() {
   prop(g, "furniture/cardboardBoxOpen", -10.7, -8.2, { s: 2, ry: 0.5 });
   solid(colliders, -11, -7.9, 1.6, 1.4);
 
-  // shopping cart
+  // shopping carts — one with groceries, one empty near the entrance
   {
     const cart = new THREE.Group();
     cart.position.set(8.2, 0, 6.8);
@@ -1969,9 +2005,47 @@ function buildMarket() {
     for (const [wx, wz] of [[-0.24, -0.38], [0.24, -0.38], [-0.24, 0.38], [0.24, 0.38]]) {
       cyl(cart, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), wx, 0.07, wz, { rz: Math.PI / 2 });
     }
+    // groceries piled into the cart
+    prop(cart, "food/watermelon", 0, 0.77, 0, { s: 0.38 });
+    prop(cart, "food/carton", -0.18, 0.78, -0.2, { s: 0.55, ry: 0.5 });
+    prop(cart, "food/banana", 0.15, 0.79, 0.2, { s: 0.7, ry: -0.8 });
+    prop(cart, "food/can", 0.2, 0.78, -0.3, { s: 0.55 });
     g.add(cart);
     solid(colliders, 8.2, 6.8, 1.1, 1.1);
   }
+  {
+    // second empty cart near the entrance
+    const cart2 = new THREE.Group();
+    cart2.position.set(10.5, 0, 5.2);
+    cart2.rotation.y = 1.2;
+    box(cart2, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
+    box(cart2, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
+    cyl(cart2, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
+    for (const [wx, wz] of [[-0.24, -0.38], [0.24, -0.38], [-0.24, 0.38], [0.24, 0.38]]) {
+      cyl(cart2, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), wx, 0.07, wz, { rz: Math.PI / 2 });
+    }
+    g.add(cart2);
+    solid(colliders, 10.5, 5.2, 1.1, 1.1);
+  }
+  // Checkout lane cashier props: card reader and products waiting to be scanned
+  for (let i = 0; i < 3; i++) {
+    const cx = -6 + i * 4;
+    // items on conveyor belt
+    prop(g, "food/bread", cx - 0.2, 1.05, 5.2, { s: 0.55, ry: 0.3 });
+    prop(g, "food/cheese", cx + 0.1, 1.05, 5.5, { s: 0.4, ry: -0.5 });
+    prop(g, "food/soda-can", cx, 1.05, 5.8, { s: 0.55 });
+    // card reader terminal on top of checkout unit
+    box(g, 0.12, 0.22, 0.08, mat(0x18191e, 0.5), cx + 0.38, 1.48, 6.85);
+    box(g, 0.1, 0.01, 0.07, glowMat(0x38bdf8), cx + 0.38, 1.595, 6.85, { cast: false, receive: false });
+  }
+  // produce display near entrance
+  prop(g, "food/watermelon", 11.5, -6.5, { s: 1.0 });
+  prop(g, "food/pumpkin", 10.8, -7.2, { s: 0.8, ry: 0.6 });
+  prop(g, "food/apple", 11.2, -5.8, { s: 1.0, y: 0.35 });
+  prop(g, "food/banana", 10.5, -6.0, { s: 1.1, ry: 0.4 });
+  // potted plants near entrance for ambiance
+  prop(g, "furniture/pottedPlant", -12.0, 7.5, { s: 2 });
+  prop(g, "furniture/pottedPlant", 12.0, 7.5, { s: 2 });
 
   // signs
   const banner = textPanel("DIGI MART", 6, 1.1, "#b5413a", "#fff6dd");
@@ -2050,6 +2124,17 @@ function buildParty() {
   prop(g, "holiday/gingerbread-man", -0.3, -0.88, { s: 0.55, y: 0.858, ry: 0.4 });
 
   // (booster seat deleted)
+  // Kid play area: legos, toys and kids running around
+  prop(g, "holiday/present-a-cube", 3.5, 3.8, { s: 0.7, ry: 0.4 });
+  prop(g, "holiday/present-b-rectangle", 4.2, 3.2, { s: 0.65, ry: 1.1 });
+  prop(g, "holiday/present-a-round", 2.8, 4.0, { s: 0.6, ry: 2.3 });
+  prop(g, "furniture/rugRound", -3.8, 2.5, { s: 2.2 });
+  prop(g, "furniture/pillow", -4.5, 2.2, { s: 1.4, ry: 0.7 });
+  prop(g, "furniture/pillow", -3.2, 3.1, { s: 1.4, ry: -0.4 });
+  // toy cars strewn on the rug where kids are playing
+  prop(g, "car/kart-oopi", -4.0, 2.8, { s: 0.15, ry: Math.PI * 0.3 });
+  prop(g, "car/kart-oozi", -3.5, 2.2, { s: 0.14, ry: -0.8 });
+  prop(g, "car/kart-oobi", -4.5, 3.0, { s: 0.13, ry: 1.5 });
 
   // candles with flickering flames
   for (const cx of [-1.7, 0.55, 1.9]) {
@@ -2153,7 +2238,7 @@ function buildParty() {
     colliders,
     bounds: { minX: -7.6, maxX: 7.6, minZ: -5.6, maxZ: 5.6 },
     spawn: { x: 0, z: 4.3, yaw: 0 },
-    childAnchor: { x: 0, z: -1.72, seat: 0.64, yaw: 0, pose: "sit" },
+    childAnchor: { x: -3.8, z: 2.5, yaw: 1.2, pose: "stand" },
     canMove: true,
     eye: 1.55,
     env: { bg: 0x170f0a, fog: [0x170f0a, 12, 30], hemi: 0.55, envI: 0.3 },
