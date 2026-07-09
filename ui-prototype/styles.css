@@ -755,10 +755,9 @@ body.is-debug-view .crosshair {
    Clinician Hub & Scheduling Portal Styling
    ============================================================ */
 .clinician-mode {
-  background: url('./assets/clinician_bg.png') no-repeat center center / cover !important;
+  background: transparent !important;
 }
 
-.clinician-mode #scene,
 .clinician-mode .digit-window,
 .clinician-mode #crosshair,
 .clinician-mode .help-container,
@@ -778,12 +777,12 @@ body.is-debug-view .crosshair {
   height: 90%;
   max-height: 720px;
   z-index: 2000;
-  background: rgba(18, 20, 22, 0.72) !important;
-  backdrop-filter: blur(35px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(35px) saturate(160%) !important;
+  background: rgba(18, 20, 22, 0.76) !important;
+  backdrop-filter: blur(30px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(160%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 18px;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85);
   display: none; /* Toggled via initClinicianHub */
   flex-direction: column;
   color: #fff;
