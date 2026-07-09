@@ -1855,9 +1855,9 @@ body.is-debug-view .crosshair {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: rgba(15, 18, 22, 0.5) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  background: rgba(15, 18, 22, 0.4) !important;
+  backdrop-filter: blur(45px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(45px) saturate(160%) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
