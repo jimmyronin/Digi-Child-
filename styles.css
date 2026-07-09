@@ -827,32 +827,266 @@ body.is-debug-view .crosshair {
   letter-spacing: 0.5px;
 }
 
+/* Sidebar Layout */
 .clinician-hub-body {
-  flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  overflow: auto;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  height: calc(100% - 60px);
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 10px;
 }
 
-.hub-column {
+.hub-sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 16px 16px 0;
+  height: 100%;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  width: 100%;
+}
+
+.sidebar-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+
+.sidebar-tab-btn.active {
+  background: rgba(23, 143, 134, 0.12);
+  color: var(--teal);
+}
+
+.sidebar-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  background: var(--teal);
+  border-radius: 2px;
+}
+
+.sidebar-tab-btn .tab-icon {
+  font-size: 16px;
+}
+
+.sidebar-tab-btn .badge {
+  background: var(--warm);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.sidebar-tab-btn .active-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--teal);
+  border-radius: 50%;
+  margin-left: auto;
+  box-shadow: 0 0 8px var(--teal);
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.sidebar-footer {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Viewport & Panels */
+.hub-viewport {
+  flex: 1;
+  padding: 16px 0 16px 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.hub-panel {
+  display: none;
+  height: 100%;
+  animation: fadePanel 0.3s ease;
+}
+
+.hub-panel.active {
+  display: block;
+}
+
+@keyframes fadePanel {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 20px;
+  height: 100%;
+}
+
+.panel-col {
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
+  max-height: 580px;
   padding-right: 8px;
 }
 
 /* Custom Scrollbar for columns */
-.hub-column::-webkit-scrollbar {
+.panel-col::-webkit-scrollbar, .hub-viewport::-webkit-scrollbar {
   width: 6px;
 }
-.hub-column::-webkit-scrollbar-track {
+.panel-col::-webkit-scrollbar-track, .hub-viewport::-webkit-scrollbar-track {
   background: transparent;
 }
-.hub-column::-webkit-scrollbar-thumb {
+.panel-col::-webkit-scrollbar-thumb, .hub-viewport::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
+}
+
+/* Analytics Hub Styles */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.analytics-stat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: left;
+}
+
+.analytics-stat-card .label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analytics-stat-card .val {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+  color: #fff;
+}
+
+.analytics-stat-card .trend {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.analytics-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+}
+
+.analytics-chart-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.chart-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.chart-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.chart-bar-label {
+  width: 80px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.chart-bar-wrapper {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 10px;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 3px;
+}
+
+.chart-bar-val {
+  width: 35px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.clinical-tip {
+  display: flex;
+  gap: 8px;
+  background: rgba(23, 143, 134, 0.04);
+  border: 1px solid rgba(23, 143, 134, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.clinical-tip .icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.clinical-tip p {
+  margin: 0;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .clinician-hub .section {
