@@ -3201,7 +3201,7 @@ function initClinicianHub() {
   clinicianHub.style.display = "flex";
   child.visible = false;
   
-  // Render hub layout
+  // Render hub layout with left sidebar tabs
   clinicianHub.innerHTML = `
     <div class="clinician-hub-header">
       <h2>Clinician Control Hub</h2>
@@ -3209,86 +3209,233 @@ function initClinicianHub() {
     </div>
     
     <div class="clinician-hub-body">
-      <!-- Left Column: Settings and Input -->
-      <div class="hub-column">
-        <div class="section">
-          <span class="section-title">New Session Setup</span>
-          
-          <label>Parent ID</label>
-          <input type="text" id="cParentId" placeholder="Parent ID" value="parent_test" />
-          
-          <label>Clinician ID</label>
-          <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
-          
-          <label>Court Monitor ID</label>
-          <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
-          
-          <label>Child Personality Profile</label>
-          <select id="cTemperamentProfile">
-            <option value="cooperative">Cooperative (Trust: 80, Volatility: 10)</option>
-            <option value="oppositional" selected>Oppositional (Trust: 40, Volatility: 75)</option>
-            <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
-          </select>
-
-          <label>Child Age / Developmental Stage</label>
-          <select id="cChildAge">
-            <option value="5">Child (Age 5-7, Year 05)</option>
-            <option value="11">Teenager (Age 10-12, Year 11)</option>
-            <option value="15">Adult (Age 14-16, Year 15)</option>
-          </select>
+      <!-- Left Sidebar Navigation -->
+      <div class="hub-sidebar">
+        <div class="sidebar-menu">
+          <button class="sidebar-tab-btn active" data-tab="schedule">
+            <span class="tab-icon">📅</span>
+            <span class="tab-label">Setup & Schedule</span>
+          </button>
+          <button class="sidebar-tab-btn" data-tab="approvals">
+            <span class="tab-icon">⚖️</span>
+            <span class="tab-label">Case Approvals</span>
+            <span class="badge" id="cApprovalCountBadge" style="display:none;">0</span>
+          </button>
+          <button class="sidebar-tab-btn" data-tab="monitor">
+            <span class="tab-icon">🖥️</span>
+            <span class="tab-label">Active Monitor</span>
+            <span class="active-dot" id="cActiveMonitorDot" style="display:none;"></span>
+          </button>
+          <button class="sidebar-tab-btn" data-tab="analytics">
+            <span class="tab-icon">📈</span>
+            <span class="tab-label">Case Analytics</span>
+          </button>
         </div>
-
-        <div class="section">
-          <span class="section-title">Parent Intake Raw Text</span>
-          <label>Availability Description</label>
-          <textarea id="cParentRawText" rows="4" placeholder="I can only make it next Tuesday morning after 9 AM or Thursday between 1 and 3 PM."></textarea>
-          
-          <button id="cProposeBtn">Propose Session (Agent 1 Intake)</button>
+        <div class="sidebar-footer">
+          <div style="margin-bottom:4px;">System Mode: <strong style="color:var(--teal)">Clinical Portal</strong></div>
+          <div>Service status: <span style="color:#22c55e">● Online</span></div>
         </div>
       </div>
 
-      <!-- Right Column: Verification, Decision & Actions -->
-      <div class="hub-column">
-        <!-- Agent 1 Intake Checkpoint Card -->
-        <div id="cAgent1Card" class="approval-card" style="display: none;"></div>
+      <!-- Right Content Viewport -->
+      <div class="hub-viewport">
+        <!-- Panel 1: Setup & Schedule -->
+        <div id="panel-schedule" class="hub-panel active">
+          <div class="panel-grid">
+            <div class="panel-col">
+              <div class="section">
+                <span class="section-title">New Session Setup</span>
+                
+                <label>Parent ID</label>
+                <input type="text" id="cParentId" placeholder="Parent ID" value="parent_test" />
+                
+                <label>Clinician ID</label>
+                <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
+                
+                <label>Court Monitor ID</label>
+                <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
+                
+                <label>Child Personality Profile</label>
+                <select id="cTemperamentProfile">
+                  <option value="cooperative">Cooperative (Trust: 80, Volatility: 10)</option>
+                  <option value="oppositional" selected>Oppositional (Trust: 40, Volatility: 75)</option>
+                  <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
+                </select>
 
-        <!-- Agent 2 Provision Success Card -->
-        <div id="cAgent2Card" class="provision-card" style="display: none;"></div>
+                <label>Child Age / Developmental Stage</label>
+                <select id="cChildAge">
+                  <option value="5">Child (Age 5-7, Year 05)</option>
+                  <option value="11">Teenager (Age 10-12, Year 11)</option>
+                  <option value="15">Adult (Age 14-16, Year 15)</option>
+                </select>
+              </div>
 
-        <!-- Section 2: Session List -->
-        <div class="section">
-          <span class="section-title">Session List & Status</span>
-          <div id="cSessionList">Loading sessions...</div>
+              <div class="section">
+                <span class="section-title">Parent Intake Raw Text</span>
+                <label>Availability Description</label>
+                <textarea id="cParentRawText" rows="3" placeholder="I can only make it next Tuesday morning after 9 AM or Thursday between 1 and 3 PM."></textarea>
+                <button id="cProposeBtn">Propose Session (Agent 1 Intake)</button>
+              </div>
+            </div>
+
+            <div class="panel-col">
+              <div class="section">
+                <span class="section-title">Session List & Status</span>
+                <div id="cSessionList">Loading sessions...</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Section 3: Live Session Controls -->
-        <div id="cLiveControls" class="section" style="display: none;">
-          <span class="section-title">Active Session Controls</span>
-          <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
-          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-            <button id="cPauseBtn" class="btn-secondary">Pause</button>
-            <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume</button>
-            <button id="cCompleteBtn" class="btn-danger">Complete</button>
+        <!-- Panel 2: Case Approvals -->
+        <div id="panel-approvals" class="hub-panel">
+          <div class="panel-col" style="max-width: 600px; margin: 0 auto;">
+            <!-- Agent 1 Intake Checkpoint Card -->
+            <div id="cAgent1Card" class="approval-card" style="display: none;"></div>
+
+            <!-- Agent 2 Provision Success Card -->
+            <div id="cAgent2Card" class="provision-card" style="display: none;"></div>
+            
+            <div id="cNoApprovalsPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
+              <span style="font-size: 40px; display: block; margin-bottom: 12px;">⚖️</span>
+              <strong>No Active Intake Reviews</strong>
+              <p style="font-size: 11px; margin-top: 6px;">Propose a new session in the Setup tab or click "Review & Approve" on an awaiting-approval session in the list.</p>
+            </div>
           </div>
-          <button id="cDownloadReportBtn" class="btn-secondary">Download Session Report</button>
-          
-          <!-- Metrics -->
-          <div class="live-metrics-panel">
-            <label>Live Metrics</label>
-            <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
-            <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
-            <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
-            <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+        </div>
+
+        <!-- Panel 3: Active Monitor -->
+        <div id="panel-monitor" class="hub-panel">
+          <div class="panel-grid">
+            <div class="panel-col">
+              <div id="cLiveControls" class="section" style="display: none; height: 100%;">
+                <span class="section-title">Active Session Controls</span>
+                <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <button id="cPauseBtn" class="btn-secondary">Pause</button>
+                  <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume</button>
+                  <button id="cCompleteBtn" class="btn-danger">Complete</button>
+                </div>
+                <button id="cDownloadReportBtn" class="btn-secondary" style="margin-bottom:12px;">Download Session Report</button>
+                
+                <!-- Metrics -->
+                <div class="live-metrics-panel">
+                  <label>Live Metrics</label>
+                  <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
+                  <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
+                  <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
+                  <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+                </div>
+              </div>
+              <div id="cNoMonitorPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
+                <span style="font-size: 40px; display: block; margin-bottom: 12px;">🖥️</span>
+                <strong>No Active Session Monitored</strong>
+                <p style="font-size: 11px; margin-top: 6px;">Select an active or scheduled session from the setup list and click "Monitor" to load controls.</p>
+              </div>
+            </div>
+            
+            <div class="panel-col">
+              <div class="section" id="cAuditSection" style="display: none; height: 100%;">
+                <span class="section-title">Interaction History Log</span>
+                <div id="cAuditLogBox" class="audit-log-box" style="max-height: 400px; height: 350px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 4: Case Analytics -->
+        <div id="panel-analytics" class="hub-panel">
+          <div class="analytics-grid">
+            <div class="analytics-stat-card">
+              <span class="label">Total Evaluated Cases</span>
+              <div class="val">14 Cases</div>
+              <div class="trend" style="color:var(--teal)">↑ +18% this month</div>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="label">Avg De-escalation Rate</span>
+              <div class="val">91.4%</div>
+              <div class="trend" style="color:var(--teal)">↑ +2.1% improvement</div>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="label">Transgression Incidents</span>
+              <div class="val">1 Case</div>
+              <div class="trend" style="color:#ef4444">↓ -50% decline</div>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="label">Active Sandboxes</span>
+              <div class="val">3 Live</div>
+              <div class="trend" style="color:var(--teal)">● Stable performance</div>
+            </div>
           </div>
 
-          <!-- History log -->
-          <div style="margin-top: 10px;">
-            <label>Interaction History</label>
-            <div id="cAuditLogBox" class="audit-log-box"></div>
+          <div class="analytics-row">
+            <div class="analytics-chart-box">
+              <span class="section-title">Case Breakdown by Temperament Profile</span>
+              <div class="chart-bar-container">
+                <div class="chart-bar-row">
+                  <span class="chart-bar-label">Cooperative</span>
+                  <div class="chart-bar-wrapper"><div class="chart-bar-fill" style="width: 45%;"></div></div>
+                  <span class="chart-bar-val">45%</span>
+                </div>
+                <div class="chart-bar-row">
+                  <span class="chart-bar-label">Oppositional</span>
+                  <div class="chart-bar-wrapper"><div class="chart-bar-fill" style="width: 35%; background: var(--warm)"></div></div>
+                  <span class="chart-bar-val">35%</span>
+                </div>
+                <div class="chart-bar-row">
+                  <span class="chart-bar-label">Withdrawn</span>
+                  <div class="chart-bar-wrapper"><div class="chart-bar-fill" style="width: 20%; background: #94a3b8"></div></div>
+                  <span class="chart-bar-val">20%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="analytics-chart-box">
+              <span class="section-title">Clinical AI Insights</span>
+              <div style="margin-top: 10px;">
+                <div class="clinical-tip">
+                  <span class="icon">💡</span>
+                  <p><strong>De-escalation Strategy:</strong> Offering parent options (autonomy) reduces opposition volatility by ~30% in high-resistance stages.</p>
+                </div>
+                <div class="clinical-tip">
+                  <span class="icon">⚖️</span>
+                  <p><strong>Case Checkpoint:</strong> Ensure the Court Monitor's active availability streams are checked prior to finalizing the scheduled slot.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  `;
+
+  // Tab navigation switching logic
+  const tabButtons = clinicianHub.querySelectorAll(".sidebar-tab-btn");
+  const panels = clinicianHub.querySelectorAll(".hub-panel");
+
+  window.switchClinicianTab = (tabName) => {
+    tabButtons.forEach(btn => {
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    panels.forEach(p => {
+      if (p.id === `panel-${tabName}`) {
+        p.classList.add("active");
+      } else {
+        p.classList.remove("active");
+      }
+    });
+  };
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      window.switchClinicianTab(btn.dataset.tab);
+    });
+  });
   `;
 
   // Bind Propose / Intake Click
@@ -3470,6 +3617,15 @@ window.__selectSession = async (sid) => {
       document.querySelector("#cLiveControls").style.display = "block";
       document.querySelector("#cActiveSessionLabel").textContent = sid;
       
+      // Update placeholders and navigation tabs
+      const monPlaceholder = document.querySelector("#cNoMonitorPlaceholder");
+      if (monPlaceholder) monPlaceholder.style.display = "none";
+      const auditSec = document.querySelector("#cAuditSection");
+      if (auditSec) auditSec.style.display = "block";
+      const dot = document.querySelector("#cActiveMonitorDot");
+      if (dot) dot.style.display = "inline-block";
+      if (window.switchClinicianTab) window.switchClinicianTab("monitor");
+
       // Update buttons
       if (data.paused) {
         document.querySelector("#cPauseBtn").style.display = "none";
@@ -3503,6 +3659,13 @@ function renderAgent1ApprovalCard(sessionId, data) {
   if (!card) return;
 
   card.style.display = "block";
+  
+  // Update placeholders and navigation tabs
+  const placeholder = document.querySelector("#cNoApprovalsPlaceholder");
+  if (placeholder) placeholder.style.display = "none";
+  const badge = document.querySelector("#cApprovalCountBadge");
+  if (badge) { badge.textContent = "1"; badge.style.display = "inline-block"; }
+  if (window.switchClinicianTab) window.switchClinicianTab("approvals");
   
   // Build scene6-style scheduling slot cards
   const slots = data.proposedSlots || [];
@@ -3649,6 +3812,10 @@ function renderAgent1ApprovalCard(sessionId, data) {
         })
       });
       card.style.display = "none";
+      const placeholder = document.querySelector("#cNoApprovalsPlaceholder");
+      if (placeholder) placeholder.style.display = "block";
+      const badge = document.querySelector("#cApprovalCountBadge");
+      if (badge) badge.style.display = "none";
       alert("Intake proposal rejected. Session status reset.");
       refreshSessionList();
     } catch (e) {
@@ -3666,6 +3833,13 @@ function renderAgent2ProvisionCard(data, context = {}) {
   if (!card) return;
 
   card.style.display = "block";
+  
+  // Hide approval badge & clear placeholder
+  const placeholder = document.querySelector("#cNoApprovalsPlaceholder");
+  if (placeholder) placeholder.style.display = "none";
+  const badge = document.querySelector("#cApprovalCountBadge");
+  if (badge) badge.style.display = "none";
+  if (window.switchClinicianTab) window.switchClinicianTab("approvals");
   
   const baseline = data.baseline_state || {};
   const slotLabel = context.chosenSlot ? context.chosenSlot.start.replace("T", " ") : "Scheduled";
