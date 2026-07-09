@@ -304,7 +304,8 @@ async def api_session_status(sessionId: str):
     ctrl = session_controls.get(sessionId, {"paused": False})
     
     # Also fetch current parent state metrics
-    parent_state = database.get_state(session["parent_id"])
+    parent_state = dict(database.get_state(session["parent_id"]))
+    parent_state["child_age"] = session.get("child_age", 5)
     history = database.get_recent_history(session["parent_id"], limit=20)
     
     return {
