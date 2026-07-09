@@ -15,7 +15,12 @@
 
       <nav id="locationBar" class="location-bar" aria-label="Places"></nav>
       <div id="crosshair" class="crosshair" aria-hidden="true"></div>
-      <div id="lockHint" class="lock-hint">Click the world to explore · WASD to walk · mouse to look · Enter to talk</div>
+      <div class="help-container">
+        <div id="helpCloud" class="help-cloud">
+          <p id="lockHint">Click the world to explore · WASD to walk · mouse to look · Enter to talk</p>
+        </div>
+        <button id="helpBtn" class="help-btn" aria-label="Show help instructions">?</button>
+      </div>
 
       <section class="topbar" aria-label="session state">
         <div class="brand-lockup">
@@ -105,6 +110,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=48"></script>
+    <script type="module" src="./app.js?v=49"></script>
   </body>
 </html>

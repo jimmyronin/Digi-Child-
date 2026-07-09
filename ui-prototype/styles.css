@@ -545,27 +545,71 @@ body.is-locked .crosshair {
   opacity: 1;
 }
 
-.lock-hint {
+.help-container {
   position: absolute;
-  z-index: 2;
-  left: 50%;
-  bottom: 196px;
-  transform: translateX(-50%);
-  max-width: calc(100vw - 48px);
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.38);
-  color: var(--paper);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-  transition: opacity 200ms ease;
+  z-index: 5;
+  left: 24px;
+  bottom: 24px;
+  pointer-events: auto;
 }
 
-body.is-locked .lock-hint {
-  opacity: 0.75;
+.help-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(18, 18, 18, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease !important;
+}
+
+.help-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: scale(1.08) !important;
+}
+
+.help-cloud {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  width: 220px;
+  padding: 12px 14px;
+  border-radius: 16px 16px 16px 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(18, 18, 18, 0.6) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  pointer-events: none;
+  transform-origin: bottom left;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.help-cloud.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.help-cloud p {
+  margin: 0;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 body.is-debug-view .topbar,

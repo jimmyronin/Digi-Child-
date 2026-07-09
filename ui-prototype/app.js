@@ -3328,3 +3328,25 @@ window.__digiShot = (w = 960, h = 540) => {
   camera.updateProjectionMatrix();
   return c2.toDataURL("image/jpeg", 0.72);
 };
+
+// Help Cloud Toggle & Auto-timeout
+const helpBtn = document.querySelector("#helpBtn");
+const helpCloud = document.querySelector("#helpCloud");
+if (helpBtn && helpCloud) {
+  helpBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    helpCloud.classList.toggle("is-open");
+  });
+  
+  window.addEventListener("click", () => {
+    helpCloud.classList.remove("is-open");
+  });
+
+  // Open immediately at start
+  helpCloud.classList.add("is-open");
+
+  // Automatically fade out after 20 seconds
+  setTimeout(() => {
+    helpCloud.classList.remove("is-open");
+  }, 20000);
+}
