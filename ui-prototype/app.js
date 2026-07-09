@@ -3125,23 +3125,27 @@ async function checkSessionStatus() {
         availabilityPortal.style.display = "none";
       }
       
+      // Always update child age and band from session metrics if available
+      if (data.metrics && typeof data.metrics.child_age === "number") {
+        state.age = data.metrics.child_age;
+        if (state.age <= 7) {
+          state.band = "Age 5-7";
+        } else if (state.age <= 12) {
+          state.band = "Age 10-12";
+        } else {
+          state.band = "Age 14-16";
+        }
+      }
+
       // Update state values if the session is live
       if (data.status === "live" || data.status === "live_paused") {
         if (data.metrics && data.metrics.child_id) {
           sessionParentId = data.metrics.child_id;
         }
         Object.assign(state.values, data.metrics);
-        if (data.metrics && typeof data.metrics.child_age === "number") {
-          state.age = data.metrics.child_age;
-          if (state.age <= 7) {
-            state.band = "Age 5-7";
-          } else if (state.age <= 12) {
-            state.band = "Age 10-12";
-          } else {
-            state.band = "Age 14-16";
-          }
-        }
         syncUi();
+      } else {
+        updateChildLook();
       }
     }
   } catch (err) {
