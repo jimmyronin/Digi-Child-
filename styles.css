@@ -465,20 +465,36 @@ button:hover {
   gap: 12px;
   margin-bottom: 8px;
   font-weight: 900;
-  color: var(--blue);
+  color: #ffffff;
 }
 
 #closeInsight {
   width: 34px;
   height: 34px;
   background: transparent;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+#closeInsight:hover {
+  color: #ffffff;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .insight-panel p {
   margin: 0;
-  line-height: 1.4;
-  color: #403a33;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .location-bar {
