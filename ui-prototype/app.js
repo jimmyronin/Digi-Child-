@@ -718,6 +718,7 @@ let nextGiggleAt = 8;
 let lastParentActivityTime = 0;
 let nextIdleActionTime = 10;
 let waveUntil = 0;
+let smileSpikeUntil = 0;
 
 function resetParentIdle() {
   if (clock) {
@@ -750,11 +751,14 @@ function triggerIdleChildAction() {
       text = "*sobs* I hate when you just stand there and don't say anything...";
     }
   } else if (tr > 55 && vol < 45) {
-    triggerReaction("happy");
+    if (Math.random() < 0.35) {
+      triggerReaction("happy");
+      smileSpikeUntil = clock.getElapsedTime() + 3.0;
+    }
     waveUntil = clock.getElapsedTime() + 4.5;
     const lines = [
       "*waves hand* Hellooo? Are we still playing?",
-      "*giggles and waves* What are we doing now?",
+      "*waves* What are we doing now?",
       "*waves* Look at me! Pay attention!"
     ];
     text = lines[Math.floor(Math.random() * lines.length)];
@@ -2805,10 +2809,11 @@ function updateFrame(dt, t) {
     tSurp *= rk; tAa *= rk;
   } else if (attended) {
     if (goodMood) {
-      // she looks up at you and grins, giggling now and then
-      tH = 0.95; tS = 0; tA = 0; tAa = 0.14;
+      tH = t < smileSpikeUntil ? 0.92 : 0.35;
+      tS = 0; tA = 0; tAa = 0.14;
       if (!walking && t > nextGiggleAt) {
-        nextGiggleAt = t + 4.5 + rnd(Math.floor(t)) * 5;
+        nextGiggleAt = t + 25 + rnd(Math.floor(t)) * 35;
+        smileSpikeUntil = t + 3.0;
         const ac = ensureAudio();
         if (ac) childGiggle(ac, ac.currentTime);
       }
