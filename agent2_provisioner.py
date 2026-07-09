@@ -49,6 +49,7 @@ def provision(session_id, parent_id=None, scheduled_time=None):
     parent_state["trust"] = baseline["trust"]
     parent_state["temperament"] = baseline["temperament"]
     parent_state["consecutive_mistreatments"] = 0
+    parent_state["child_age"] = session.get("child_age", 5)
     database.save_state(parent_id, parent_state)
 
     # 3) instantiate: snapshot the pre-loaded state and flip the environment live
