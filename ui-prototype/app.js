@@ -2408,8 +2408,8 @@ function syncUi() {
   ageBand.textContent = state.band;
   moodEl.textContent = state.mood;
   childText.textContent = state.childLine;
-  timelineFill.style.height = `${progress}%`;
-  timelineMarker.style.bottom = `${progress}%`;
+  timelineFill.style.width = `${progress}%`;
+  timelineMarker.style.left = `${progress}%`;
   renderStats();
   updateChildLook();
 }
