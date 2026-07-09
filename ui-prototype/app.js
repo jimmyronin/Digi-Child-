@@ -716,13 +716,13 @@ const expr = { happy: 0.2, sad: 0, angry: 0, surprised: 0, aa: 0 };
 let nextGiggleAt = 8;
 
 let lastParentActivityTime = 0;
-let nextIdleActionTime = 25;
+let nextIdleActionTime = 10;
 let waveUntil = 0;
 
 function resetParentIdle() {
   if (clock) {
     lastParentActivityTime = clock.getElapsedTime();
-    nextIdleActionTime = lastParentActivityTime + 25 + Math.random() * 15;
+    nextIdleActionTime = lastParentActivityTime + 10 + Math.random() * 5;
   }
 }
 window.addEventListener("mousemove", resetParentIdle);
@@ -2986,7 +2986,7 @@ function animate() {
 
   if (t > nextIdleActionTime) {
     triggerIdleChildAction();
-    nextIdleActionTime = t + 25 + Math.random() * 15;
+    nextIdleActionTime = t + 10 + Math.random() * 5;
   }
 
   updateFrame(dt, t);
