@@ -2353,12 +2353,30 @@ function hits(x, z) {
 
 function updateMovement(dt) {
   if (!current) return;
+
+  // Smooth LERP camera glide if a target is set
+  if (player.targetX !== undefined) {
+    player.x += (player.targetX - player.x) * Math.min(1, dt * 3.5);
+    player.z += (player.targetZ - player.z) * Math.min(1, dt * 3.5);
+    let diff = player.targetYaw - player.yaw;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    player.yaw += diff * Math.min(1, dt * 3.5);
+    
+    if (Math.hypot(player.targetX - player.x, player.targetZ - player.z) < 0.05 && Math.abs(diff) < 0.05) {
+      player.x = player.targetX;
+      player.z = player.targetZ;
+      player.yaw = player.targetYaw;
+      player.targetX = undefined;
+    }
+  }
+
   let moving = false;
   if (current.canMove && document.activeElement !== input) {
     const f = (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0);
     const s = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
     if (f || s) {
       moving = true;
+      player.targetX = undefined; // Cancel active transition if user inputs movement
       const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 4.6 : 2.9;
       const norm = Math.hypot(f, s);
       const fwdX = -Math.sin(player.yaw) * (f / norm);
@@ -2532,7 +2550,71 @@ async function handleSubmit(event) {
   }
   state.mood = result.mood;
   state.childLine = result.childLine;
+  syncLocationToChildLine(result.childLine);
   syncUi();
+}
+
+function syncLocationToChildLine(childLine) {
+  if (state.location !== "home" || !current) return;
+  
+  const text = childLine.toLowerCase();
+  
+  const homeRooms = {
+    bedroom: {
+      anchor: { x: 5.6, z: -2.45, yaw: Math.PI * 0.5, pose: "sit" },
+      spawn: { x: 4.6, z: -2.45, yaw: Math.PI * 0.5 },
+      keywords: ["bedroom", "my room", "my bed", "my desk", "my computer", "playroom", "study", "pc", "sleeping", "sleep", "my dresser", "dresser"]
+    },
+    bathroom: {
+      anchor: { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" },
+      spawn: { x: 2.48, z: 4.2, yaw: 0 },
+      keywords: ["bathroom", "sink", "mirror", "wash", "toilet", "shower", "teeth", "brushing", "towel", "toilet paper"]
+    },
+    kitchen: {
+      anchor: { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" },
+      spawn: { x: -2.05, z: -3.1, yaw: -Math.PI * 0.5 },
+      keywords: ["kitchen", "dining", "table", "fridge", "refrigerator", "eat", "cereal", "breakfast", "dinner", "lunch", "plate", "food", "cooking", "snack", "cookie", "cookies"]
+    },
+    living: {
+      anchor: { x: -3.0, z: 2.7, yaw: Math.PI * 0.05, pose: "stand" },
+      spawn: { x: -4.4, z: 4.5, yaw: -0.5 },
+      keywords: ["living room", "livingroom", "couch", "sofa", "television", "tv", "rug", "cushion", "pillow", "play corner", "lego", "legos", "toy", "toys", "swing", "outside"]
+    }
+  };
+
+  let matchedRoom = null;
+  for (const roomKey in homeRooms) {
+    const room = homeRooms[roomKey];
+    if (room.keywords.some(keyword => text.includes(keyword))) {
+      matchedRoom = room;
+      break;
+    }
+  }
+
+  if (matchedRoom) {
+    // If she talks about legos/toys in living room, seat her on the floor cushion!
+    if (matchedRoom === homeRooms.living && (text.includes("lego") || text.includes("toy"))) {
+      matchedRoom.anchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+    }
+    
+    console.log("Dynamically transitioning child and parent viewpoint to:", matchedRoom);
+    // Update child placement anchor
+    locationDefs.home.childAnchor = matchedRoom.anchor;
+    
+    // Set LERP targets for smooth parent camera glide
+    player.targetX = matchedRoom.spawn.x;
+    player.targetZ = matchedRoom.spawn.z;
+    player.targetYaw = matchedRoom.spawn.yaw;
+    
+    // Refresh child placement immediately in world space
+    placeChild();
+    if (current && current.aimAtChild !== false) {
+      const a = current.childAnchor;
+      const headY = child.position.y + vrmHeight * 0.92;
+      const dist = Math.max(0.6, Math.hypot(a.x - player.x, a.z - player.z));
+      player.pitch = THREE.MathUtils.clamp(Math.atan2(headY - current.eye, dist) * 0.85, -0.6, 0.3);
+    }
+  }
 }
 
 let sessionParentId = "mira";
