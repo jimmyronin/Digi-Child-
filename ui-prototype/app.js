@@ -3366,22 +3366,22 @@ function initClinicianHub() {
             <div class="analytics-stat-card">
               <span class="label">Total Evaluated Cases</span>
               <div class="val">14 Cases</div>
-              <div class="trend" style="color:var(--teal)">↑ +18% this month</div>
+              <div class="trend text-green">↑ +18% this month</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Avg De-escalation Rate</span>
               <div class="val">91.4%</div>
-              <div class="trend" style="color:var(--teal)">↑ +2.1% improvement</div>
+              <div class="trend text-green">↑ +2.1% improvement</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Transgression Incidents</span>
               <div class="val">1 Case</div>
-              <div class="trend" style="color:#ef4444">↓ -50% decline</div>
+              <div class="trend text-red">↓ -50% decline</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Active Sandboxes</span>
               <div class="val">3 Live</div>
-              <div class="trend" style="color:var(--teal)">● Stable performance</div>
+              <div class="trend text-green">● Stable performance</div>
             </div>
           </div>
 
@@ -3442,21 +3442,21 @@ function initClinicianHub() {
                     <td style="padding: 6px 4px;">Child (Age 5)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">88.5%</td>
-                    <td style="padding: 6px 4px;"><span style="color: var(--teal); background: rgba(23,143,134,0.15); padding: 2px 6px; border-radius: 4px;">✅ Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#b88231aa</td>
                     <td style="padding: 6px 4px;">Teenager (Age 11)</td>
                     <td style="padding: 6px 4px; color: #94a3b8">Withdrawn</td>
                     <td style="padding: 6px 4px; font-weight: bold;">92.0%</td>
-                    <td style="padding: 6px 4px;"><span style="color: var(--teal); background: rgba(23,143,134,0.15); padding: 2px 6px; border-radius: 4px;">✅ Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#e390ff45</td>
                     <td style="padding: 6px 4px;">Adult (Age 15)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">74.2%</td>
-                    <td style="padding: 6px 4px;"><span style="color: #ef4444; background: rgba(239,68,68,0.15); padding: 2px 6px; border-radius: 4px;">⚠️ Intervention</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-red">⚠️ Intervention</span></td>
                   </tr>
                 </tbody>
               </table>
