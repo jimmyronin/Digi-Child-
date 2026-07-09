@@ -832,7 +832,7 @@ body.is-debug-view .crosshair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .hub-column {
@@ -900,7 +900,7 @@ body.is-debug-view .crosshair {
   border-color: var(--teal);
 }
 
-.clinician-hub button {
+.clinician-hub button:not(.approve-pill) {
   width: 100%;
   padding: 12px;
   background: var(--teal);
@@ -915,7 +915,7 @@ body.is-debug-view .crosshair {
   letter-spacing: 0.5px;
 }
 
-.clinician-hub button:hover {
+.clinician-hub button:not(.approve-pill):hover {
   background: #1cb5a9;
   transform: translateY(-1px);
 }
@@ -964,6 +964,8 @@ body.is-debug-view .crosshair {
   padding: 16px;
   margin-bottom: 16px;
   animation: pulse-border 2s infinite alternate;
+  max-height: 480px;
+  overflow-y: auto;
 }
 
 @keyframes pulse-border {
@@ -1007,7 +1009,7 @@ body.is-debug-view .crosshair {
   border-radius: 6px;
   padding: 10px;
   margin-bottom: 12px;
-  max-height: 120px;
+  max-height: 260px;
   overflow-y: auto;
 }
 
