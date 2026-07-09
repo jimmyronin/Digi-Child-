@@ -2477,10 +2477,16 @@ function mockGovernor({ message, values, band, location }) {
   for (const [k, v] of Object.entries(touch)) next[k] = clamp(next[k] + v);
 
   let mood = "curious";
-  if (next.volatility > 58) mood = "guarded";
-  else if (next.trust > 76 && next.security > 70) mood = "open";
-  else if (next.logic > 65) mood = "analytical";
-  else if (next.autonomy > 55) mood = "testing boundaries";
+  if (harsh) mood = "guarded";
+  else if (supportive) mood = "open";
+  else if (logic) mood = "analytical";
+  else if (autonomy) mood = "testing boundaries";
+  else {
+    if (next.volatility > 58) mood = "guarded";
+    else if (next.trust > 76 && next.security > 70) mood = "open";
+    else if (next.logic > 65) mood = "analytical";
+    else if (next.autonomy > 55) mood = "testing boundaries";
+  }
 
   const childLine = chooseLine(mood, band);
   return Promise.resolve({ values: next, mood, childLine });
