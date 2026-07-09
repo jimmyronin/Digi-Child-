@@ -715,6 +715,63 @@ function detectReaction(message, result) {
 const expr = { happy: 0.2, sad: 0, angry: 0, surprised: 0, aa: 0 };
 let nextGiggleAt = 8;
 
+let lastParentActivityTime = 0;
+let nextIdleActionTime = 25;
+let waveUntil = 0;
+
+function resetParentIdle() {
+  if (clock) {
+    lastParentActivityTime = clock.getElapsedTime();
+    nextIdleActionTime = lastParentActivityTime + 25 + Math.random() * 15;
+  }
+}
+window.addEventListener("mousemove", resetParentIdle);
+window.addEventListener("keydown", resetParentIdle);
+window.addEventListener("click", resetParentIdle);
+
+function triggerIdleChildAction() {
+  const dx = camWorld.x - childWorld.x;
+  const dz = camWorld.z - childWorld.z;
+  const d = Math.hypot(dx, dz) || 0.1;
+  
+  childTarget.x = camWorld.x - (dx / d) * 1.1;
+  childTarget.z = camWorld.z - (dz / d) * 1.1;
+  
+  let text = "";
+  const vol = state.values.volatility;
+  const tr = state.values.trust;
+  
+  if (vol > 62) {
+    const choice = Math.random() > 0.5 ? "cry" : "scream";
+    triggerReaction(choice);
+    if (choice === "scream") {
+      text = "*shouts* Why are you ignoring me?! Pay attention!";
+    } else {
+      text = "*sobs* I hate when you just stand there and don't say anything...";
+    }
+  } else if (tr > 55 && vol < 45) {
+    triggerReaction("happy");
+    waveUntil = clock.getElapsedTime() + 4.5;
+    const lines = [
+      "*waves hand* Hellooo? Are we still playing?",
+      "*giggles and waves* What are we doing now?",
+      "*waves* Look at me! Pay attention!"
+    ];
+    text = lines[Math.floor(Math.random() * lines.length)];
+  } else {
+    triggerReaction("upset");
+    const lines = [
+      "Why are you just standing there staring?",
+      "I'm bored. Let's do something...",
+      "*looks down* Are you checking your phone again?"
+    ];
+    text = lines[Math.floor(Math.random() * lines.length)];
+  }
+  
+  state.childLine = text;
+  syncUi();
+}
+
 function miraStage() {
   let base = 0;
   if (state.band === "Age 10-12") {
@@ -2899,8 +2956,13 @@ function updateFrame(dt, t) {
       leftUpperArm.rotation.x = Math.sin(t * 1.5 + i) * 0.05;
     }
     if (rightUpperArm) {
-      rightUpperArm.rotation.z = 1.32 - Math.sin(t * 2.2 + i * 2.5) * 0.06;
-      rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
+      if (t < waveUntil) {
+        rightUpperArm.rotation.z = 0.4 + Math.sin(t * 8) * 0.3;
+        rightUpperArm.rotation.x = -0.5;
+      } else {
+        rightUpperArm.rotation.z = 1.32 - Math.sin(t * 2.2 + i * 2.5) * 0.06;
+        rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
+      }
     }
     
     fv.update(dt);
@@ -2921,6 +2983,12 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   if (!current) return;
+
+  if (t > nextIdleActionTime) {
+    triggerIdleChildAction();
+    nextIdleActionTime = t + 25 + Math.random() * 15;
+  }
+
   updateFrame(dt, t);
   composer.render();
 }
