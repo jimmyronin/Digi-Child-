@@ -1323,10 +1323,23 @@ body.is-debug-view .crosshair {
   font-weight: 700;
   letter-spacing: 0.3px;
 }
-.role-badge.clinician { background: rgba(23, 143, 134, 0.2); color: var(--teal); }
-.role-badge.parent { background: rgba(217, 134, 50, 0.2); color: var(--warm); }
-.role-badge.monitor { background: rgba(244, 241, 234, 0.15); color: #F4F1EA; }
-.slot-card .slot-info .slot-time {
+.role-badge.clinician {
+  background: rgba(23, 143, 134, 0.15);
+  border-color: rgba(23, 143, 134, 0.4);
+  color: var(--teal);
+  text-shadow: 0 0 4px rgba(23, 143, 134, 0.5);
+}
+.role-badge.parent {
+  background: rgba(217, 134, 50, 0.15);
+  border-color: rgba(217, 134, 50, 0.4);
+  color: var(--warm);
+  text-shadow: 0 0 4px rgba(217, 134, 50, 0.5);
+}
+.role-badge.monitor {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}.slot-card .slot-info .slot-time {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 2px;
@@ -1471,15 +1484,31 @@ body.is-debug-view .crosshair {
 }
 
 .session-list-item .status.live {
-  background: var(--leaf);
+  background: #2ece71;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(46, 206, 113, 0.6);
+  font-weight: 700;
 }
 
 .session-list-item .status.live_paused {
   background: var(--warm);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(217, 134, 50, 0.6);
+  font-weight: 700;
 }
 
 .session-list-item .status.scheduled {
-  background: var(--blue);
+  background: #3b82f6;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+  font-weight: 700;
+}
+
+.session-list-item .status.awaiting_approval {
+  background: var(--warm);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(217, 134, 50, 0.6);
+  font-weight: 700;
 }
 
 .session-list-item .btn-action {
@@ -1584,7 +1613,19 @@ body.is-debug-view .crosshair {
 }
 
 .live-metrics-panel .metric-row strong {
-  color: var(--teal);
+  font-weight: 700;
+}
+#cMetricTrust {
+  color: #2dd4bf !important;
+  text-shadow: 0 0 5px rgba(45, 212, 191, 0.4), 0 0 1px rgba(45, 212, 191, 0.6);
+}
+#cMetricVol {
+  color: #f87171 !important;
+  text-shadow: 0 0 5px rgba(248, 113, 113, 0.4), 0 0 1px rgba(248, 113, 113, 0.6);
+}
+#cMetricMistreat {
+  color: #f87171 !important;
+  text-shadow: 0 0 5px rgba(248, 113, 113, 0.4), 0 0 1px rgba(248, 113, 113, 0.6);
 }
 
 .audit-log-box {
