@@ -3124,6 +3124,16 @@ async function checkSessionStatus() {
       if (data.status === "live" || data.status === "live_paused") {
         sessionParentId = data.status === "live" ? "parent_test" : sessionParentId;
         Object.assign(state.values, data.metrics);
+        if (data.metrics && typeof data.metrics.child_age === "number") {
+          state.age = data.metrics.child_age;
+          if (state.age <= 7) {
+            state.band = "Age 5-7";
+          } else if (state.age <= 12) {
+            state.band = "Age 10-12";
+          } else {
+            state.band = "Age 14-16";
+          }
+        }
         syncUi();
       }
     }
@@ -3204,6 +3214,13 @@ function initClinicianHub() {
         <option value="oppositional">Oppositional (Trust: 40, Volatility: 75)</option>
         <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
       </select>
+
+      <label>Child Age / Developmental Stage</label>
+      <select id="cChildAge">
+        <option value="5">Child (Age 5-7, Year 05)</option>
+        <option value="11">Teenager (Age 10-12, Year 11)</option>
+        <option value="15">Adult (Age 14-16, Year 15)</option>
+      </select>
       
       <button id="cCreateBtn">Generate Outreach & Book</button>
     </div>
@@ -3261,7 +3278,8 @@ function initClinicianHub() {
           monitor_id: document.querySelector("#cMonitorId").value,
           clinician_avail: clinicianAvail,
           monitor_avail: monitorAvail,
-          temperament_profile: document.querySelector("#cTemperamentProfile").value
+          temperament_profile: document.querySelector("#cTemperamentProfile").value,
+          child_age: parseInt(document.querySelector("#cChildAge").value, 10)
         })
       });
       const data = await res.json();
