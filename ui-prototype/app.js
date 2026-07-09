@@ -3586,6 +3586,60 @@ function initClinicianHub() {
     }
   });
 
+  // Convert native selects to glassmorphic dropdowns
+  const convertSelectToCustom = (selectId) => {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    select.style.display = "none";
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-select-wrapper";
+    const trigger = document.createElement("div");
+    trigger.className = "custom-select-trigger";
+    const triggerText = document.createElement("span");
+    const selectedOption = select.options[select.selectedIndex];
+    triggerText.textContent = selectedOption ? selectedOption.textContent : "";
+    trigger.appendChild(triggerText);
+    const arrow = document.createElement("div");
+    arrow.className = "arrow";
+    trigger.appendChild(arrow);
+    wrapper.appendChild(trigger);
+    const optionsContainer = document.createElement("div");
+    optionsContainer.className = "custom-options-container";
+    Array.from(select.options).forEach((opt, idx) => {
+      const optDiv = document.createElement("div");
+      optDiv.className = "custom-option";
+      if (idx === select.selectedIndex) optDiv.classList.add("selected");
+      optDiv.textContent = opt.textContent;
+      optDiv.dataset.value = opt.value;
+      optDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        optionsContainer.querySelectorAll(".custom-option").forEach(el => el.classList.remove("selected"));
+        optDiv.classList.add("selected");
+        select.value = opt.value;
+        select.dispatchEvent(new Event("change"));
+        triggerText.textContent = opt.textContent;
+        wrapper.classList.remove("open");
+      });
+      optionsContainer.appendChild(optDiv);
+    });
+    wrapper.appendChild(optionsContainer);
+    select.parentNode.insertBefore(wrapper, select.nextSibling);
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".custom-select-wrapper").forEach(w => {
+        if (w !== wrapper) w.classList.remove("open");
+      });
+      wrapper.classList.toggle("open");
+    });
+  };
+
+  convertSelectToCustom("cTemperamentProfile");
+  convertSelectToCustom("cChildAge");
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".custom-select-wrapper").forEach(w => w.classList.remove("open"));
+  });
+
   // Start polling session list
   setInterval(refreshSessionList, 2000);
   refreshSessionList();
