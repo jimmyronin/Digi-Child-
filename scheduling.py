@@ -65,5 +65,59 @@ def find_overlap(parent_avail, clinician_avail, monitor_avail, duration_hours=1)
             "start": slot_start.isoformat(),
             "end": slot_end.isoformat()
         }
-    
+
     return None
+
+
+def _intersect(list1, list2, min_duration):
+    """Intersect two lists of {start,end} interval dicts, returning datetime intervals."""
+    out = []
+    for a in list1:
+        try:
+            s1, e1 = parse_iso(a["start"]), parse_iso(a["end"])
+        except Exception:
+            continue
+        for b in list2:
+            try:
+                s2, e2 = parse_iso(b["start"]), parse_iso(b["end"])
+            except Exception:
+                continue
+            os_, oe = max(s1, s2), min(e1, e2)
+            if oe - os_ >= min_duration:
+                out.append({"start": os_, "end": oe})
+    return out
+
+
+def calculate_conflict_free_slots(parent_avail, clinician_avail, monitor_avail,
+                                  duration_hours=1, max_slots=3):
+    """
+    Agent 1's slot calculator. Intersects the parent, clinician, and court-monitor
+    windows and returns up to `max_slots` chronological, conflict-free options,
+    each exactly `duration_hours` long. Each option: {start, end, label}.
+    """
+    min_duration = timedelta(hours=duration_hours)
+    pcm = _intersect(_intersect(parent_avail, clinician_avail, min_duration),
+                     monitor_avail, min_duration)
+    # earliest first, de-duplicated by start time
+    pcm.sort(key=lambda w: w["start"])
+    slots, seen = [], set()
+    for window in pcm:
+        start = window["start"]
+        # anchor to the top of the hour for clean invites
+        if start.minute or start.second:
+            start = start.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        end = start + min_duration
+        if end > window["end"]:
+            continue
+        key = start.isoformat()
+        if key in seen:
+            continue
+        seen.add(key)
+        slots.append({
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "label": start.strftime("%a %b %d, %I:%M %p").replace(" 0", " "),
+        })
+        if len(slots) >= max_slots:
+            break
+    return slots

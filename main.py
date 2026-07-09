@@ -10,6 +10,9 @@ import sys
 import json
 import local_ai
 import claude_ai
+from typing import Optional
+import agent1_coordinator as agent1
+import agent2_provisioner as agent2
 
 # Import logic from the existing scripts
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -208,6 +211,37 @@ async def api_submit_parent_availability(req: ParentAvailReq):
 @app.get("/api/schedule/sessions")
 async def api_list_sessions():
     return {"sessions": database.list_all_sessions()}
+
+# ======================================================================
+#  Two-agent orchestration (professor's architecture)
+#   Agent 1: Intake & Logistics Coordinator  ->  human-in-the-loop card
+#   Agent 2: Simulation Sandbox Provisioner   ->  auto-handoff on approval
+# ======================================================================
+class IntakeReq(BaseModel):
+    session_id: str
+    raw_text: str
+    window_days: int = 14
+
+class DecisionReq(BaseModel):
+    session_id: str
+    approve: bool
+    chosen_slot: Optional[dict] = None
+
+@app.post("/api/agent1/intake")
+async def api_agent1_intake(req: IntakeReq):
+    """Agent 1: parse chaotic parent text -> pull clinician/monitor streams ->
+    calculate 2-3 conflict-free slots -> return the approval card. Writes no
+    booking and dispatches no invites (the human-in-the-loop checkpoint)."""
+    return agent1.propose(req.session_id, req.raw_text, window_days=req.window_days)
+
+@app.post("/api/agent1/decision")
+async def api_agent1_decision(req: DecisionReq):
+    """Clinical Case Manager's decision. Approve -> Agent 1 books the slot,
+    dispatches invites, and hands off to Agent 2 which provisions the sandbox.
+    Reject -> clean termination with zero side effects."""
+    if req.approve:
+        return agent1.confirm(req.session_id, req.chosen_slot)
+    return agent1.reject(req.session_id)
 
 @app.post("/api/session/control")
 async def api_control_session(req: SessionControlReq):

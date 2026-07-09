@@ -183,3 +183,60 @@ Respond as Mira reacting in this moment, consistent with her age, state, and the
         "mood": data.get("mood", ""),
         "source": "claude",
     }
+
+
+# ---------------------------------------------------------------------------
+# Agent 1 tool: parse chaotic parent availability text into ISO windows
+# ---------------------------------------------------------------------------
+_AVAIL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "windows": {
+            "type": "array",
+            "description": "Concrete availability windows the parent gave, as ISO 8601 datetimes.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "ISO 8601 start, e.g. 2026-07-14T09:00:00"},
+                    "end": {"type": "string", "description": "ISO 8601 end"},
+                    "label": {"type": "string", "description": "Short human label, e.g. 'Tue 9am-12pm'"},
+                },
+                "required": ["start", "end", "label"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["windows"],
+    "additionalProperties": False,
+}
+
+
+def parse_availability(raw_text, now_iso):
+    """
+    Agent 1's Claude-backed availability parser: chaotic free text -> ISO windows.
+    Returns a list of {start, end, label}. Raises on any failure so the caller
+    can fall back to the regex parser (demo mode).
+    """
+    client = _get_client()
+    system = (
+        "You convert a parent's free-text availability into concrete ISO 8601 datetime windows "
+        "for scheduling a clinical evaluation. Rules:\n"
+        f"- The current datetime is {now_iso}. Resolve every relative reference against it "
+        "('tomorrow', 'next Tuesday', 'this weekend').\n"
+        "- Only return windows in the future.\n"
+        "- Named parts of day (unless the parent gives explicit times): morning = 09:00-12:00, "
+        "afternoon = 12:00-17:00, evening = 17:00-20:00.\n"
+        "- 'after 9am' with no end -> 09:00-12:00; 'between 1 and 3pm' -> 13:00-15:00.\n"
+        "- Local time, no timezone offset in the output."
+    )
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=700,
+        thinking={"type": "disabled"},
+        system=system,
+        messages=[{"role": "user", "content": f'Parent availability message:\n"{raw_text}"'}],
+        output_config={"format": {"type": "json_schema", "schema": _AVAIL_SCHEMA}},
+    )
+    text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "")
+    data = json.loads(text)
+    return data.get("windows", [])
