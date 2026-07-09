@@ -3318,13 +3318,30 @@ function initClinicianHub() {
                 </div>
                 <button id="cDownloadReportBtn" class="btn-secondary" style="margin-bottom:12px;">Download Session Report</button>
                 
-                <!-- Metrics -->
+                <!-- Live Progress Gauges -->
                 <div class="live-metrics-panel">
-                  <label>Live Metrics</label>
-                  <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
-                  <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
-                  <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
-                  <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+                  <label>Live Metrics & Telemetry</label>
+                  <div class="metric-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                    <span>Trust Level: <strong id="cMetricTrust">0</strong>%</span>
+                    <div class="live-metric-bar"><div id="cMetricTrustFill" class="live-metric-fill" style="width: 0%; background: var(--teal);"></div></div>
+                  </div>
+                  <div class="metric-row" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 10px;">
+                    <span>Volatility: <strong id="cMetricVol">0</strong>%</span>
+                    <div class="live-metric-bar"><div id="cMetricVolFill" class="live-metric-fill" style="width: 0%; background: var(--warm);"></div></div>
+                  </div>
+                  <div class="metric-row" style="margin-top: 12px; justify-content: space-between; font-size:11px;">
+                    <span>Mistreatments: <strong id="cMetricMistreat" style="color: #ef4444;">0</strong></span>
+                    <span>Temperament: <strong id="cMetricTemp" style="text-transform: uppercase;">neutral</strong></span>
+                  </div>
+                </div>
+
+                <!-- Live De-Escalation Advisor Feed -->
+                <div class="section" id="cAdviceSection" style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px;">
+                  <span class="section-title" style="font-size: 11px; margin-bottom: 6px;">Live Clinical Advisor</span>
+                  <div class="clinical-tip" id="cLiveAdviceBox" style="background: rgba(23, 143, 134, 0.06); border-color: rgba(23, 143, 134, 0.2); margin-bottom: 0;">
+                    <span class="icon" id="cLiveAdviceIcon">💡</span>
+                    <p id="cLiveAdviceText" style="font-size: 11px;">Awaiting active simulation message...</p>
+                  </div>
                 </div>
               </div>
               <div id="cNoMonitorPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
@@ -3402,6 +3419,47 @@ function initClinicianHub() {
                   <p><strong>Case Checkpoint:</strong> Ensure the Court Monitor's active availability streams are checked prior to finalizing the scheduled slot.</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Recent outcomes evaluation log table -->
+          <div class="section" style="margin-top: 16px;">
+            <span class="section-title">Recent Evaluation Logs</span>
+            <div style="overflow-x: auto;">
+              <table class="analytics-table" style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px;">
+                <thead>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; color: rgba(255,255,255,0.5);">
+                    <th style="padding: 8px 4px;">Case ID</th>
+                    <th style="padding: 8px 4px;">Stage</th>
+                    <th style="padding: 8px 4px;">Temperament</th>
+                    <th style="padding: 8px 4px;">De-escalation Rate</th>
+                    <th style="padding: 8px 4px;">Outcome</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 6px 4px; font-family: monospace;">#f19a2e12</td>
+                    <td style="padding: 6px 4px;">Child (Age 5)</td>
+                    <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
+                    <td style="padding: 6px 4px; font-weight: bold;">88.5%</td>
+                    <td style="padding: 6px 4px;"><span style="color: var(--teal); background: rgba(23,143,134,0.15); padding: 2px 6px; border-radius: 4px;">✅ Certified</span></td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 6px 4px; font-family: monospace;">#b88231aa</td>
+                    <td style="padding: 6px 4px;">Teenager (Age 11)</td>
+                    <td style="padding: 6px 4px; color: #94a3b8">Withdrawn</td>
+                    <td style="padding: 6px 4px; font-weight: bold;">92.0%</td>
+                    <td style="padding: 6px 4px;"><span style="color: var(--teal); background: rgba(23,143,134,0.15); padding: 2px 6px; border-radius: 4px;">✅ Certified</span></td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 6px 4px; font-family: monospace;">#e390ff45</td>
+                    <td style="padding: 6px 4px;">Adult (Age 15)</td>
+                    <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
+                    <td style="padding: 6px 4px; font-weight: bold;">74.2%</td>
+                    <td style="padding: 6px 4px;"><span style="color: #ef4444; background: rgba(239,68,68,0.15); padding: 2px 6px; border-radius: 4px;">⚠️ Intervention</span></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -3639,6 +3697,35 @@ window.__selectSession = async (sid) => {
       document.querySelector("#cMetricVol").textContent = data.metrics.volatility;
       document.querySelector("#cMetricMistreat").textContent = data.metrics.consecutive_mistreatments || 0;
       document.querySelector("#cMetricTemp").textContent = data.metrics.temperament;
+
+      // Update progress bar fills
+      const trustFill = document.querySelector("#cMetricTrustFill");
+      if (trustFill) trustFill.style.width = `${data.metrics.trust}%`;
+      const volFill = document.querySelector("#cMetricVolFill");
+      if (volFill) volFill.style.width = `${data.metrics.volatility}%`;
+
+      // Update live de-escalation advisor tips
+      const adviceText = document.querySelector("#cLiveAdviceText");
+      const adviceBox = document.querySelector("#cLiveAdviceBox");
+      const adviceIcon = document.querySelector("#cLiveAdviceIcon");
+      if (adviceText && adviceBox && adviceIcon) {
+        if (data.metrics.temperament === "transgressed") {
+          adviceText.innerHTML = "<strong>⚠️ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
+          adviceBox.style.background = "rgba(239, 68, 68, 0.08)";
+          adviceBox.style.borderColor = "rgba(239, 68, 68, 0.25)";
+          adviceIcon.textContent = "⚠️";
+        } else if (data.metrics.temperament === "secure") {
+          adviceText.innerHTML = "<strong>✅ SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
+          adviceBox.style.background = "rgba(34, 197, 94, 0.08)";
+          adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
+          adviceIcon.textContent = "✅";
+        } else {
+          adviceText.innerHTML = "<strong>💡 NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
+          adviceBox.style.background = "rgba(23, 143, 134, 0.08)";
+          adviceBox.style.borderColor = "rgba(23, 143, 134, 0.25)";
+          adviceIcon.textContent = "💡";
+        }
+      }
       
       // Update audit logs
       const logBox = document.querySelector("#cAuditLogBox");
