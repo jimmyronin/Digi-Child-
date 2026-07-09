@@ -809,7 +809,8 @@ body.is-debug-view .crosshair {
 .clinician-hub h2 {
   font-size: 20px;
   margin: 0;
-  color: var(--teal);
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(23, 143, 134, 0.4);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 800;
@@ -877,8 +878,8 @@ body.is-debug-view .crosshair {
 }
 
 .sidebar-tab-btn.active {
-  background: rgba(23, 143, 134, 0.12);
-  color: var(--teal);
+  background: rgba(23, 143, 134, 0.15);
+  color: #ffffff;
 }
 
 .sidebar-tab-btn.active::after {
@@ -1100,7 +1101,9 @@ body.is-debug-view .crosshair {
 .clinician-hub .section-title {
   font-size: 12px;
   font-weight: 800;
-  color: var(--teal);
+  color: #ffffff;
+  border-left: 3px solid var(--teal);
+  padding-left: 8px;
   text-transform: uppercase;
   margin-bottom: 12px;
   letter-spacing: 0.5px;
