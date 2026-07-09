@@ -1123,11 +1123,11 @@ body.is-debug-view .crosshair {
   letter-spacing: 0.5px;
 }
 
-.clinician-hub input, .clinician-hub textarea, .clinician-hub select {
+.clinician-hub input, .clinician-hub textarea {
   width: 100%;
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   color: #fff;
   margin-bottom: 12px;
@@ -1137,8 +1137,36 @@ body.is-debug-view .crosshair {
   transition: border-color 0.2s;
 }
 
+.clinician-hub select {
+  width: 100%;
+  padding: 10px 32px 10px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  margin-bottom: 12px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.75)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  cursor: pointer;
+}
+
+.clinician-hub select option {
+  background-color: #14181c !important;
+  color: #ffffff !important;
+}
+
 .clinician-hub input:focus, .clinician-hub textarea:focus, .clinician-hub select:focus {
   border-color: var(--teal);
+  box-shadow: 0 0 8px rgba(23, 143, 134, 0.3);
 }
 
 .clinician-hub button:not(.approve-pill) {
