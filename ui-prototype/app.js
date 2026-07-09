@@ -3182,9 +3182,6 @@ function renderAvailabilityPortal() {
         msgEl.innerHTML = `Success! Session booked for:<br><strong>${result.match.start}</strong>`;
         setTimeout(() => {
           availabilityPortal.style.display = "none";
-          window.location.reload();
-        }, 3000);
-      } else {
         msgEl.textContent = "Availability submitted. Waiting for calendar match.";
       }
     } catch (e) {
@@ -3195,70 +3192,111 @@ function renderAvailabilityPortal() {
 
 function initClinicianHub() {
   if (sessionRole !== "clinician") return;
+  document.body.classList.add("clinician-mode");
   clinicianHub.style.display = "flex";
   
   // Render hub layout
   clinicianHub.innerHTML = `
-    <h2>Clinician Control Hub</h2>
+    <div class="clinician-hub-header">
+      <h2>Clinician Control Hub</h2>
+      <span class="clinician-badge">Case Manager Console</span>
+    </div>
     
-    <!-- Section 1: Create Session -->
-    <div class="section">
-      <label>New Session Setup</label>
-      <input type="text" id="cParentId" placeholder="Parent ID (e.g. parent_test)" value="parent_test" />
-      <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
-      <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
-      
-      <label>Child Personality Profile</label>
-      <select id="cTemperamentProfile">
-        <option value="cooperative">Cooperative (Trust: 80, Volatility: 10)</option>
-        <option value="oppositional">Oppositional (Trust: 40, Volatility: 75)</option>
-        <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
-      </select>
+    <div class="clinician-hub-body">
+      <!-- Left Column: Settings and Input -->
+      <div class="hub-column">
+        <div class="section">
+          <span class="section-title">New Session Setup</span>
+          
+          <label>Parent ID</label>
+          <input type="text" id="cParentId" placeholder="Parent ID" value="parent_test" />
+          
+          <label>Clinician ID</label>
+          <input type="text" id="cClinicianId" placeholder="Clinician ID" value="clinician_naquan" />
+          
+          <label>Court Monitor ID</label>
+          <input type="text" id="cMonitorId" placeholder="Court Monitor ID" value="monitor_jimmy" />
+          
+          <label>Child Personality Profile</label>
+          <select id="cTemperamentProfile">
+            <option value="cooperative">Cooperative (Trust: 80, Volatility: 10)</option>
+            <option value="oppositional" selected>Oppositional (Trust: 40, Volatility: 75)</option>
+            <option value="withdrawn">Withdrawn (Trust: 30, Volatility: 25)</option>
+          </select>
 
-      <label>Child Age / Developmental Stage</label>
-      <select id="cChildAge">
-        <option value="5">Child (Age 5-7, Year 05)</option>
-        <option value="11">Teenager (Age 10-12, Year 11)</option>
-        <option value="15">Adult (Age 14-16, Year 15)</option>
-      </select>
-      
-      <button id="cCreateBtn">Generate Outreach & Book</button>
-    </div>
+          <label>Child Age / Developmental Stage</label>
+          <select id="cChildAge">
+            <option value="5">Child (Age 5-7, Year 05)</option>
+            <option value="11">Teenager (Age 10-12, Year 11)</option>
+            <option value="15">Adult (Age 14-16, Year 15)</option>
+          </select>
+        </div>
 
-    <!-- Section 2: Session List -->
-    <div class="section">
-      <label>Session List & Status</label>
-      <div id="cSessionList">Loading sessions...</div>
-    </div>
-
-    <!-- Section 3: Live Session Controls -->
-    <div id="cLiveControls" class="section" style="display: none;">
-      <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
-      <button id="cPauseBtn" class="btn-secondary">Pause Simulation</button>
-      <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume Simulation</button>
-      <button id="cCompleteBtn" class="btn-danger">Complete Session</button>
-      <button id="cDownloadReportBtn" class="btn-secondary" style="margin-top: 10px;">Download Session Report</button>
-      
-      <!-- Metrics -->
-      <div class="live-metrics-panel">
-        <label>Live Metrics</label>
-        <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
-        <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
-        <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
-        <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+        <div class="section">
+          <span class="section-title">Parent Intake Raw Text</span>
+          <label>Availability Description</label>
+          <textarea id="cParentRawText" rows="4" placeholder="I can only make it next Tuesday morning after 9 AM or Thursday between 1 and 3 PM."></textarea>
+          
+          <button id="cProposeBtn">Propose Session (Agent 1 Intake)</button>
+        </div>
       </div>
 
-      <!-- History log -->
-      <div style="margin-top: 10px;">
-        <label>Interaction History</label>
-        <div id="cAuditLogBox" class="audit-log-box"></div>
+      <!-- Right Column: Verification, Decision & Actions -->
+      <div class="hub-column">
+        <!-- Agent 1 Intake Checkpoint Card -->
+        <div id="cAgent1Card" class="approval-card" style="display: none;"></div>
+
+        <!-- Agent 2 Provision Success Card -->
+        <div id="cAgent2Card" class="provision-card" style="display: none;"></div>
+
+        <!-- Section 2: Session List -->
+        <div class="section">
+          <span class="section-title">Session List & Status</span>
+          <div id="cSessionList">Loading sessions...</div>
+        </div>
+
+        <!-- Section 3: Live Session Controls -->
+        <div id="cLiveControls" class="section" style="display: none;">
+          <span class="section-title">Active Session Controls</span>
+          <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <button id="cPauseBtn" class="btn-secondary">Pause</button>
+            <button id="cResumeBtn" class="btn-secondary" style="display:none;">Resume</button>
+            <button id="cCompleteBtn" class="btn-danger">Complete</button>
+          </div>
+          <button id="cDownloadReportBtn" class="btn-secondary">Download Session Report</button>
+          
+          <!-- Metrics -->
+          <div class="live-metrics-panel">
+            <label>Live Metrics</label>
+            <div class="metric-row">Trust Level: <strong id="cMetricTrust">0</strong></div>
+            <div class="metric-row">Volatility: <strong id="cMetricVol">0</strong></div>
+            <div class="metric-row">Mistreatments: <strong id="cMetricMistreat">0</strong></div>
+            <div class="metric-row">Temperament: <strong id="cMetricTemp">neutral</strong></div>
+          </div>
+
+          <!-- History log -->
+          <div style="margin-top: 10px;">
+            <label>Interaction History</label>
+            <div id="cAuditLogBox" class="audit-log-box"></div>
+          </div>
+        </div>
       </div>
     </div>
   `;
 
-  // Bind Create Session
-  document.querySelector("#cCreateBtn").addEventListener("click", async () => {
-    // Generate pre-loaded mock clinician/monitor availability
+  // Bind Propose / Intake Click
+  document.querySelector("#cProposeBtn").addEventListener("click", async () => {
+    const proposeBtn = document.querySelector("#cProposeBtn");
+    const rawText = document.querySelector("#cParentRawText").value || "I can only make it next Tuesday morning after 9 AM or Thursday between 1 and 3 PM.";
+    
+    proposeBtn.disabled = true;
+    proposeBtn.textContent = "Processing Intake (Agent 1)...";
+    
+    // Clear previous cards
+    document.querySelector("#cAgent1Card").style.display = "none";
+    document.querySelector("#cAgent2Card").style.display = "none";
+
     const clinicianAvail = [
       { start: "2026-07-08T10:00:00", end: "2026-07-08T12:00:00" },
       { start: "2026-07-08T14:00:00", end: "2026-07-08T16:00:00" }
@@ -3269,7 +3307,8 @@ function initClinicianHub() {
     ];
 
     try {
-      const res = await fetch(`${API_BASE}/api/schedule/create`, {
+      // Step 1: Create the session
+      const createRes = await fetch(`${API_BASE}/api/schedule/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3282,11 +3321,28 @@ function initClinicianHub() {
           child_age: parseInt(document.querySelector("#cChildAge").value, 10)
         })
       });
-      const data = await res.json();
-      window.open(`http://${window.location.host}/?session=${data.sessionId}`, '_blank');
+      const createData = await createRes.json();
+      const sessionId = createData.sessionId;
+
+      // Step 2: Call Agent 1 Intake
+      const intakeRes = await fetch(`${API_BASE}/api/agent1/intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          raw_text: rawText
+        })
+      });
+      
+      const intakeData = await intakeRes.json();
+      renderAgent1ApprovalCard(sessionId, intakeData);
       refreshSessionList();
     } catch (e) {
       console.error(e);
+      alert("Error processing intake. Make sure uvicorn backend is running!");
+    } finally {
+      proposeBtn.disabled = false;
+      proposeBtn.textContent = "Propose Session (Agent 1 Intake)";
     }
   });
 
@@ -3415,6 +3471,128 @@ window.__selectSession = async (sid) => {
     console.error(e);
   }
 };
+
+function renderAgent1ApprovalCard(sessionId, data) {
+  const card = document.querySelector("#cAgent1Card");
+  if (!card) return;
+
+  card.style.display = "block";
+  
+  const slotsHtml = (data.proposedSlots || []).map((s, idx) => `
+    <div class="slot-option">
+      <input type="radio" name="chosenSlot" id="slot_${idx}" value='${JSON.stringify(s)}' ${idx === 0 ? "checked" : ""} />
+      <label for="slot_${idx}">${s.start.replace("T", " ")} to ${s.end.split("T")[1]}</label>
+    </div>
+  `).join("");
+
+  card.innerHTML = `
+    <h3><span class="icon">⚖️</span> Agent 1 Intake Checkpoint</h3>
+    <div class="card-summary-row">
+      <label>Parent Availability Summary</label>
+      <p>${data.parentAvailabilitySummary || "No description parsed"}</p>
+    </div>
+    <div class="card-summary-row">
+      <label>Data Streams Sources</label>
+      <p>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></p>
+    </div>
+    
+    <label>Select Conflict-Free Overlap Slot</label>
+    <div class="slot-selection-box">
+      ${slotsHtml || "<p style='font-size:11px;color:rgba(255,255,255,0.4);margin:0;'>No overlap slots found.</p>"}
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button id="cApproveIntakeBtn">Approve & Launch Agent 2</button>
+      <button id="cRejectIntakeBtn" class="btn-danger">Reject</button>
+    </div>
+  `;
+
+  // Bind Approval Action
+  document.querySelector("#cApproveIntakeBtn").addEventListener("click", async () => {
+    const approveBtn = document.querySelector("#cApproveIntakeBtn");
+    approveBtn.disabled = true;
+    approveBtn.textContent = "Approving...";
+
+    const checkedInput = document.querySelector("input[name='chosenSlot']:checked");
+    const chosenSlot = checkedInput ? JSON.parse(checkedInput.value) : null;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent1/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          approve: true,
+          chosen_slot: chosenSlot
+        })
+      });
+      const result = await res.json();
+      renderAgent2ProvisionCard(result);
+      card.style.display = "none";
+      refreshSessionList();
+    } catch (e) {
+      console.error(e);
+      alert("Error confirming booking.");
+    } finally {
+      approveBtn.disabled = false;
+      approveBtn.textContent = "Approve & Launch Agent 2";
+    }
+  });
+
+  // Bind Rejection Action
+  document.querySelector("#cRejectIntakeBtn").addEventListener("click", async () => {
+    const rejectBtn = document.querySelector("#cRejectIntakeBtn");
+    rejectBtn.disabled = true;
+    rejectBtn.textContent = "Rejecting...";
+
+    try {
+      await fetch(`${API_BASE}/api/agent1/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          approve: false
+        })
+      });
+      card.style.display = "none";
+      alert("Intake proposal rejected. Session status reset.");
+      refreshSessionList();
+    } catch (e) {
+      console.error(e);
+      alert("Error rejecting intake.");
+    } finally {
+      rejectBtn.disabled = false;
+      rejectBtn.textContent = "Reject";
+    }
+  });
+}
+
+function renderAgent2ProvisionCard(data) {
+  const card = document.querySelector("#cAgent2Card");
+  if (!card) return;
+
+  card.style.display = "block";
+  
+  const baseline = data.baseline_state || {};
+  
+  card.innerHTML = `
+    <h3><span class="icon">⚙️</span> Agent 2 Environment Calibrated</h3>
+    <div class="card-summary-row">
+      <label>Status</label>
+      <p style="color:var(--teal); font-weight:bold;">${data.status.toUpperCase()}</p>
+    </div>
+    
+    <label>Simulated Child Baselines Set</label>
+    <div class="provision-metrics">
+      <div class="prov-metric-item">Trust: <strong>${baseline.trust}%</strong></div>
+      <div class="prov-metric-item">Volatility: <strong>${baseline.volatility}%</strong></div>
+      <div class="prov-metric-item">Temperament: <strong>${baseline.temperament}</strong></div>
+      <div class="prov-metric-item">Profile: <strong>${data.temperament_profile}</strong></div>
+    </div>
+
+    <button class="btn-launch" onclick="window.open('${data.launch_url}', '_blank')">Launch Simulation Sandbox</button>
+  `;
+}
 
 // Start checking session status if parent mode
 if (activeSessionId) {
