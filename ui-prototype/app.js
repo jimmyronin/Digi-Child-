@@ -3967,7 +3967,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
       ${emailHtml}
     </div>
 
-    <button class="btn-launch" onclick="window.open('${data.launch_url}', '_blank')">Launch Simulation Sandbox</button>
+    <button class="btn-launch" onclick="window.open('http://' + window.location.host + '/?session=${data.session_id || ''}', '_blank')">Launch Simulation Sandbox</button>
   `;
 }
 
