@@ -1730,4 +1730,10 @@ body.is-debug-view .crosshair {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
 }
 
+/* Clinician Hub Placeholder Contrast */
+.clinician-hub input::placeholder,
+.clinician-hub textarea::placeholder {
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+
 
