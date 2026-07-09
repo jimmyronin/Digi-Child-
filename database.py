@@ -47,7 +47,8 @@ def init_db():
             clinician_availability TEXT,
             monitor_availability TEXT,
             state_json_snapshot TEXT,
-            temperament_profile TEXT
+            temperament_profile TEXT,
+            child_age INTEGER
         )
     ''')
     conn.commit()
@@ -141,17 +142,21 @@ def get_recent_history(child_id, limit=5):
         history.append({"parent": row["parent_message"], "mira": row["child_response"]})
     return history
 
-def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail, temperament_profile="cooperative"):
+def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail, temperament_profile="cooperative", child_age=5):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE clinician_session ADD COLUMN child_age INTEGER")
+    except sqlite3.OperationalError:
+        pass
     cursor.execute('''
         INSERT OR REPLACE INTO clinician_session (
             session_id, parent_id, clinician_id, monitor_id, status,
-            parent_availability, clinician_availability, monitor_availability, temperament_profile
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            parent_availability, clinician_availability, monitor_availability, temperament_profile, child_age
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         session_id, parent_id, clinician_id, monitor_id, "pending_outreach",
-        json.dumps(parent_avail), json.dumps(clinician_avail), json.dumps(monitor_avail), temperament_profile
+        json.dumps(parent_avail), json.dumps(clinician_avail), json.dumps(monitor_avail), temperament_profile, child_age
     ))
     conn.commit()
     conn.close()
@@ -160,6 +165,10 @@ def get_session(session_id):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE clinician_session ADD COLUMN child_age INTEGER")
+    except sqlite3.OperationalError:
+        pass
     cursor.execute("SELECT * FROM clinician_session WHERE session_id = ?", (session_id,))
     row = cursor.fetchone()
     conn.close()
@@ -168,6 +177,8 @@ def get_session(session_id):
         d["parent_availability"] = json.loads(d["parent_availability"] or "[]")
         d["clinician_availability"] = json.loads(d["clinician_availability"] or "[]")
         d["monitor_availability"] = json.loads(d["monitor_availability"] or "[]")
+        if d.get("child_age") is None:
+            d["child_age"] = 5
         return d
     return None
 

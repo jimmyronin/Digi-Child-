@@ -161,6 +161,7 @@ class CreateSessionReq(BaseModel):
     clinician_avail: list
     monitor_avail: list
     temperament_profile: str = "cooperative"
+    child_age: int = 5
 
 class ParentAvailReq(BaseModel):
     session_id: str
@@ -178,7 +179,8 @@ async def api_create_session(req: CreateSessionReq):
     database.create_session(
         session_id, req.parent_id, req.clinician_id, req.monitor_id,
         parent_avail=[], clinician_avail=req.clinician_avail, monitor_avail=req.monitor_avail,
-        temperament_profile=req.temperament_profile
+        temperament_profile=req.temperament_profile,
+        child_age=req.child_age
     )
     return {"status": "ok", "sessionId": session_id}
 
@@ -291,6 +293,8 @@ async def api_provision_session(req: SessionControlReq):
     # Overwrite profile and initialize metrics accordingly
     prof = session.get("temperament_profile", "cooperative")
     parent_state["temperament_profile"] = prof
+    parent_state["child_age"] = session.get("child_age", 5)
+    
     if prof == "oppositional":
         parent_state["volatility"] = 75
         parent_state["trust"] = 40
