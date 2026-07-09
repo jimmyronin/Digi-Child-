@@ -1475,52 +1475,13 @@ function buildCar() {
   // Seat backrest cushion
   rbox(childSafetySeat, 0.44, 0.68, 0.12, 0.03, 3, padMat, 0.52, 1.22, 0.50, { rx: -0.1 });
 
-  // --- 5-point safety harness on the toddler seat ---
-  // straps run from the top of the backrest, over the chest, to a central
-  // buckle at her lap, then a crotch strap down to the seat base
+  // --- 5-point safety harness on the toddler seat (Deleted by user request) ---
   const beltMat = mat(0x39414d, 0.55); // visible slate webbing
   const buckleMat = mat(0xc2c7cd, 0.3, { metalness: 0.7 });
-  const strapBetween = (parent, a, b, w) => {
-    const A = new THREE.Vector3(...a);
-    const B = new THREE.Vector3(...b);
-    const dir = new THREE.Vector3().subVectors(B, A);
-    const len = dir.length();
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, len), beltMat);
-    m.position.copy(A).add(B).multiplyScalar(0.5);
-    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
-    m.castShadow = false;
-    parent.add(m);
-    return m;
-  };
-  // straps sit forward on her chest (z ~0.24) so they're not buried in the shell
-  const buckle = [0.52, 1.0, 0.22];
-  strapBetween(childSafetySeat, [0.66, 1.46, 0.30], buckle, 0.075); // right shoulder
-  strapBetween(childSafetySeat, [0.38, 1.46, 0.30], buckle, 0.075); // left shoulder
-  strapBetween(childSafetySeat, [0.72, 1.04, 0.30], buckle, 0.065); // right lap
-  strapBetween(childSafetySeat, [0.32, 1.04, 0.30], buckle, 0.065); // left lap
-  strapBetween(childSafetySeat, buckle, [0.52, 0.92, 0.24], 0.065); // crotch strap
-  rbox(childSafetySeat, 0.1, 0.13, 0.06, 0.02, 3, buckleMat, 0.52, 1.0, 0.22); // buckle clasp
-  // padded shoulder comfort covers (lighter, so the harness reads)
-  rbox(childSafetySeat, 0.11, 0.24, 0.07, 0.03, 3, padMat, 0.62, 1.28, 0.29);
-  rbox(childSafetySeat, 0.11, 0.24, 0.07, 0.03, 3, padMat, 0.42, 1.28, 0.29);
 
-  // --- standard diagonal seat belt for older kids (no safety seat) ---
+  // --- standard diagonal seat belt for older kids (no safety seat) (Deleted by user request) ---
   const standardBelt = new THREE.Group();
   g.add(standardBelt);
-  const stBuckle = [0.34, 1.02, 0.34];
-  const stStrap = (a, b, w) => {
-    const A = new THREE.Vector3(...a);
-    const B = new THREE.Vector3(...b);
-    const dir = new THREE.Vector3().subVectors(B, A);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, dir.length()), beltMat);
-    m.position.copy(A).add(B).multiplyScalar(0.5);
-    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
-    m.castShadow = false;
-    standardBelt.add(m);
-  };
-  stStrap([0.70, 1.62, 0.48], stBuckle, 0.07); // diagonal shoulder-to-hip
-  stStrap([0.70, 1.02, 0.36], stBuckle, 0.06); // lap
-  rbox(standardBelt, 0.09, 0.12, 0.05, 0.02, 3, buckleMat, 0.34, 1.02, 0.34);
   standardBelt.visible = false;
 
   // Grocery/shopping bag on driver's seat
