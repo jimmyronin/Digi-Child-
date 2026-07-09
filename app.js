@@ -3274,7 +3274,7 @@ function initClinicianHub() {
                 <span class="section-title">Parent Intake Raw Text</span>
                 <label>Availability Description</label>
                 <textarea id="cParentRawText" rows="3" placeholder="I can only make it next Tuesday morning after 9 AM or Thursday between 1 and 3 PM."></textarea>
-                <button id="cProposeBtn">Propose Session (Agent 1 Intake)</button>
+                <button id="cProposeBtn">Propose Session</button>
               </div>
             </div>
 
@@ -3552,7 +3552,7 @@ function initClinicianHub() {
       alert("Error processing intake. Make sure uvicorn backend is running!");
     } finally {
       proposeBtn.disabled = false;
-      proposeBtn.textContent = "Propose Session (Agent 1 Intake)";
+      proposeBtn.textContent = "Propose Session";
     }
   });
 
