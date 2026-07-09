@@ -3122,7 +3122,9 @@ async function checkSessionStatus() {
       
       // Update state values if the session is live
       if (data.status === "live" || data.status === "live_paused") {
-        sessionParentId = data.status === "live" ? "parent_test" : sessionParentId;
+        if (data.metrics && data.metrics.child_id) {
+          sessionParentId = data.metrics.child_id;
+        }
         Object.assign(state.values, data.metrics);
         if (data.metrics && typeof data.metrics.child_age === "number") {
           state.age = data.metrics.child_age;
