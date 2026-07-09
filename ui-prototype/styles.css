@@ -1439,9 +1439,24 @@ body.is-debug-view .crosshair {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 10px;
-  background: rgba(23, 143, 134, 0.2);
-  color: var(--teal);
+  background: rgba(23, 143, 134, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(23, 143, 134, 0.6);
+  text-shadow: 0 0 4px rgba(23, 143, 134, 0.5);
+  box-shadow: 0 0 8px rgba(23, 143, 134, 0.2);
   flex-shrink: 0;
+}
+
+.card-summary-row p.text-green {
+  background: rgba(23, 143, 134, 0.25) !important;
+  border: 1px solid rgba(23, 143, 134, 0.6) !important;
+  color: #ffffff !important;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(23, 143, 134, 0.5);
+  box-shadow: 0 0 8px rgba(23, 143, 134, 0.2);
+  display: inline-block;
 }
 
 /* Agent 2 Provision Success Card Styling */
