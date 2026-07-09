@@ -3414,6 +3414,7 @@ async function refreshSessionList() {
         </div>
         <div>Parent: ${s.parent_id}</div>
         <div>Time: ${s.scheduled_time || "Not matched yet"}</div>
+        ${s.status === "awaiting_approval" ? `<button class="btn-action" onclick="window.__reviewSession('${s.session_id}')" style="background:var(--warm);">Review & Approve</button>` : ""}
         ${s.status === "scheduled" ? `<button class="btn-action" onclick="window.__provisionSession('${s.session_id}')">Launch Sim</button>` : ""}
         <button class="btn-action btn-secondary" onclick="window.__selectSession('${s.session_id}')">Monitor</button>
       </div>
@@ -3422,6 +3423,25 @@ async function refreshSessionList() {
     console.error(e);
   }
 }
+
+window.__reviewSession = async (sid) => {
+  try {
+    const res = await fetch(`${API_BASE}/api/agent1/review?sessionId=${sid}`);
+    if (!res.ok) {
+      alert("Could not load session proposal.");
+      return;
+    }
+    const data = await res.json();
+    if (data.status === "error") {
+      alert(data.message);
+      return;
+    }
+    renderAgent1ApprovalCard(sid, data);
+  } catch (e) {
+    console.error(e);
+    alert("Error loading approval card.");
+  }
+};
 
 window.__provisionSession = async (sid) => {
   try {
