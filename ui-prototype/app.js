@@ -3618,7 +3618,8 @@ if (toggleBtn && statePanel) {
 
 initClinicianHub();
 buildLocationBar();
-setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : "home");
+const defaultLoc = queryParams.get("role") === "clinician" ? "park" : "home";
+setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : defaultLoc);
 renderStats();
 syncUi();
 animate();
