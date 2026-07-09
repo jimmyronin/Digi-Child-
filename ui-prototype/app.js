@@ -3436,7 +3436,6 @@ function initClinicianHub() {
       window.switchClinicianTab(btn.dataset.tab);
     });
   });
-  `;
 
   // Bind Propose / Intake Click
   document.querySelector("#cProposeBtn").addEventListener("click", async () => {
