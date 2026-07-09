@@ -1695,4 +1695,39 @@ body.is-debug-view .crosshair {
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* High Contrast Glowing Text & Badges */
+.text-green {
+  color: #2dd4bf !important;
+  font-weight: 700;
+  text-shadow: 0 0 5px rgba(45, 212, 191, 0.35), 0 0 1px rgba(45, 212, 191, 0.6);
+}
+
+.text-red {
+  color: #f87171 !important;
+  font-weight: 700;
+  text-shadow: 0 0 5px rgba(248, 113, 113, 0.35), 0 0 1px rgba(248, 113, 113, 0.6);
+}
+
+.badge-green {
+  color: #ffffff !important;
+  background: rgba(23, 143, 134, 0.25) !important;
+  border: 1px solid rgba(23, 143, 134, 0.6) !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(23, 143, 134, 0.5);
+  box-shadow: 0 0 8px rgba(23, 143, 134, 0.2);
+}
+
+.badge-red {
+  color: #ffffff !important;
+  background: rgba(239, 68, 68, 0.25) !important;
+  border: 1px solid rgba(239, 68, 68, 0.6) !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
 
