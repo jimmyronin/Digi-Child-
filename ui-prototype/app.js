@@ -3182,6 +3182,9 @@ function renderAvailabilityPortal() {
         msgEl.innerHTML = `Success! Session booked for:<br><strong>${result.match.start}</strong>`;
         setTimeout(() => {
           availabilityPortal.style.display = "none";
+          window.location.reload();
+        }, 3000);
+      } else {
         msgEl.textContent = "Availability submitted. Waiting for calendar match.";
       }
     } catch (e) {
