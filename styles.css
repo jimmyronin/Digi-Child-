@@ -768,7 +768,9 @@ body.is-debug-view .crosshair {
 .clinician-mode .insight-container,
 .clinician-mode #locationBar,
 .clinician-mode .availability-portal,
-.clinician-mode .pause-overlay {
+.clinician-mode .pause-overlay,
+.clinician-mode #sidebarToggle,
+.clinician-mode .sidebar-toggle {
   display: none !important;
 }
 
