@@ -731,6 +731,7 @@ window.addEventListener("keydown", resetParentIdle);
 window.addEventListener("click", resetParentIdle);
 
 function triggerIdleChildAction() {
+  activePlayPoint = null;
   if (currentId !== "car") {
     const dx = camWorld.x - childWorld.x;
     const dz = camWorld.z - childWorld.z;
@@ -896,18 +897,112 @@ let nextWanderAt = 0;
 
 const playPoints = {
   home: [
-    { x: 0.5, z: 0.2 },   // living room rug
-    { x: 1.5, z: -0.8 },  // dining table area
-    { x: 2.2, z: -2.0 },  // bedroom/bed
-    { x: 0.2, z: -1.8 },  // kitchen counter
+    { name: "dining table", x: 1.5, z: -0.8, dialogue: {
+        "Age 5-7": "Look! I found a shiny spoon under the table! Mommy, Daddy, can I keep it?",
+        "Age 10-12": "I'm sitting at the dining table. Can we play a card game together?",
+        "Age 14-16": "I'm at the table. Do you want help setting up the plates?"
+      }
+    },
+    { name: "bedroom", x: 2.2, z: -2.0, dialogue: {
+        "Age 5-7": "Momy, Daddy! Come look! I brought my favorite storybook from the bed!",
+        "Age 10-12": "I'm checking my school bag in the room. I think I left my sketch pad here.",
+        "Age 14-16": "I'm just organizing some stuff in the room. Give me a second."
+      }
+    },
+    { name: "living room rug", x: 0.5, z: 0.2, dialogue: {
+        "Age 5-7": "*waves* Mommy, Daddy, look at this toy block castle I built!",
+        "Age 10-12": "I found this old board game on the rug. Do you want to play?",
+        "Age 14-16": "I'm just relaxing on the rug. Let me know if you need help with anything."
+      }
+    },
+    { name: "kitchen counter", x: 0.2, z: -1.8, dialogue: {
+        "Age 5-7": "Momy, Daddy, can I get a glass of water? I can't reach the cups!",
+        "Age 10-12": "Can I help you make some snacks at the counter?",
+        "Age 14-16": "I can help prep the ingredients on the kitchen counter if you'd like."
+      }
+    }
   ],
   park: [
-    { x: -2.5, z: -2.0 }, // slide
-    { x: 2.5, z: -2.0 },  // swings
-    { x: 0, z: 1.5 },     // sandbox
-    { x: -1.2, z: 2.2 },  // grass
+    { name: "slide", x: -2.5, z: -2.0, dialogue: {
+        "Age 5-7": "*waves* Mommy, Daddy, watch me go down the big slide! Are you watching?",
+        "Age 10-12": "I'm going down the slide! It's actually pretty fast!",
+        "Age 14-16": "I'm just sitting near the slide. The park is nice today."
+      }
+    },
+    { name: "swings", x: 2.5, z: -2.0, dialogue: {
+        "Age 5-7": "Mommy! Daddy! I'm on the swing! Come push me! Push me higher!",
+        "Age 10-12": "Push me on the swings! Let's see how high I can go!",
+        "Age 14-16": "I'm sitting on the swings. It's a peaceful place to think."
+      }
+    },
+    { name: "sandbox", x: 0, z: 1.5, dialogue: {
+        "Age 5-7": "Look! I built a giant sand castle! Momy, Daddy, come see!",
+        "Age 10-12": "I'm drawing shapes in the sand. It's relaxing.",
+        "Age 14-16": "I'm sitting by the sandbox. Remember when we used to build castles here?"
+      }
+    },
+    { name: "grass patch", x: -1.2, z: 2.2, dialogue: {
+        "Age 5-7": "*runs over and waves* Mommy, Daddy, look! I picked a yellow flower for you!",
+        "Age 10-12": "Look, I found a cool round stone in the grass! Look how smooth it is!",
+        "Age 14-16": "Just standing on the grass. The breeze feels great."
+      }
+    }
+  ],
+  market: [
+    { name: "bakery aisle", x: -1.5, z: 0.5, dialogue: {
+        "Age 5-7": "*waves* Mommy, Daddy, look at those delicious cupcakes! Can we get them?",
+        "Age 10-12": "The bread smells amazing! Should we get some sourdough for dinner?",
+        "Age 14-16": "I can go grab the sandwich bread from the bakery section if you want."
+      }
+    },
+    { name: "snack aisle", x: 1.5, z: -0.5, dialogue: {
+        "Age 5-7": "*waves* Mommy, Daddy! The cookies are here! The ones in the yellow box! Please?",
+        "Age 10-12": "Look! They have the new chips on sale! Can we get one bag?",
+        "Age 14-16": "Do we need snacks for the week? I'll grab some pretzels."
+      }
+    },
+    { name: "produce counter", x: 0, z: -2.0, dialogue: {
+        "Age 5-7": "Look at these giant pumpkins! Momy, Daddy, can we buy a big one?",
+        "Age 10-12": "I'm checking the apples. Should I weigh them on the scale?",
+        "Age 14-16": "I'll pick out some fresh apples and bananas from the produce pile."
+      }
+    },
+    { name: "checkout lane", x: -0.8, z: 2.0, dialogue: {
+        "Age 5-7": "Momy, Daddy, look at all the candy bars here! Can I have just one?",
+        "Age 10-12": "Should I help load the groceries onto the checkout belt?",
+        "Age 14-16": "I'll place the divider on the checkout belt and help pack the bags."
+      }
+    }
+  ],
+  party: [
+    { name: "food buffet", x: -1.0, z: -1.5, dialogue: {
+        "Age 5-7": "Look at the big chocolate cake! Mommy, Daddy, can I get a slice now?",
+        "Age 10-12": "The buffet looks awesome. Should I grab a plate of finger food?",
+        "Age 14-16": "I'll go get some juice. Do you want me to bring you a drink, mom/dad?"
+      }
+    },
+    { name: "balcony", x: 2.0, z: 1.5, dialogue: {
+        "Age 5-7": "Mommy! Daddy! Look at the colorful balloons hanging on the balcony!",
+        "Age 10-12": "The view from the balcony is cool. Look at the party lights!",
+        "Age 14-16": "It's quieter out here on the balcony. Nice way to take a break."
+      }
+    },
+    { name: "grandma's couch", x: 0, z: -2.5, dialogue: {
+        "Age 5-7": "Momy, Daddy, grandma gave me a giant hug! She said I grew so tall!",
+        "Age 10-12": "Grandma's asking me about school. Can you come help me talk to her?",
+        "Age 14-16": "I'm sitting with grandma. She's telling me stories about when you were a kid!"
+      }
+    },
+    { name: "game table", x: 1.2, z: -0.5, dialogue: {
+        "Age 5-7": "*waves* Look! The cousins are playing a game! Can I join them?",
+        "Age 10-12": "They're playing card games at the table. I'm going to watch them play.",
+        "Age 14-16": "I'm hanging out by the game table with the cousins. It's fun."
+      }
+    }
   ]
 };
+
+let activePlayPoint = null;
 
 function setChildPose(pose) {
   childPose = pose;
@@ -2717,8 +2812,9 @@ function updateFrame(dt, t) {
           const pt = points[Math.floor(Math.random() * points.length)];
           childTarget.x = pt.x;
           childTarget.z = pt.z;
+          activePlayPoint = pt;
         }
-        nextWanderAt = t + 8 + Math.random() * 12; // wander again in 8-20 seconds
+        nextWanderAt = t + 25 + Math.random() * 20; // wander every 25-45 seconds
       }
     }
   }
@@ -2748,6 +2844,26 @@ function updateFrame(dt, t) {
     childWorld.z = THREE.MathUtils.clamp(childWorld.z, b.minZ, b.maxZ);
   }
   walkAmt += ((walking ? 1 : 0) - walkAmt) * Math.min(1, dt * 8);
+
+  if (activePlayPoint) {
+    const dx = childWorld.x - activePlayPoint.x;
+    const dz = childWorld.z - activePlayPoint.z;
+    if (Math.hypot(dx, dz) < 0.35) {
+      const text = activePlayPoint.dialogue[state.band] || "";
+      if (text) {
+        state.childLine = text;
+        syncUi();
+        
+        if (text.includes("waves") || text.includes("waves hand") || text.includes("Look!")) {
+          waveUntil = t + 4.0;
+          triggerReaction("happy");
+        } else if (text.includes("Mommy!") || text.includes("Daddy!") || text.includes("Momy")) {
+          triggerReaction("happy");
+        }
+      }
+      activePlayPoint = null;
+    }
+  }
   if (walking) walkPhase += dt * 8.5;
 
   // --- is the parent looking at her? then she beams up (or scowls if upset) ---
