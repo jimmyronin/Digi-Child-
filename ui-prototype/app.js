@@ -2832,6 +2832,13 @@ function updateFrame(dt, t) {
   // body pose targets (blended from rest by reaction strength rk)
   let LuZ = -1.32, LuX = 0, RuZ = 1.32, RuX = 0;
   let LlZ = 0, LlX = 0, RlZ = 0, RlX = 0;
+  
+  if (t < waveUntil) {
+    RuZ = 0.4 + Math.sin(t * 9) * 0.3;
+    RuX = -0.5;
+    RlX = -0.3;
+    RlZ = Math.sin(t * 9) * 0.2;
+  }
   let LUpLegX = 0, RUpLegX = 0, LLoLegX = 0, RLoLegX = 0;
   let headExtraX = 0, spineZ = 0, spineXAdd = 0, posOZ = 0, posOY = 0;
 
@@ -2961,13 +2968,8 @@ function updateFrame(dt, t) {
       leftUpperArm.rotation.x = Math.sin(t * 1.5 + i) * 0.05;
     }
     if (rightUpperArm) {
-      if (t < waveUntil) {
-        rightUpperArm.rotation.z = 0.4 + Math.sin(t * 8) * 0.3;
-        rightUpperArm.rotation.x = -0.5;
-      } else {
-        rightUpperArm.rotation.z = 1.32 - Math.sin(t * 2.2 + i * 2.5) * 0.06;
-        rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
-      }
+      rightUpperArm.rotation.z = 1.32 - Math.sin(t * 2.2 + i * 2.5) * 0.06;
+      rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
     }
     
     fv.update(dt);
