@@ -1244,7 +1244,8 @@ body.is-debug-view .crosshair {
 
 .approval-card h3 {
   font-size: 14px;
-  color: var(--warm);
+  color: #ffffff;
+  text-shadow: 0 0 5px rgba(217, 134, 50, 0.6);
   text-transform: uppercase;
   margin: 0 0 12px;
   letter-spacing: 0.5px;
@@ -1253,8 +1254,9 @@ body.is-debug-view .crosshair {
   gap: 8px;
 }
 
-.approval-card h3 .icon {
-  font-size: 16px;
+.approval-card h3 .header-svg-icon {
+  stroke: #f59e0b !important;
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.7)) !important;
 }
 
 .card-summary-row {
@@ -1472,10 +1474,19 @@ body.is-debug-view .crosshair {
 
 .provision-card h3 {
   font-size: 14px;
-  color: var(--teal);
+  color: #ffffff;
+  text-shadow: 0 0 5px rgba(23, 143, 134, 0.6);
   text-transform: uppercase;
   margin: 0 0 12px;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provision-card h3 .header-svg-icon {
+  stroke: #2dd4bf !important;
+  filter: drop-shadow(0 0 5px rgba(45, 212, 191, 0.7)) !important;
 }
 
 .provision-metrics {
