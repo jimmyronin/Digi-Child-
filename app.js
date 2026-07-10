@@ -2720,12 +2720,48 @@ function clearChildAttachedProp() {
   }
 }
 
+function createSingleBook(coverColor = 0x2e6cb5) {
+  const bookGroup = new THREE.Group();
+  bookGroup.name = "singleBook";
+  
+  // 1. Pages (off-white)
+  const pagesMat = mat(0xfcfaf2, 0.9, { roughness: 0.8 });
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.026, 0.09), pagesMat);
+  pages.position.set(0, 0, 0);
+  pages.castShadow = true;
+  pages.receiveShadow = true;
+  bookGroup.add(pages);
+  
+  // 2. Cover spine (wrapped around pages)
+  const coverMat = mat(coverColor, 0.55, { roughness: 0.4 });
+  const coverBack = new THREE.Mesh(new THREE.BoxGeometry(0.126, 0.002, 0.096), coverMat);
+  coverBack.position.set(0, -0.014, 0.001);
+  coverBack.castShadow = true;
+  bookGroup.add(coverBack);
+
+  const coverFront = new THREE.Mesh(new THREE.BoxGeometry(0.126, 0.002, 0.096), coverMat);
+  coverFront.position.set(0, 0.014, 0.001);
+  coverFront.castShadow = true;
+  bookGroup.add(coverFront);
+
+  const coverSpine = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.03, 0.096), coverMat);
+  coverSpine.position.set(-0.062, 0, 0.001);
+  coverSpine.castShadow = true;
+  bookGroup.add(coverSpine);
+  
+  // 3. Emblem / Cover design
+  const emblemMat = glowMat(0xf5d061);
+  const emblem = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.001, 0.04), emblemMat);
+  emblem.position.set(0.01, 0.015, 0);
+  bookGroup.add(emblem);
+  
+  return bookGroup;
+}
+
 function attachPropToChild(path, opts = {}) {
   clearChildAttachedProp();
   
-  loadModel(path).then((proto) => {
-    const m = proto.clone(true);
-    
+  const onModelReady = (m) => {
     // Determine attachment target
     let target = child;
     let localPos = new THREE.Vector3(0, 0.45 * vrmHeight, 0.25); // default in front of child
@@ -2741,15 +2777,17 @@ function attachPropToChild(path, opts = {}) {
         localRot.set(0, 0, 0);
         
         // Adjust default offsets depending on model
-        if (path.includes("book")) {
-          localPos.set(0.04, 0.04, 0.08);
-          localRot.set(Math.PI / 2, 0, Math.PI / 4);
-          scaleScalar *= 0.8;
-        } else if (path.includes("toy") || path.includes("kart")) {
+        const lowerPath = path.toLowerCase();
+        if (lowerPath.includes("book")) {
+          // Single book fits nicely inside fingers/palm without floating
+          localPos.set(0.015, -0.012, 0.035);
+          localRot.set(Math.PI / 2, 0, -Math.PI / 6);
+          scaleScalar *= 0.95;
+        } else if (lowerPath.includes("toy") || lowerPath.includes("kart")) {
           localPos.set(0.04, 0.02, 0.04);
           localRot.set(0, 0, 0);
           scaleScalar *= 0.12;
-        } else if (path.includes("cookie") || path.includes("lollypop") || path.includes("banana") || path.includes("apple")) {
+        } else if (lowerPath.includes("cookie") || lowerPath.includes("lollypop") || lowerPath.includes("banana") || lowerPath.includes("apple")) {
           localPos.set(0.02, 0.02, 0.04);
           scaleScalar *= 0.45;
         }
@@ -2762,7 +2800,17 @@ function attachPropToChild(path, opts = {}) {
     
     target.add(m);
     childAttachedProp = m;
-  }).catch((e) => console.warn("Failed to attach prop", e));
+  };
+
+  if (path === "single_book") {
+    const m = createSingleBook(opts.color || 0x2e6cb5);
+    onModelReady(m);
+  } else {
+    loadModel(path).then((proto) => {
+      const m = proto.clone(true);
+      onModelReady(m);
+    }).catch((e) => console.warn("Failed to attach prop", e));
+  }
 }
 
 function handleDynamicChatActions(userMsg, childMsg) {
@@ -2771,7 +2819,7 @@ function handleDynamicChatActions(userMsg, childMsg) {
   if (state.location === "home") {
     // 1. Reading / Books
     if (combined.includes("book") || combined.includes("story") || combined.includes("read") || combined.includes("bunny")) {
-      attachPropToChild("furniture/books", { bone: "rightHand", s: 1.2 });
+      attachPropToChild("single_book", { bone: "rightHand", s: 1.0 });
       
       // Move to play corner/rug and sit down
       locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
