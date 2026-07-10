@@ -1,4 +1,4 @@
-import * as THREE from "three";
+﻿import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -134,7 +134,7 @@ function softParticleTexture() {
   return tex;
 }
 
-// floating dust motes — the cozy sparkle drifting through every scene
+// floating dust motes â€” the cozy sparkle drifting through every scene
 const motes = (() => {
   const count = 90;
   const pos = new Float32Array(count * 3);
@@ -503,7 +503,7 @@ function makeTree(scale = 1, tone = 0x4d8f3a) {
 }
 
 /* ============================================================
-   The child (Mira) — the user's own VRoid character (.vrm).
+   The child (Mira) â€” the user's own VRoid character (.vrm).
    15 models cover her growth: mira-01..05 (child),
    mira-06..10 (teenager), mira-11..15 (adult).
    The sim age picks which one is loaded.
@@ -543,7 +543,7 @@ let exprSad = 0;
 let exprAngry = 0;
 
 /* ============================================================
-   Child reactions — crying, screaming, giggling, playful idle.
+   Child reactions â€” crying, screaming, giggling, playful idle.
    Sounds are synthesized with the Web Audio API so they always
    work (no network, matches the project's offline-first goal).
    ============================================================ */
@@ -1107,7 +1107,7 @@ function makePerson({ shirt, hairColor, skin = 0xc78d63, scale = 1 }) {
 }
 
 /* ============================================================
-   LOCATION: Home — a house with different rooms
+   LOCATION: Home â€” a house with different rooms
    ============================================================ */
 function buildHome() {
   const g = new THREE.Group();
@@ -1326,7 +1326,7 @@ function buildHome() {
 }
 
 /* ============================================================
-   LOCATION: Car ride — seated, world drives past
+   LOCATION: Car ride â€” seated, world drives past
    ============================================================ */
 function buildCar() {
   const g = new THREE.Group();
@@ -1432,7 +1432,7 @@ function buildCar() {
   gCtx.font = "10px sans-serif";
   gCtx.fillText("MPH", 128, 78);
   gCtx.fillStyle = "#27ae60";
-  gCtx.fillText("◀  D  ▶", 128, 44);
+  gCtx.fillText("â—€  D  â–¶", 128, 44);
 
   const gaugeTex = new THREE.CanvasTexture(gaugeCanvas);
   const gaugeMat = new THREE.MeshBasicMaterial({ map: gaugeTex });
@@ -1735,7 +1735,7 @@ function buildCar() {
 }
 
 /* ============================================================
-   LOCATION: Park — playground like the reference render
+   LOCATION: Park â€” playground like the reference render
    ============================================================ */
 function buildPark() {
   const g = new THREE.Group();
@@ -1919,13 +1919,13 @@ function buildPark() {
 }
 
 /* ============================================================
-   LOCATION: Supermarket — colorful aisles + checkout
+   LOCATION: Supermarket â€” colorful aisles + checkout
    ============================================================ */
 function buildMarket() {
   const g = new THREE.Group();
   const colliders = [];
-  const palette = [0xd14b3f, 0xe08536, 0xf2c531, 0x64b54e, 0x3f8fd1, 0x9b59b6, 0x2aa8a0, 0xd96a9b];
 
+  // Floor + ceiling
   box(g, 26, 0.1, 20, mat(0x66a39b, 0.9), 0, -0.05, 0, { cast: false });
   box(g, 26, 0.1, 20, mat(0xb9bec2, 1), 0, 4.4, 0, { cast: false, receive: false });
   const wallM = mat(0xd9b477, 0.9);
@@ -1934,12 +1934,22 @@ function buildMarket() {
   wall(g, colliders, wallM, -13, 0, 0.2, 20, 4.5);
   wall(g, colliders, wallM, 13, 0, 0.2, 20, 4.5);
 
+  // Ceiling light strips
   for (let r = 0; r < 2; r++) {
     for (let c = 0; c < 4; c++) {
       box(g, 4.5, 0.14, 0.5, glowMat(0xf6f4ec), -7.5 + r * 15, 4.3, -7.5 + c * 5, { cast: false, receive: false });
     }
   }
 
+  // â”€â”€ shelf builder (gondola) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // foodList omits "carton" and "watermelon" (too big for shelves)
+  const shelfFoods = [
+    "can", "soda", "loaf", "cheese", "pizza-box", "bottle-ketchup",
+    "honey", "chocolate", "peanut-butter", "bread", "croissant",
+    "cookie", "soda-can", "egg-cup", "jam", "muffin", "donut",
+  ];
+
+  // Aisle gondola â€“ items on both sides of a central back-panel
   function gondola(cx, cz, len, seed) {
     box(g, len, 0.3, 1.0, mat(0xb5413a, 0.7), cx, 0.15, cz);
     box(g, len, 1.95, 0.14, mat(0x8f9498, 0.6), cx, 1.05, cz);
@@ -1947,16 +1957,13 @@ function buildMarket() {
       for (let lvl = 0; lvl < 3; lvl++) {
         const y = 0.55 + lvl * 0.5;
         box(g, len, 0.05, 0.44, mat(0x9aa0a4, 0.5), cx, y, cz + side * 0.29, { cast: false });
-        const foods = ["can", "soda", "loaf", "cheese", "pizza-box", "carton", "bag", "bottle-ketchup", "honey", "chocolate", "peanut-butter", "banana", "apple", "watermelon", "pumpkin-basic", "bread", "croissant", "cookie"];
         const slots = Math.floor(len / 0.65);
         for (let s = 0; s < slots; s++) {
           const idx = seed + lvl * 31 + s * 7 + (side + 1) * 53;
-          if (rnd(idx) < 0.2) continue;
-          const item = foods[Math.floor(rnd(idx + 1) * foods.length)];
+          if (rnd(idx) < 0.18) continue;
+          const item = shelfFoods[Math.floor(rnd(idx + 1) * shelfFoods.length)];
           prop(g, `food/${item}`, cx - len / 2 + 0.4 + s * 0.65, cz + side * 0.3, {
-            s: 1.05,
-            y: y + 0.03,
-            ry: rnd(idx + 2) * 6.28,
+            s: 0.95, y: y + 0.04, ry: rnd(idx + 2) * 6.28,
           });
         }
       }
@@ -1964,21 +1971,80 @@ function buildMarket() {
     solid(colliders, cx, cz, len + 0.2, 1.3);
   }
 
+  // Wall shelf builder â€“ items only on the outward-facing side
+  // "dir" = "N" | "S" | "E" | "W"  (which wall face items are placed on)
+  function wallShelf(cx, cz, len, seed, dir) {
+    const isNS = dir === "N" || dir === "S";
+    const shelfD = isNS ? len : 0.6;
+    const shelfW = isNS ? 0.6 : len;
+    const itemOffset = dir === "S" ? -0.22 : dir === "N" ? 0.22 : 0; // z offset
+    const itemOffsetX = dir === "E" ? -0.22 : dir === "W" ? 0.22 : 0; // x offset
+
+    // Base + back panel
+    box(g, shelfW, 0.28, shelfD, mat(0xb5413a, 0.7), cx, 0.14, cz);
+    box(g, shelfW, 2.0, 0.12, mat(0x8f9498, 0.6), cx, 1.1, cz + (isNS ? (dir === "S" ? -0.24 : 0.24) : 0));
+
+    for (let lvl = 0; lvl < 4; lvl++) {
+      const y = 0.46 + lvl * 0.5;
+      box(g, shelfW, 0.05, shelfD - 0.08, mat(0x9aa0a4, 0.5), cx, y, cz, { cast: false });
+      const slots = Math.floor((isNS ? len : len) / 0.6);
+      for (let s = 0; s < slots; s++) {
+        const idx = seed + lvl * 37 + s * 11;
+        if (rnd(idx) < 0.15) continue;
+        const item = shelfFoods[Math.floor(rnd(idx + 1) * shelfFoods.length)];
+        const itemX = isNS ? (cx - len / 2 + 0.35 + s * 0.6) : cx + itemOffsetX;
+        const itemZ = isNS ? cz + itemOffset : (cz - len / 2 + 0.35 + s * 0.6) + itemOffset;
+        prop(g, `food/${item}`, itemX, itemZ, { s: 0.92, y: y + 0.04, ry: rnd(idx + 2) * 6.28 });
+      }
+    }
+    solid(colliders, cx, cz, shelfW + 0.1, shelfD + 0.1);
+  }
+
+  // â”€â”€ AISLE GONDOLAS (centre of store) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (const [gx, seedBase] of [[-4.5, 11], [4.5, 77]]) {
     gondola(gx, -6, 7, seedBase);
     gondola(gx, -3, 7, seedBase + 13);
     gondola(gx, 0, 7, seedBase + 29);
   }
 
-  // wall coolers
-  for (let i = 0; i < 5; i++) {
-    const cx = -9 + i * 4.5;
-    box(g, 3.6, 2.4, 0.7, mat(0x3b4754, 0.6), cx, 1.2, -9.4);
-    box(g, 3.2, 1.6, 0.06, glowMat(0xa8d4de), cx, 1.3, -9.02, { cast: false, receive: false });
-    solid(colliders, cx, -9.4, 3.8, 1.0);
-  }
+  // â”€â”€ WALL SHELVES (all 4 walls) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // North wall (z = -9.5), shelves along full width in 4 segments
+  wallShelf(-9,   -9.15, 7,  200, "N");
+  wallShelf(-1.5, -9.15, 7,  250, "N");
+  wallShelf( 6,   -9.15, 7,  300, "N");
 
-  // checkout lanes
+  // South wall (z = +9.5) â€” behind checkout, keep 3 short shelf banks
+  wallShelf(-9,   9.15, 5, 400, "S");
+  wallShelf(-1.5, 9.15, 5, 450, "S");
+  wallShelf( 6,   9.15, 5, 500, "S");
+
+  // West wall (x = -12.6), vertical run
+  wallShelf(-12.25, -6, 6, 600, "E");
+  wallShelf(-12.25, -1, 6, 650, "E");
+  wallShelf(-12.25,  4, 5, 700, "E");
+
+  // East wall (x = +12.6), vertical run
+  wallShelf(12.25, -6, 6, 800, "W");
+  wallShelf(12.25, -1, 6, 850, "W");
+  wallShelf(12.25,  4, 5, 900, "W");
+
+  // â”€â”€ WALL COOLERS (north wall, glowing fridges) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Kept at back wall but raised slightly so produce can live at front
+  // (already replaced by wall shelves â€” removed duplicates)
+
+  // â”€â”€ PRODUCE LOW DISPLAY TABLE (near entrance, south-east corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Low flat table with fruit on top
+  box(g, 3.0, 0.7, 1.4, mat(0x6b4a2c, 0.8), 9.5, 0.35, 5.0);
+  box(g, 2.8, 0.04, 1.2, mat(0x7d5c36, 0.7), 9.5, 0.72, 5.0, { cast: false });
+  solid(colliders, 9.5, 5.0, 3.2, 1.6);
+  prop(g, "food/watermelon", 9.0, 4.6, { s: 0.75, y: 0.76 });
+  prop(g, "food/pumpkin",    9.8, 4.6, { s: 0.6,  y: 0.76, ry: 0.6 });
+  prop(g, "food/apple",      9.3, 5.3, { s: 0.8,  y: 0.76 });
+  prop(g, "food/banana",     9.9, 5.3, { s: 0.85, y: 0.76, ry: 0.4 });
+  prop(g, "food/grapes",     8.8, 5.0, { s: 0.55, y: 0.76 });
+  prop(g, "food/orange",    10.1, 5.0, { s: 0.75, y: 0.76 });
+
+  // â”€â”€ CHECKOUT LANES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (let i = 0; i < 3; i++) {
     const cx = -6 + i * 4;
     box(g, 0.95, 0.95, 2.6, mat(0xb5413a, 0.65), cx, 0.475, 6.4);
@@ -1988,67 +2054,49 @@ function buildMarket() {
     laneSign.position.set(cx + 0.35, 2.4, 7.4);
     g.add(laneSign);
     solid(colliders, cx, 6.4, 1.2, 2.9);
-  }
-
-  // stock boxes near the coolers
-  prop(g, "furniture/cardboardBoxClosed", -11.4, -7.6, { s: 2 });
-  prop(g, "furniture/cardboardBoxOpen", -10.7, -8.2, { s: 2, ry: 0.5 });
-  solid(colliders, -11, -7.9, 1.6, 1.4);
-
-  // shopping carts — neatly parked side-by-side near the checkout entrance
-  {
-    const cart = new THREE.Group();
-    cart.position.set(9.8, 0, 7.8);
-    cart.rotation.y = Math.PI;
-    box(cart, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
-    box(cart, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
-    cyl(cart, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
-    for (const [wx, wz] of [[-0.24, -0.38], [0.24, -0.38], [-0.24, 0.38], [0.24, 0.38]]) {
-      cyl(cart, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), wx, 0.07, wz, { rz: Math.PI / 2 });
-    }
-    // groceries piled into the cart
-    prop(cart, "food/watermelon", 0, 0.77, 0, { s: 0.38 });
-    prop(cart, "food/carton", -0.18, 0.78, -0.2, { s: 0.55, ry: 0.5 });
-    prop(cart, "food/banana", 0.15, 0.79, 0.2, { s: 0.7, ry: -0.8 });
-    prop(cart, "food/can", 0.2, 0.78, -0.3, { s: 0.55 });
-    g.add(cart);
-    solid(colliders, 9.8, 7.8, 1.1, 1.1);
-  }
-  {
-    // second empty cart beside the first
-    const cart2 = new THREE.Group();
-    cart2.position.set(11.0, 0, 7.8);
-    cart2.rotation.y = Math.PI;
-    box(cart2, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
-    box(cart2, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
-    cyl(cart2, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
-    for (const [wx, wz] of [[-0.24, -0.38], [0.24, -0.38], [-0.24, 0.38], [0.24, 0.38]]) {
-      cyl(cart2, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), wx, 0.07, wz, { rz: Math.PI / 2 });
-    }
-    g.add(cart2);
-    solid(colliders, 11.0, 7.8, 1.1, 1.1);
-  }
-  // Checkout lane cashier props: card reader and products waiting to be scanned
-  for (let i = 0; i < 3; i++) {
-    const cx = -6 + i * 4;
     // items on conveyor belt
-    prop(g, "food/bread", cx - 0.2, 1.05, 5.2, { s: 0.55, ry: 0.3 });
-    prop(g, "food/cheese", cx + 0.1, 1.05, 5.5, { s: 0.4, ry: -0.5 });
-    prop(g, "food/soda-can", cx, 1.05, 5.8, { s: 0.55 });
-    // card reader terminal on top of checkout unit
+    prop(g, "food/bread",    cx - 0.2, 1.05, 5.2, { s: 0.55, ry: 0.3 });
+    prop(g, "food/cheese",   cx + 0.1, 1.05, 5.5, { s: 0.40, ry: -0.5 });
+    prop(g, "food/soda-can", cx,       1.05, 5.8, { s: 0.55 });
+    // card reader terminal
     box(g, 0.12, 0.22, 0.08, mat(0x18191e, 0.5), cx + 0.38, 1.48, 6.85);
     box(g, 0.1, 0.01, 0.07, glowMat(0x38bdf8), cx + 0.38, 1.595, 6.85, { cast: false, receive: false });
   }
-  // produce display near entrance
-  prop(g, "food/watermelon", 11.5, -6.5, { s: 1.0 });
-  prop(g, "food/pumpkin", 10.8, -7.2, { s: 0.8, ry: 0.6 });
-  prop(g, "food/apple", 11.2, -5.8, { s: 1.0, y: 0.35 });
-  prop(g, "food/banana", 10.5, -6.0, { s: 1.1, ry: 0.4 });
-  // potted plants near entrance for ambiance
-  prop(g, "furniture/pottedPlant", -12.0, 7.5, { s: 2 });
-  prop(g, "furniture/pottedPlant", 12.0, 7.5, { s: 2 });
 
-  // signs
+  // â”€â”€ CARDBOARD STOCK BOXES (back corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  prop(g, "furniture/cardboardBoxClosed", -11.4, -7.6, { s: 2 });
+  prop(g, "furniture/cardboardBoxOpen",   -10.7, -8.2, { s: 2, ry: 0.5 });
+  solid(colliders, -11, -7.9, 1.6, 1.4);
+
+  // â”€â”€ SHOPPING CARTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function makecart(wx, wz, wy, seed) {
+    const c = new THREE.Group();
+    c.position.set(wx, 0, wz);
+    c.rotation.y = wy;
+    box(c, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
+    box(c, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
+    cyl(c, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
+    for (const [ex, ez] of [[-0.24, -0.38], [0.24, -0.38], [-0.24, 0.38], [0.24, 0.38]]) {
+      cyl(c, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), ex, 0.07, ez, { rz: Math.PI / 2 });
+    }
+    if (seed != null) {
+      // groceries
+      prop(c, "food/watermelon", 0,    0.77,  0,   { s: 0.38 });
+      prop(c, "food/banana",     0.15, 0.79,  0.2, { s: 0.7, ry: -0.8 });
+      prop(c, "food/can",        0.2,  0.78, -0.3, { s: 0.55 });
+      prop(c, "food/bread",     -0.18, 0.78,  0.2, { s: 0.6, ry: 0.5 });
+    }
+    g.add(c);
+    solid(colliders, wx, wz, 1.1, 1.1);
+  }
+  makecart( 9.8, 7.8, Math.PI, 1);  // loaded cart
+  makecart(11.0, 7.8, Math.PI, null); // empty cart
+
+  // â”€â”€ POTTED PLANTS (entrance doors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  prop(g, "furniture/pottedPlant", -12.0, 7.5, { s: 2 });
+  prop(g, "furniture/pottedPlant",  12.0, 7.5, { s: 2 });
+
+  // â”€â”€ SIGNS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const banner = textPanel("DIGI MART", 6, 1.1, "#b5413a", "#fff6dd");
   banner.position.set(0, 3.5, -9.85);
   g.add(banner);
@@ -2058,12 +2106,10 @@ function buildMarket() {
   const aisle2 = textPanel("AISLE 2", 1.8, 0.55, "#e08536", "#ffffff");
   aisle2.position.set(4.5, 3.2, -4.5);
   g.add(aisle2);
-  const sale = textPanel("SALE 50%", 1.5, 0.9, "#f2c531", "#7a2c14");
-  sale.position.set(0, 1.6, -1.4);
-  sale.rotation.y = Math.PI / 6;
-  g.add(sale);
+  // (SALE 50% sign removed per user request)
 
-  for (const [lx, lz] of [[-6, -2], [6, -2], [0, 5]]) {
+  // â”€â”€ LIGHTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  for (const [lx, lz] of [[-6, -2], [6, -2], [0, 5], [0, -6], [-6, -7], [6, -7]]) {
     const p = new THREE.PointLight(0xf6f0dc, 1.25, 16, 2);
     p.position.set(lx, 3.9, lz);
     g.add(p);
@@ -2081,8 +2127,9 @@ function buildMarket() {
   };
 }
 
+
 /* ============================================================
-   LOCATION: Family party — warm dinner like the reference
+   LOCATION: Family party â€” warm dinner like the reference
    ============================================================ */
 function buildParty() {
   const g = new THREE.Group();
@@ -2160,7 +2207,7 @@ function buildParty() {
   chair(2.85, -0.5, -Math.PI / 2);
   chair(-2.85, -0.5, Math.PI / 2);
 
-  // family, seated — real VRoid characters (the user's adult/teen models)
+  // family, seated â€” real VRoid characters (the user's adult/teen models)
   familyMember(g, "mira-15", -1.5, -1.75, 0, 0.50, "sit");
   familyMember(g, "mira-13", 1.5, -1.75, 0, 0.50, "sit");
   familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2, 0.50, "sit");
@@ -2257,11 +2304,11 @@ function buildParty() {
    Location registry + switching
    ============================================================ */
 const locationDefs = {
-  home: { label: "Home", icon: "🏠", build: buildHome },
-  car: { label: "Car Ride", icon: "🚗", build: buildCar },
-  park: { label: "Park", icon: "🌳", build: buildPark },
-  market: { label: "Supermarket", icon: "🛒", build: buildMarket },
-  party: { label: "Family Party", icon: "🎉", build: buildParty },
+  home: { label: "Home", icon: "ðŸ ", build: buildHome },
+  car: { label: "Car Ride", icon: "ðŸš—", build: buildCar },
+  park: { label: "Park", icon: "ðŸŒ³", build: buildPark },
+  market: { label: "Supermarket", icon: "ðŸ›’", build: buildMarket },
+  party: { label: "Family Party", icon: "ðŸŽ‰", build: buildParty },
 };
 const locationOrder = ["home", "car", "park", "market", "party"];
 
@@ -2357,7 +2404,7 @@ function setLocation(id) {
 
   // child reacts to the new place
   state.childLine = arrivalLines[id][state.band];
-  input.placeholder = `Speak to Mira — ${locationDefs[id].label}...`;
+  input.placeholder = `Speak to Mira â€” ${locationDefs[id].label}...`;
   resetParentIdle();
 
   for (const btn of locationBar.querySelectorAll("button")) {
@@ -2421,11 +2468,11 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 function updateHint() {
   const locked = document.pointerLockElement === canvas;
   if (!locked) {
-    lockHint.textContent = "🖱 Click the world to explore · WASD walk · mouse look · 1-5 travel · Enter to talk";
+    lockHint.textContent = "ðŸ–± Click the world to explore Â· WASD walk Â· mouse look Â· 1-5 travel Â· Enter to talk";
   } else if (current && !current.canMove) {
-    lockHint.textContent = "You're riding — look around with the mouse · Enter to talk · Esc to release";
+    lockHint.textContent = "You're riding â€” look around with the mouse Â· Enter to talk Â· Esc to release";
   } else {
-    lockHint.textContent = "WASD to walk · Shift to hurry · Enter to talk to Mira · Esc to release";
+    lockHint.textContent = "WASD to walk Â· Shift to hurry Â· Enter to talk to Mira Â· Esc to release";
   }
 }
 
@@ -2598,7 +2645,7 @@ async function handleSubmit(event) {
       const banner = document.createElement("div");
       banner.id = "activeConflictBanner";
       banner.className = "conflict-banner";
-      banner.innerHTML = `⚠️ DE-ESCALATION EVENT ACTIVATED. ENGAGE PATIENTLY!`;
+      banner.innerHTML = `âš ï¸ DE-ESCALATION EVENT ACTIVATED. ENGAGE PATIENTLY!`;
       document.body.appendChild(banner);
 
       // Log the event to the history
@@ -3410,7 +3457,7 @@ function initClinicianHub() {
         </div>
         <div class="sidebar-footer">
           <div style="margin-bottom:4px;">System Mode: <strong style="color:var(--teal)">Clinical Portal</strong></div>
-          <div>Service status: <span style="color:#22c55e">● Online</span></div>
+          <div>Service status: <span style="color:#22c55e">â— Online</span></div>
         </div>
       </div>
 
@@ -3474,7 +3521,7 @@ function initClinicianHub() {
             <div id="cAgent2Card" class="provision-card" style="display: none;"></div>
             
             <div id="cNoApprovalsPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
-              <span style="font-size: 40px; display: block; margin-bottom: 12px;">⚖️</span>
+              <span style="font-size: 40px; display: block; margin-bottom: 12px;">âš–ï¸</span>
               <strong>No Active Intake Reviews</strong>
               <p style="font-size: 11px; margin-top: 6px;">Propose a new session in the Setup tab or click "Review & Approve" on an awaiting-approval session in the list.</p>
             </div>
@@ -3522,7 +3569,7 @@ function initClinicianHub() {
                 </div>
               </div>
               <div id="cNoMonitorPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
-                <span style="font-size: 40px; display: block; margin-bottom: 12px;">🖥️</span>
+                <span style="font-size: 40px; display: block; margin-bottom: 12px;">ðŸ–¥ï¸</span>
                 <strong>No Active Session Monitored</strong>
                 <p style="font-size: 11px; margin-top: 6px;">Select an active or scheduled session from the setup list and click "Monitor" to load controls.</p>
               </div>
@@ -3543,22 +3590,22 @@ function initClinicianHub() {
             <div class="analytics-stat-card">
               <span class="label">Total Evaluated Cases</span>
               <div class="val">14 Cases</div>
-              <div class="trend text-green">↑ +18% this month</div>
+              <div class="trend text-green">â†‘ +18% this month</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Avg De-escalation Rate</span>
               <div class="val">91.4%</div>
-              <div class="trend text-green">↑ +2.1% improvement</div>
+              <div class="trend text-green">â†‘ +2.1% improvement</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Transgression Incidents</span>
               <div class="val">1 Case</div>
-              <div class="trend text-red">↓ -50% decline</div>
+              <div class="trend text-red">â†“ -50% decline</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Active Sandboxes</span>
               <div class="val">3 Live</div>
-              <div class="trend text-green">● Stable performance</div>
+              <div class="trend text-green">â— Stable performance</div>
             </div>
           </div>
 
@@ -3619,21 +3666,21 @@ function initClinicianHub() {
                     <td style="padding: 6px 4px;">Child (Age 5)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">88.5%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">âœ… Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#b88231aa</td>
                     <td style="padding: 6px 4px;">Teenager (Age 11)</td>
                     <td style="padding: 6px 4px; color: #94a3b8">Withdrawn</td>
                     <td style="padding: 6px 4px; font-weight: bold;">92.0%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">âœ… Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#e390ff45</td>
                     <td style="padding: 6px 4px;">Adult (Age 15)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">74.2%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-red">⚠️ Intervention</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-red">âš ï¸ Intervention</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -3949,17 +3996,17 @@ window.__selectSession = async (sid) => {
       const adviceIcon = document.querySelector("#cLiveAdviceIcon");
       if (adviceText && adviceBox && adviceIcon) {
         if (data.metrics.temperament === "transgressed") {
-          adviceText.innerHTML = "<strong>⚠️ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
+          adviceText.innerHTML = "<strong>âš ï¸ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
           adviceBox.style.background = "rgba(239, 68, 68, 0.08)";
           adviceBox.style.borderColor = "rgba(239, 68, 68, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,0.5)); margin-right:0;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>`;
         } else if (data.metrics.temperament === "secure") {
-          adviceText.innerHTML = "<strong>✅ SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
+          adviceText.innerHTML = "<strong>âœ… SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
           adviceBox.style.background = "rgba(34, 197, 94, 0.08)";
           adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#22c55e; filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); margin-right:0;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         } else {
-          adviceText.innerHTML = "<strong>💡 NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
+          adviceText.innerHTML = "<strong>ðŸ’¡ NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
           adviceBox.style.background = "rgba(23, 143, 134, 0.08)";
           adviceBox.style.borderColor = "rgba(23, 143, 134, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:var(--teal); margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>`;
@@ -3997,10 +4044,10 @@ function renderAgent1ApprovalCard(sessionId, data) {
   const calOverlay = data.calendarOverlay || {};
   
   const slotsHtml = slots.map((s, idx) => {
-    const timeLabel = s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end);
+    const timeLabel = s.start.replace("T", " ") + " â†’ " + (s.end.split("T")[1] || s.end);
     return `
       <div class="slot-card ${idx === 0 ? "selected" : ""}" data-slot-idx="${idx}" data-slot-value='${JSON.stringify(s)}'>
-        <div class="avatar-ring">📅</div>
+        <div class="avatar-ring">ðŸ“…</div>
         <div class="slot-info">
           <div class="slot-name">
             Slot ${idx + 1}
@@ -4010,7 +4057,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
         </div>
         <div class="slot-status">
           <button class="approve-pill ${idx === 0 ? "confirmed" : "pending"}" data-pill-idx="${idx}">
-            ${idx === 0 ? "✓ Selected" : "Select"}
+            ${idx === 0 ? "âœ“ Selected" : "Select"}
           </button>
         </div>
       </div>
@@ -4024,7 +4071,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
 
   const partyRows = `
     <div class="slot-card">
-      <div class="avatar-ring">👤</div>
+      <div class="avatar-ring">ðŸ‘¤</div>
       <div class="slot-info">
         <div class="slot-name">${parentId} <span class="role-badge parent">#d98632</span></div>
         <div class="slot-time">${(calOverlay.parent || []).length} availability windows parsed</div>
@@ -4032,7 +4079,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <div class="slot-status"><span class="role-badge parent" style="font-size:10px;">Parent</span></div>
     </div>
     <div class="slot-card">
-      <div class="avatar-ring" style="border-color: var(--teal);">👩‍⚕️</div>
+      <div class="avatar-ring" style="border-color: var(--teal);">ðŸ‘©â€âš•ï¸</div>
       <div class="slot-info">
         <div class="slot-name">${clinicianId} <span class="role-badge clinician">#178f86</span></div>
         <div class="slot-time">${(calOverlay.clinician || []).length} free windows (${data.sources?.streams || "mock"})</div>
@@ -4040,7 +4087,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <div class="slot-status"><span class="role-badge clinician" style="font-size:10px;">Clinician</span></div>
     </div>
     <div class="slot-card">
-      <div class="avatar-ring" style="border-color: #F4F1EA;">⚖️</div>
+      <div class="avatar-ring" style="border-color: #F4F1EA;">âš–ï¸</div>
       <div class="slot-info">
         <div class="slot-name">${monitorId} <span class="role-badge monitor">#F4F1EA</span></div>
         <div class="slot-time">${(calOverlay.monitor || []).length} free windows (${data.sources?.streams || "mock"})</div>
@@ -4059,7 +4106,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <label>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></label>
     </div>
     
-    <label>Calendar Overlay — All Parties</label>
+    <label>Calendar Overlay â€” All Parties</label>
     ${partyRows}
 
     <label style="margin-top: 12px;">Proposed Conflict-Free Slots</label>
@@ -4085,7 +4132,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       // Select this one
       slotCard.classList.add("selected");
       const pill = slotCard.querySelector(".approve-pill");
-      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "✓ Selected"; }
+      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "âœ“ Selected"; }
     });
   });
 
@@ -4174,18 +4221,18 @@ function renderAgent2ProvisionCard(data, context = {}) {
   
   // Build email delivery notifications
   const emails = [
-    { icon: "👤", name: context.parentId || "Parent", role: "Parent" },
-    { icon: "👩‍⚕️", name: context.clinicianId || "Clinician", role: "Clinician" },
-    { icon: "⚖️", name: context.monitorId || "Monitor", role: "Court Monitor" },
+    { icon: "ðŸ‘¤", name: context.parentId || "Parent", role: "Parent" },
+    { icon: "ðŸ‘©â€âš•ï¸", name: context.clinicianId || "Clinician", role: "Clinician" },
+    { icon: "âš–ï¸", name: context.monitorId || "Monitor", role: "Court Monitor" },
   ];
   
   const emailHtml = emails.map(e => `
     <div class="email-notification">
       <span class="email-icon">${e.icon}</span>
       <div class="email-body">
-        <strong>${e.name}</strong> — ${e.role} invite for ${slotLabel}
+        <strong>${e.name}</strong> â€” ${e.role} invite for ${slotLabel}
       </div>
-      <span class="email-status">✓ Delivered</span>
+      <span class="email-status">âœ“ Delivered</span>
     </div>
   `).join("");
 
@@ -4204,7 +4251,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
       <div class="prov-metric-item">Profile: <strong>${prov.temperament_profile || "cooperative"}</strong></div>
     </div>
 
-    <label>📧 Calendar Invite Notifications</label>
+    <label>ðŸ“§ Calendar Invite Notifications</label>
     <div class="email-notifications">
       ${emailHtml}
     </div>
