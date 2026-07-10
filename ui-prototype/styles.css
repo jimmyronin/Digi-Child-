@@ -1952,4 +1952,9 @@ body.is-debug-view .crosshair {
   filter: drop-shadow(0 0 4px rgba(23, 143, 134, 0.4));
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 

@@ -4471,6 +4471,64 @@ function renderAgent1ApprovalCard(sessionId, data) {
         })
       });
       const result = await res.json();
+      
+      // Clear card content and display Agent 2's step-by-step progress & email send simulation
+      card.innerHTML = `
+        <div class="agent-provisioning-progress" style="padding: 24px 12px; font-family: inherit;">
+          <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+            <div class="spinner-ring" style="width:18px; height:18px; border:2px solid rgba(255,255,255,0.2); border-top-color:var(--teal); border-radius:50%; animation: spin 0.8s linear infinite;"></div>
+            Agent 2: Provisioning & Calendar Synced
+          </h3>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+            <div id="pStep1" style="color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px;">
+              <span>⚙️</span> Initializing environment calibration...
+            </div>
+            <div id="pStep2" style="color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px;">
+              <span>📊</span> Applying child baseline (Trust: ${result.baseline_state?.trust || 0}%, Volatility: ${result.baseline_state?.volatility || 0}%)...
+            </div>
+            <div id="pStep3" style="color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px;">
+              <span>📧</span> Composing invitation emails & ICS calendar attachments...
+            </div>
+            <div id="pStep4" style="color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px;">
+              <span>🚀</span> Broadcasting emails to ${parentId}, ${clinicianId}, and ${monitorId}...
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Helper to delay
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      // Step 1
+      const s1 = card.querySelector("#pStep1");
+      s1.style.color = "#ffffff";
+      s1.innerHTML = `<span>⚡</span> Initializing environment calibration... <b style="color:var(--teal)">Active</b>`;
+      await sleep(1000);
+      s1.innerHTML = `<span>✅</span> Environment calibration initialized.`;
+
+      // Step 2
+      const s2 = card.querySelector("#pStep2");
+      s2.style.color = "#ffffff";
+      s2.innerHTML = `<span>⚡</span> Applying child baseline (Trust: ${result.baseline_state?.trust || 0}%, Volatility: ${result.baseline_state?.volatility || 0}%)... <b style="color:var(--teal)">Active</b>`;
+      await sleep(1000);
+      s2.innerHTML = `<span>✅</span> Child baseline applied successfully.`;
+
+      // Step 3
+      const s3 = card.querySelector("#pStep3");
+      s3.style.color = "#ffffff";
+      s3.innerHTML = `<span>⚡</span> Composing invitation emails & ICS calendar attachments... <b style="color:var(--teal)">Active</b>`;
+      await sleep(1200);
+      s3.innerHTML = `<span>✅</span> Invitation emails and attachments compiled.`;
+
+      // Step 4
+      const s4 = card.querySelector("#pStep4");
+      s4.style.color = "#ffffff";
+      s4.innerHTML = `<span>⚡</span> Broadcasting emails to ${parentId}, ${clinicianId}, and ${monitorId}... <b style="color:var(--teal)">Active</b>`;
+      await sleep(1500);
+      s4.innerHTML = `<span>✅</span> Emails transmitted. Delivery confirmations received.`;
+      
+      await sleep(1000);
+
       renderAgent2ProvisionCard(result, { parentId, clinicianId, monitorId, chosenSlot });
       card.style.display = "none";
       refreshSessionList();
