@@ -1186,8 +1186,9 @@ function buildHome() {
   // Toy cars and small items in Mira's corner from Kenney kits
   prop(g, "car/kart-oopi", -2.7, 1.7, { s: 0.18, ry: 0.6 });
   prop(g, "car/kart-ooli", -2.1, 0.8, { s: 0.16, ry: -0.8 });
-  prop(g, "food/cookie", -3.6, 0.85, { s: 0.55, y: 0.37 });
-  prop(g, "food/lollypop", -3.2, 0.85, { s: 0.55, y: 0.36, ry: 0.5 });
+  // Cookie and lollypop sitting on Mira's little table (same x/z as table center)
+  prop(g, "food/cookie", -3.3, 0.6, { s: 0.55, y: 0.39 });
+  prop(g, "food/lollypop", -2.9, 0.6, { s: 0.55, y: 0.40, ry: 0.5 });
   // Nature mushrooms as playful decorations
   prop(g, "nature/mushroom_red", -4.5, 1.8, { s: 1.2 });
   prop(g, "nature/mushroom_tan", -4.8, 2.4, { s: 1.0, ry: 0.6 });
@@ -1994,11 +1995,11 @@ function buildMarket() {
   prop(g, "furniture/cardboardBoxOpen", -10.7, -8.2, { s: 2, ry: 0.5 });
   solid(colliders, -11, -7.9, 1.6, 1.4);
 
-  // shopping carts — one with groceries, one empty near the entrance
+  // shopping carts — neatly parked side-by-side near the checkout entrance
   {
     const cart = new THREE.Group();
-    cart.position.set(8.2, 0, 6.8);
-    cart.rotation.y = 0.6;
+    cart.position.set(9.8, 0, 7.8);
+    cart.rotation.y = Math.PI;
     box(cart, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
     box(cart, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
     cyl(cart, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
@@ -2011,13 +2012,13 @@ function buildMarket() {
     prop(cart, "food/banana", 0.15, 0.79, 0.2, { s: 0.7, ry: -0.8 });
     prop(cart, "food/can", 0.2, 0.78, -0.3, { s: 0.55 });
     g.add(cart);
-    solid(colliders, 8.2, 6.8, 1.1, 1.1);
+    solid(colliders, 9.8, 7.8, 1.1, 1.1);
   }
   {
-    // second empty cart near the entrance
+    // second empty cart beside the first
     const cart2 = new THREE.Group();
-    cart2.position.set(10.5, 0, 5.2);
-    cart2.rotation.y = 1.2;
+    cart2.position.set(11.0, 0, 7.8);
+    cart2.rotation.y = Math.PI;
     box(cart2, 0.6, 0.4, 0.9, mat(0x3f8fd1, 0.4, { metalness: 0.4 }), 0, 0.55, 0);
     box(cart2, 0.55, 0.05, 0.85, mat(0x2c6ea8, 0.5), 0, 0.36, 0);
     cyl(cart2, 0.02, 0.02, 0.5, mat(0x8f9498, 0.4), 0, 0.9, 0.55, { rz: Math.PI / 2 });
@@ -2025,7 +2026,7 @@ function buildMarket() {
       cyl(cart2, 0.07, 0.07, 0.04, mat(0x24262b, 0.5), wx, 0.07, wz, { rz: Math.PI / 2 });
     }
     g.add(cart2);
-    solid(colliders, 10.5, 5.2, 1.1, 1.1);
+    solid(colliders, 11.0, 7.8, 1.1, 1.1);
   }
   // Checkout lane cashier props: card reader and products waiting to be scanned
   for (let i = 0; i < 3; i++) {
