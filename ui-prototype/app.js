@@ -2470,6 +2470,8 @@ function setLocation(id) {
   if (!built[id]) built[id] = locationDefs[id].build();
   if (current) scene.remove(current.group);
   
+  clearChildAttachedProp();
+
   // Clear any active family member models and toggle background sounds
   familyMembers = [];
   playPartySound(id === "party");
@@ -2707,6 +2709,170 @@ document.querySelector("#reportBtn").addEventListener("click", () => openInsight
 document.querySelector("#ageBtn").addEventListener("click", ageUp);
 document.querySelector("#closeInsight").addEventListener("click", () => insightPanel.classList.remove("is-open"));
 
+let childAttachedProp = null;
+
+function clearChildAttachedProp() {
+  if (childAttachedProp) {
+    if (childAttachedProp.parent) {
+      childAttachedProp.parent.remove(childAttachedProp);
+    }
+    childAttachedProp = null;
+  }
+}
+
+function attachPropToChild(path, opts = {}) {
+  clearChildAttachedProp();
+  
+  loadModel(path).then((proto) => {
+    const m = proto.clone(true);
+    
+    // Determine attachment target
+    let target = child;
+    let localPos = new THREE.Vector3(0, 0.45 * vrmHeight, 0.25); // default in front of child
+    let localRot = new THREE.Euler(0, 0, 0);
+    let scaleScalar = opts.s || 1.0;
+    
+    if (vrm) {
+      // Try to attach to rightHand or leftHand
+      const hand = vrm.humanoid.getNormalizedBoneNode(opts.bone || "rightHand");
+      if (hand) {
+        target = hand;
+        localPos.set(0, 0, 0); // flush in hand
+        localRot.set(0, 0, 0);
+        
+        // Adjust default offsets depending on model
+        if (path.includes("book")) {
+          localPos.set(0.04, 0.04, 0.08);
+          localRot.set(Math.PI / 2, 0, Math.PI / 4);
+          scaleScalar *= 0.8;
+        } else if (path.includes("toy") || path.includes("kart")) {
+          localPos.set(0.04, 0.02, 0.04);
+          localRot.set(0, 0, 0);
+          scaleScalar *= 0.12;
+        } else if (path.includes("cookie") || path.includes("lollypop") || path.includes("banana") || path.includes("apple")) {
+          localPos.set(0.02, 0.02, 0.04);
+          scaleScalar *= 0.45;
+        }
+      }
+    }
+    
+    m.position.copy(localPos);
+    m.rotation.copy(localRot);
+    m.scale.setScalar(scaleScalar);
+    
+    target.add(m);
+    childAttachedProp = m;
+  }).catch((e) => console.warn("Failed to attach prop", e));
+}
+
+function handleDynamicChatActions(userMsg, childMsg) {
+  const combined = (userMsg + " " + childMsg).toLowerCase();
+  
+  if (state.location === "home") {
+    // 1. Reading / Books
+    if (combined.includes("book") || combined.includes("story") || combined.includes("read") || combined.includes("bunny")) {
+      attachPropToChild("furniture/books", { bone: "rightHand", s: 1.2 });
+      
+      // Move to play corner/rug and sit down
+      locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+      player.targetX = -2.0;
+      player.targetZ = 1.8;
+      player.targetYaw = 0.5;
+      placeChild();
+      return;
+    }
+    
+    // 2. Lego blocks / Building a tower
+    if (combined.includes("lego") || combined.includes("block") || combined.includes("tower") || combined.includes("build")) {
+      attachPropToChild("car/kart-oopi", { bone: "rightHand", s: 1.0 }); // oopi cart as toy car
+      locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+      player.targetX = -2.0;
+      player.targetZ = 1.8;
+      player.targetYaw = 0.5;
+      placeChild();
+      return;
+    }
+    
+    // 3. Eating / Cookies / Snacks
+    if (combined.includes("cookie") || combined.includes("eat") || combined.includes("food") || combined.includes("snack") || combined.includes("lollypop") || combined.includes("lollipop") || combined.includes("apple") || combined.includes("banana")) {
+      const propName = (combined.includes("lollypop") || combined.includes("lollipop")) ? "food/lollypop" : 
+                       (combined.includes("banana")) ? "food/banana" :
+                       (combined.includes("apple")) ? "food/apple" : "food/cookie";
+      attachPropToChild(propName, { bone: "rightHand", s: 1.2 });
+      
+      // If kitchen or table is mentioned, move to kitchen table, else play corner
+      if (combined.includes("kitchen") || combined.includes("table") || combined.includes("dining")) {
+        locationDefs.home.childAnchor = { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" };
+        player.targetX = -2.05;
+        player.targetZ = -3.1;
+        player.targetYaw = -Math.PI * 0.5;
+      } else {
+        locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+        player.targetX = -2.0;
+        player.targetZ = 1.8;
+        player.targetYaw = 0.5;
+      }
+      placeChild();
+      return;
+    }
+    
+    // 4. Brushing teeth / Washing / Bathroom
+    if (combined.includes("brush") || combined.includes("teeth") || combined.includes("wash") || combined.includes("bathroom") || combined.includes("sink") || combined.includes("toilet")) {
+      locationDefs.home.childAnchor = { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" };
+      player.targetX = 2.48;
+      player.targetZ = 4.2;
+      player.targetYaw = 0;
+      placeChild();
+      return;
+    }
+  } else if (state.location === "park") {
+    // swings
+    if (combined.includes("swing")) {
+      locationDefs.park.childAnchor = { x: 2.5, z: -2.0, seat: 0.6, yaw: 0, pose: "sit" };
+      placeChild();
+      return;
+    }
+    // slide
+    if (combined.includes("slide")) {
+      locationDefs.park.childAnchor = { x: -2.5, z: -2.0, yaw: 0, pose: "stand" };
+      placeChild();
+      return;
+    }
+    // sandbox
+    if (combined.includes("sand") || combined.includes("castle") || combined.includes("box")) {
+      locationDefs.park.childAnchor = { x: 0, z: 1.5, seat: 0.2, yaw: 0, pose: "sit" };
+      placeChild();
+      return;
+    }
+  } else if (state.location === "market") {
+    // checkout
+    if (combined.includes("checkout") || combined.includes("pay") || combined.includes("cashier") || combined.includes("card")) {
+      locationDefs.market.childAnchor = { x: -0.8, z: 2.0, yaw: 0, pose: "stand" };
+      placeChild();
+      return;
+    }
+    // snack
+    if (combined.includes("cookie") || combined.includes("snack") || combined.includes("candy")) {
+      locationDefs.market.childAnchor = { x: 1.5, z: -0.5, yaw: Math.PI, pose: "stand" };
+      placeChild();
+      return;
+    }
+  } else if (state.location === "party") {
+    // buffet
+    if (combined.includes("eat") || combined.includes("food") || combined.includes("cake") || combined.includes("buffet")) {
+      locationDefs.party.childAnchor = { x: -1.0, z: -1.5, yaw: 0, pose: "stand" };
+      placeChild();
+      return;
+    }
+    // couch
+    if (combined.includes("grandma") || combined.includes("couch") || combined.includes("sit")) {
+      locationDefs.party.childAnchor = { x: 0, z: -2.5, seat: 0.5, yaw: 0, pose: "sit" };
+      placeChild();
+      return;
+    }
+  }
+}
+
 let sessionExchanges = 0;
 
 function playCautionBeep() {
@@ -2804,71 +2970,8 @@ async function handleSubmit(event) {
   }
   state.mood = result.mood;
   state.childLine = result.childLine;
-  syncLocationToChildLine(result.childLine);
+  handleDynamicChatActions(message, result.childLine);
   syncUi();
-}
-
-function syncLocationToChildLine(childLine) {
-  if (state.location !== "home" || !current) return;
-  
-  const text = childLine.toLowerCase();
-  
-  const homeRooms = {
-    bedroom: {
-      anchor: { x: 5.6, z: -2.45, yaw: Math.PI * 0.5, pose: "sit" },
-      spawn: { x: 4.6, z: -2.45, yaw: Math.PI * 0.5 },
-      keywords: ["bedroom", "my room", "my bed", "my desk", "my computer", "playroom", "study", "pc", "sleeping", "sleep", "my dresser", "dresser"]
-    },
-    bathroom: {
-      anchor: { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" },
-      spawn: { x: 2.48, z: 4.2, yaw: 0 },
-      keywords: ["bathroom", "sink", "mirror", "wash", "toilet", "shower", "teeth", "brushing", "towel", "toilet paper"]
-    },
-    kitchen: {
-      anchor: { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" },
-      spawn: { x: -2.05, z: -3.1, yaw: -Math.PI * 0.5 },
-      keywords: ["kitchen", "dining", "table", "fridge", "refrigerator", "eat", "cereal", "breakfast", "dinner", "lunch", "plate", "food", "cooking", "snack", "cookie", "cookies"]
-    },
-    living: {
-      anchor: { x: -3.0, z: 2.7, yaw: Math.PI * 0.05, pose: "stand" },
-      spawn: { x: -4.4, z: 4.5, yaw: -0.5 },
-      keywords: ["living room", "livingroom", "couch", "sofa", "television", "tv", "rug", "cushion", "pillow", "play corner", "lego", "legos", "toy", "toys", "swing", "outside"]
-    }
-  };
-
-  let matchedRoom = null;
-  for (const roomKey in homeRooms) {
-    const room = homeRooms[roomKey];
-    if (room.keywords.some(keyword => text.includes(keyword))) {
-      matchedRoom = room;
-      break;
-    }
-  }
-
-  if (matchedRoom) {
-    // If she talks about legos/toys in living room, seat her on the floor cushion!
-    if (matchedRoom === homeRooms.living && (text.includes("lego") || text.includes("toy"))) {
-      matchedRoom.anchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
-    }
-    
-    console.log("Dynamically transitioning child and parent viewpoint to:", matchedRoom);
-    // Update child placement anchor
-    locationDefs.home.childAnchor = matchedRoom.anchor;
-    
-    // Set LERP targets for smooth parent camera glide
-    player.targetX = matchedRoom.spawn.x;
-    player.targetZ = matchedRoom.spawn.z;
-    player.targetYaw = matchedRoom.spawn.yaw;
-    
-    // Refresh child placement immediately in world space
-    placeChild();
-    if (current && current.aimAtChild !== false) {
-      const a = current.childAnchor;
-      const headY = child.position.y + vrmHeight * 0.92;
-      const dist = Math.max(0.6, Math.hypot(a.x - player.x, a.z - player.z));
-      player.pitch = THREE.MathUtils.clamp(Math.atan2(headY - current.eye, dist) * 0.85, -0.6, 0.3);
-    }
-  }
 }
 
 let sessionParentId = "mira";
