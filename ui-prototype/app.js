@@ -3316,20 +3316,39 @@ function updateFrame(dt, t) {
     walking = true;
     const spd = state.values.volatility > 55 ? 1.4 : 2.0; // speed
     const step = Math.min(distT, spd * dt);
-    const nx = childWorld.x + (dxT / distT) * step;
-    const nz = childWorld.z + (dzT / distT) * step;
-    const r = 0.26;
-    const blocked = (x, z) => {
-      for (const c of current.colliders)
-        if (x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r) return true;
-      return false;
-    };
-    if (!blocked(nx, childWorld.z)) childWorld.x = nx;
-    if (!blocked(childWorld.x, nz)) childWorld.z = nz;
+    childWorld.x += (dxT / distT) * step;
+    childWorld.z += (dzT / distT) * step;
+  }
+
+  // Resolve collisions & keep in bounds
+  const r = 0.26;
+  if (current && current.colliders) {
+    for (const c of current.colliders) {
+      const minX = c.minX - r;
+      const maxX = c.maxX + r;
+      const minZ = c.minZ - r;
+      const maxZ = c.maxZ + r;
+      if (childWorld.x > minX && childWorld.x < maxX && childWorld.z > minZ && childWorld.z < maxZ) {
+        // Overlapping: push out along the axis of shallowest penetration
+        const pL = childWorld.x - minX;
+        const pR = maxX - childWorld.x;
+        const pT = childWorld.z - minZ;
+        const pB = maxZ - childWorld.z;
+        const minP = Math.min(pL, pR, pT, pB);
+        if (minP === pL) childWorld.x = minX;
+        else if (minP === pR) childWorld.x = maxX;
+        else if (minP === pT) childWorld.z = minZ;
+        else childWorld.z = maxZ;
+      }
+    }
+  }
+
+  if (current && current.bounds) {
     const b = current.bounds;
     childWorld.x = THREE.MathUtils.clamp(childWorld.x, b.minX, b.maxX);
     childWorld.z = THREE.MathUtils.clamp(childWorld.z, b.minZ, b.maxZ);
   }
+
   walkAmt += ((walking ? 1 : 0) - walkAmt) * Math.min(1, dt * 8);
 
   if (activePlayPoint) {
