@@ -2425,7 +2425,7 @@ function buildParty() {
    Location registry + switching
    ============================================================ */
 const locationDefs = {
-  home: { label: "Home", icon: "ðŸ ", build: buildHome },
+  home: { label: "Home", icon: "🏡", build: buildHome },
   car: { label: "Car Ride", icon: "🚗", build: buildCar },
   park: { label: "Park", icon: "🌳", build: buildPark },
   market: { label: "Supermarket", icon: "🛒", build: buildMarket },
@@ -2589,7 +2589,7 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 function updateHint() {
   const locked = document.pointerLockElement === canvas;
   if (!locked) {
-    lockHint.textContent = "ðŸ–± Click the world to explore · WASD walk · mouse look · 1-5 travel · Enter to talk";
+    lockHint.textContent = "🖱 Click the world to explore · WASD walk · mouse look · 1-5 travel · Enter to talk";
   } else if (current && !current.canMove) {
     lockHint.textContent = "You're riding — look around with the mouse · Enter to talk · Esc to release";
   } else {
@@ -3690,7 +3690,7 @@ function initClinicianHub() {
                 </div>
               </div>
               <div id="cNoMonitorPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
-                <span style="font-size: 40px; display: block; margin-bottom: 12px;">ðŸ–¥ï¸</span>
+                <span style="font-size: 40px; display: block; margin-bottom: 12px;">🖥️</span>
                 <strong>No Active Session Monitored</strong>
                 <p style="font-size: 11px; margin-top: 6px;">Select an active or scheduled session from the setup list and click "Monitor" to load controls.</p>
               </div>
@@ -4127,7 +4127,7 @@ window.__selectSession = async (sid) => {
           adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#22c55e; filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); margin-right:0;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         } else {
-          adviceText.innerHTML = "<strong>ðŸ’¡ NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
+          adviceText.innerHTML = "<strong>💡 NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
           adviceBox.style.background = "rgba(23, 143, 134, 0.08)";
           adviceBox.style.borderColor = "rgba(23, 143, 134, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:var(--teal); margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>`;
@@ -4168,7 +4168,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
     const timeLabel = s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end);
     return `
       <div class="slot-card ${idx === 0 ? "selected" : ""}" data-slot-idx="${idx}" data-slot-value='${JSON.stringify(s)}'>
-        <div class="avatar-ring">ðŸ“…</div>
+        <div class="avatar-ring">📅</div>
         <div class="slot-info">
           <div class="slot-name">
             Slot ${idx + 1}
@@ -4192,7 +4192,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
 
   const partyRows = `
     <div class="slot-card">
-      <div class="avatar-ring">ðŸ‘¤</div>
+      <div class="avatar-ring">👤</div>
       <div class="slot-info">
         <div class="slot-name">${parentId} <span class="role-badge parent">#d98632</span></div>
         <div class="slot-time">${(calOverlay.parent || []).length} availability windows parsed</div>
@@ -4342,7 +4342,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
   
   // Build email delivery notifications
   const emails = [
-    { icon: "ðŸ‘¤", name: context.parentId || "Parent", role: "Parent" },
+    { icon: "👤", name: context.parentId || "Parent", role: "Parent" },
     { icon: "👩‍⚕️", name: context.clinicianId || "Clinician", role: "Clinician" },
     { icon: "⚖️", name: context.monitorId || "Monitor", role: "Court Monitor" },
   ];
@@ -4372,7 +4372,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
       <div class="prov-metric-item">Profile: <strong>${prov.temperament_profile || "cooperative"}</strong></div>
     </div>
 
-    <label>ðŸ“§ Calendar Invite Notifications</label>
+    <label>📧 Calendar Invite Notifications</label>
     <div class="email-notifications">
       ${emailHtml}
     </div>
