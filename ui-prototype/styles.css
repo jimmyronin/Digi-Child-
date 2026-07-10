@@ -1169,7 +1169,7 @@ body.is-debug-view .crosshair {
   box-shadow: 0 0 8px rgba(23, 143, 134, 0.3);
 }
 
-.clinician-hub button:not(.approve-pill) {
+.clinician-hub button:not(.approve-pill):not(.sidebar-tab-btn) {
   width: 100%;
   padding: 12px;
   background: var(--teal);
@@ -1184,7 +1184,7 @@ body.is-debug-view .crosshair {
   letter-spacing: 0.5px;
 }
 
-.clinician-hub button:not(.approve-pill):hover {
+.clinician-hub button:not(.approve-pill):not(.sidebar-tab-btn):hover {
   background: #1cb5a9;
   transform: translateY(-1px);
 }
