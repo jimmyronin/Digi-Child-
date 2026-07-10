@@ -699,7 +699,7 @@ function detectReaction(message, result) {
     if (cl.includes("cry") || cl.includes("sob") || cl.includes("sniffle") || cl.includes("tears") || cl.includes("wail") || cl.includes("*looks down*") || cl.includes("*cries*")) {
       return "cry";
     }
-    if (cl.includes("laugh") || cl.includes("giggle") || cl.includes("smile") || cl.includes("happy") || cl.includes("yay!")) {
+    if (cl.includes("laugh") || cl.includes("giggle") || cl.includes("smile") || cl.includes("happy") || cl.includes("yay!") || cl.includes("love") || cl.includes("bounce") || cl.includes("hug") || cl.includes("bunny") || cl.includes("favorite")) {
       return "happy";
     }
   }
@@ -3353,6 +3353,22 @@ function updateFrame(dt, t) {
   let LlZ = 0, LlX = 0, LlY = 0, RlZ = 0, RlX = 0, RlY = 0;
   let RhZ = 0, RhX = 0, RhY = 0;
   
+  if (childAttachedProp) {
+    const isBook = childAttachedProp.name.toLowerCase().includes("book");
+    if (isBook) {
+      // Hold/read book pose
+      LuZ = -1.32 + 0.8; RuZ = 1.32 - 0.8;
+      LuX = -0.5; RuX = -0.5;
+      LuY = 0.3; RuY = -0.3;
+      LlX = -1.1; RlX = -1.1;
+    } else {
+      // Hold other item pose (right hand)
+      RuZ = 1.32 - 0.6;
+      RuX = -0.4;
+      RlX = -0.8;
+    }
+  }
+  
   if (t < waveUntil) {
     RuZ = 0.3;      // raise upper arm high
     RuX = -1.0;
@@ -3392,8 +3408,16 @@ function updateFrame(dt, t) {
     posOZ = 0.05 * rk;                // recoil away
   } else if (effType === "happy") {
     const sw = Math.sin(t * 6) * 0.35 * rk;
-    LuZ = -1.32 + 0.7 * rk; RuZ = 1.32 - 0.7 * rk;
-    LuX = -0.4 * rk + sw; RuX = -0.4 * rk - sw;
+    if (childAttachedProp && childAttachedProp.name.toLowerCase().includes("book")) {
+      // Hugging book pose: arms bent inward closer to chest
+      LuZ = -1.32 + 0.9 * rk; RuZ = 1.32 - 0.9 * rk;
+      LuX = -0.6 * rk; RuX = -0.6 * rk;
+      LuY = 0.4 * rk; RuY = -0.4 * rk;
+      LlX = -1.2 * rk; RlX = -1.2 * rk;
+    } else {
+      LuZ = -1.32 + 0.7 * rk; RuZ = 1.32 - 0.7 * rk;
+      LuX = -0.4 * rk + sw; RuX = -0.4 * rk - sw;
+    }
     posOY += Math.abs(Math.sin(t * 5)) * 0.08 * rk; // happy bounce
   } else if (!walking && attended && goodMood) {
     posOY += Math.abs(Math.sin(t * 4)) * 0.025; // happy little bounce in place
