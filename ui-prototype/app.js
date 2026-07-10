@@ -134,7 +134,7 @@ function softParticleTexture() {
   return tex;
 }
 
-// floating dust motes â€” the cozy sparkle drifting through every scene
+// floating dust motes — the cozy sparkle drifting through every scene
 const motes = (() => {
   const count = 90;
   const pos = new Float32Array(count * 3);
@@ -503,7 +503,7 @@ function makeTree(scale = 1, tone = 0x4d8f3a) {
 }
 
 /* ============================================================
-   The child (Mira) â€” the user's own VRoid character (.vrm).
+   The child (Mira) — the user's own VRoid character (.vrm).
    15 models cover her growth: mira-01..05 (child),
    mira-06..10 (teenager), mira-11..15 (adult).
    The sim age picks which one is loaded.
@@ -543,7 +543,7 @@ let exprSad = 0;
 let exprAngry = 0;
 
 /* ============================================================
-   Child reactions â€” crying, screaming, giggling, playful idle.
+   Child reactions — crying, screaming, giggling, playful idle.
    Sounds are synthesized with the Web Audio API so they always
    work (no network, matches the project's offline-first goal).
    ============================================================ */
@@ -1107,7 +1107,7 @@ function makePerson({ shirt, hairColor, skin = 0xc78d63, scale = 1 }) {
 }
 
 /* ============================================================
-   LOCATION: Home â€” a house with different rooms
+   LOCATION: Home — a house with different rooms
    ============================================================ */
 function buildHome() {
   const g = new THREE.Group();
@@ -1366,7 +1366,7 @@ function buildHome() {
 }
 
 /* ============================================================
-   LOCATION: Car ride â€” seated, world drives past
+   LOCATION: Car ride — seated, world drives past
    ============================================================ */
 function buildCar() {
   const g = new THREE.Group();
@@ -1472,7 +1472,7 @@ function buildCar() {
   gCtx.font = "10px sans-serif";
   gCtx.fillText("MPH", 128, 78);
   gCtx.fillStyle = "#27ae60";
-  gCtx.fillText("â—€  D  â–¶", 128, 44);
+  gCtx.fillText("◀  D  ▶", 128, 44);
 
   const gaugeTex = new THREE.CanvasTexture(gaugeCanvas);
   const gaugeMat = new THREE.MeshBasicMaterial({ map: gaugeTex });
@@ -1775,7 +1775,7 @@ function buildCar() {
 }
 
 /* ============================================================
-   LOCATION: Park â€” playground like the reference render
+   LOCATION: Park — playground like the reference render
    ============================================================ */
 function buildPark() {
   const g = new THREE.Group();
@@ -1959,7 +1959,7 @@ function buildPark() {
 }
 
 /* ============================================================
-   LOCATION: Supermarket â€” colorful aisles + checkout
+   LOCATION: Supermarket — colorful aisles + checkout
    ============================================================ */
 function buildMarket() {
   const g = new THREE.Group();
@@ -1980,7 +1980,7 @@ function buildMarket() {
     }
   }
 
-  // â”€â”€ shelf builder (gondola) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── shelf builder (gondola) ──────────────────────────────────────────────────
   // foodList omits "carton" and "watermelon" (too big for shelves)
   const shelfFoods = [
     "can", "soda", "loaf", "cheese", "pizza-box", "bottle-ketchup",
@@ -1988,7 +1988,7 @@ function buildMarket() {
     "cookie", "soda-can", "egg-cup", "jam", "muffin", "donut",
   ];
 
-  // Aisle gondola â€“ items on both sides of a central back-panel
+  // Aisle gondola – items on both sides of a central back-panel
   function gondola(cx, cz, len, seed) {
     box(g, len, 0.3, 1.0, mat(0xb5413a, 0.7), cx, 0.15, cz);
     box(g, len, 1.95, 0.14, mat(0x8f9498, 0.6), cx, 1.05, cz);
@@ -2010,7 +2010,7 @@ function buildMarket() {
     solid(colliders, cx, cz, len + 0.2, 1.3);
   }
 
-  // Wall shelf builder â€“ items only on the outward-facing side
+  // Wall shelf builder – items only on the outward-facing side
   // "dir" = "N" | "S" | "E" | "W"  (which wall face items are placed on)
   function wallShelf(cx, cz, len, seed, dir) {
     const isNS = dir === "N" || dir === "S";
@@ -2039,20 +2039,20 @@ function buildMarket() {
     solid(colliders, cx, cz, shelfW + 0.1, shelfD + 0.1);
   }
 
-  // â”€â”€ AISLE GONDOLAS (centre of store) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AISLE GONDOLAS (centre of store) ────────────────────────────────────────
   for (const [gx, seedBase] of [[-4.5, 11], [4.5, 77]]) {
     gondola(gx, -6, 7, seedBase);
     gondola(gx, -3, 7, seedBase + 13);
     gondola(gx, 0, 7, seedBase + 29);
   }
 
-  // â”€â”€ WALL SHELVES (all 4 walls) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── WALL SHELVES (all 4 walls) ───────────────────────────────────────────────
   // North wall (z = -9.5), shelves along full width in 4 segments
   wallShelf(-9,   -9.15, 7,  200, "N");
   wallShelf(-1.5, -9.15, 7,  250, "N");
   wallShelf( 6,   -9.15, 7,  300, "N");
 
-  // South wall (z = +9.5) â€” behind checkout, keep 3 short shelf banks
+  // South wall (z = +9.5) — behind checkout, keep 3 short shelf banks
   wallShelf(-9,   9.15, 5, 400, "S");
   wallShelf(-1.5, 9.15, 5, 450, "S");
   wallShelf( 6,   9.15, 5, 500, "S");
@@ -2067,11 +2067,11 @@ function buildMarket() {
   wallShelf(12.25, -1, 6, 850, "W");
   wallShelf(12.25,  4, 5, 900, "W");
 
-  // â”€â”€ WALL COOLERS (north wall, glowing fridges) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── WALL COOLERS (north wall, glowing fridges) ────────────────────────────
   // Kept at back wall but raised slightly so produce can live at front
-  // (already replaced by wall shelves â€” removed duplicates)
+  // (already replaced by wall shelves — removed duplicates)
 
-  // â”€â”€ PRODUCE LOW DISPLAY TABLE (near entrance, south-east corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PRODUCE LOW DISPLAY TABLE (near entrance, south-east corner) ──────────
   // Low flat table with fruit on top
   box(g, 3.0, 0.7, 1.4, mat(0x6b4a2c, 0.8), 9.5, 0.35, 5.0);
   box(g, 2.8, 0.04, 1.2, mat(0x7d5c36, 0.7), 9.5, 0.72, 5.0, { cast: false });
@@ -2083,7 +2083,7 @@ function buildMarket() {
   prop(g, "food/grapes",     8.8, 5.0, { s: 0.55, y: 0.76 });
   prop(g, "food/orange",    10.1, 5.0, { s: 0.75, y: 0.76 });
 
-  // â”€â”€ CHECKOUT LANES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── CHECKOUT LANES ───────────────────────────────────────────────────────────
   for (let i = 0; i < 3; i++) {
     const cx = -6 + i * 4;
     box(g, 0.95, 0.95, 2.6, mat(0xb5413a, 0.65), cx, 0.475, 6.4);
@@ -2153,12 +2153,12 @@ function buildMarket() {
   prop(g, "furniture/pottedPlant", -2.8, 9.6, { s: 2 });
   prop(g, "furniture/pottedPlant",  2.8, 9.6, { s: 2 });
 
-  // â”€â”€ CARDBOARD STOCK BOXES (back corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── CARDBOARD STOCK BOXES (back corner) ──────────────────────────────────
   prop(g, "furniture/cardboardBoxClosed", -11.4, -7.6, { s: 2 });
   prop(g, "furniture/cardboardBoxOpen",   -10.7, -8.2, { s: 2, ry: 0.5 });
   solid(colliders, -11, -7.9, 1.6, 1.4);
 
-  // â”€â”€ SHOPPING CARTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SHOPPING CARTS ───────────────────────────────────────────────────────────
   function makecart(wx, wz, wy, seed) {
     const c = new THREE.Group();
     c.position.set(wx, 0, wz);
@@ -2182,11 +2182,11 @@ function buildMarket() {
   makecart( 9.8, 7.8, Math.PI, 1);  // loaded cart
   makecart(11.0, 7.8, Math.PI, null); // empty cart
 
-  // â”€â”€ POTTED PLANTS (entrance doors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── POTTED PLANTS (entrance doors) ──────────────────────────────────────────
   prop(g, "furniture/pottedPlant", -12.0, 7.5, { s: 2 });
   prop(g, "furniture/pottedPlant",  12.0, 7.5, { s: 2 });
 
-  // â”€â”€ SIGNS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SIGNS ────────────────────────────────────────────────────────────────────
   const banner = textPanel("DIGI MART", 6, 1.1, "#b5413a", "#fff6dd");
   banner.position.set(0, 3.5, -9.85);
   g.add(banner);
@@ -2198,7 +2198,7 @@ function buildMarket() {
   g.add(aisle2);
   // (SALE 50% sign removed per user request)
 
-  // â”€â”€ LIGHTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── LIGHTS ───────────────────────────────────────────────────────────────────
   for (const [lx, lz] of [[-6, -2], [6, -2], [0, 5], [0, -6], [-6, -7], [6, -7]]) {
     const p = new THREE.PointLight(0xf6f0dc, 1.25, 16, 2);
     p.position.set(lx, 3.9, lz);
@@ -2219,7 +2219,7 @@ function buildMarket() {
 
 
 /* ============================================================
-   LOCATION: Family party â€” warm dinner like the reference
+   LOCATION: Family party — warm dinner like the reference
    ============================================================ */
 function buildParty() {
   const g = new THREE.Group();
@@ -2328,7 +2328,7 @@ function buildParty() {
   chair(2.85, -0.5, -Math.PI / 2);
   chair(-2.85, -0.5, Math.PI / 2);
 
-  // family, seated â€” real VRoid characters (the user's adult/teen models)
+  // family, seated — real VRoid characters (the user's adult/teen models)
   familyMember(g, "mira-15", -1.5, -1.75, 0, 0.50, "sit");
   familyMember(g, "mira-13", 1.5, -1.75, 0, 0.50, "sit");
   familyMember(g, "mira-11", 2.85, -0.5, -Math.PI / 2, 0.50, "sit");
@@ -2426,10 +2426,10 @@ function buildParty() {
    ============================================================ */
 const locationDefs = {
   home: { label: "Home", icon: "ðŸ ", build: buildHome },
-  car: { label: "Car Ride", icon: "ðŸš—", build: buildCar },
-  park: { label: "Park", icon: "ðŸŒ³", build: buildPark },
-  market: { label: "Supermarket", icon: "ðŸ›’", build: buildMarket },
-  party: { label: "Family Party", icon: "ðŸŽ‰", build: buildParty },
+  car: { label: "Car Ride", icon: "🚗", build: buildCar },
+  park: { label: "Park", icon: "🌳", build: buildPark },
+  market: { label: "Supermarket", icon: "🛒", build: buildMarket },
+  party: { label: "Family Party", icon: "🎉", build: buildParty },
 };
 const locationOrder = ["home", "car", "park", "market", "party"];
 
@@ -2525,7 +2525,7 @@ function setLocation(id) {
 
   // child reacts to the new place
   state.childLine = arrivalLines[id][state.band];
-  input.placeholder = `Speak to Mira â€” ${locationDefs[id].label}...`;
+  input.placeholder = `Speak to Mira — ${locationDefs[id].label}...`;
   resetParentIdle();
 
   for (const btn of locationBar.querySelectorAll("button")) {
@@ -2589,11 +2589,11 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 function updateHint() {
   const locked = document.pointerLockElement === canvas;
   if (!locked) {
-    lockHint.textContent = "ðŸ–± Click the world to explore Â· WASD walk Â· mouse look Â· 1-5 travel Â· Enter to talk";
+    lockHint.textContent = "ðŸ–± Click the world to explore · WASD walk · mouse look · 1-5 travel · Enter to talk";
   } else if (current && !current.canMove) {
-    lockHint.textContent = "You're riding â€” look around with the mouse Â· Enter to talk Â· Esc to release";
+    lockHint.textContent = "You're riding — look around with the mouse · Enter to talk · Esc to release";
   } else {
-    lockHint.textContent = "WASD to walk Â· Shift to hurry Â· Enter to talk to Mira Â· Esc to release";
+    lockHint.textContent = "WASD to walk · Shift to hurry · Enter to talk to Mira · Esc to release";
   }
 }
 
@@ -2766,7 +2766,7 @@ async function handleSubmit(event) {
       const banner = document.createElement("div");
       banner.id = "activeConflictBanner";
       banner.className = "conflict-banner";
-      banner.innerHTML = `âš ï¸ DE-ESCALATION EVENT ACTIVATED. ENGAGE PATIENTLY!`;
+      banner.innerHTML = `⚠️ DE-ESCALATION EVENT ACTIVATED. ENGAGE PATIENTLY!`;
       document.body.appendChild(banner);
 
       // Log the event to the history
@@ -3578,7 +3578,7 @@ function initClinicianHub() {
         </div>
         <div class="sidebar-footer">
           <div style="margin-bottom:4px;">System Mode: <strong style="color:var(--teal)">Clinical Portal</strong></div>
-          <div>Service status: <span style="color:#22c55e">â— Online</span></div>
+          <div>Service status: <span style="color:#22c55e">● Online</span></div>
         </div>
       </div>
 
@@ -3642,7 +3642,7 @@ function initClinicianHub() {
             <div id="cAgent2Card" class="provision-card" style="display: none;"></div>
             
             <div id="cNoApprovalsPlaceholder" style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.4);">
-              <span style="font-size: 40px; display: block; margin-bottom: 12px;">âš–ï¸</span>
+              <span style="font-size: 40px; display: block; margin-bottom: 12px;">⚖️</span>
               <strong>No Active Intake Reviews</strong>
               <p style="font-size: 11px; margin-top: 6px;">Propose a new session in the Setup tab or click "Review & Approve" on an awaiting-approval session in the list.</p>
             </div>
@@ -3711,22 +3711,22 @@ function initClinicianHub() {
             <div class="analytics-stat-card">
               <span class="label">Total Evaluated Cases</span>
               <div class="val">14 Cases</div>
-              <div class="trend text-green">â†‘ +18% this month</div>
+              <div class="trend text-green">↑ +18% this month</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Avg De-escalation Rate</span>
               <div class="val">91.4%</div>
-              <div class="trend text-green">â†‘ +2.1% improvement</div>
+              <div class="trend text-green">↑ +2.1% improvement</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Transgression Incidents</span>
               <div class="val">1 Case</div>
-              <div class="trend text-red">â†“ -50% decline</div>
+              <div class="trend text-red">↓ -50% decline</div>
             </div>
             <div class="analytics-stat-card">
               <span class="label">Active Sandboxes</span>
               <div class="val">3 Live</div>
-              <div class="trend text-green">â— Stable performance</div>
+              <div class="trend text-green">● Stable performance</div>
             </div>
           </div>
 
@@ -3787,21 +3787,21 @@ function initClinicianHub() {
                     <td style="padding: 6px 4px;">Child (Age 5)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">88.5%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-green">âœ… Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#b88231aa</td>
                     <td style="padding: 6px 4px;">Teenager (Age 11)</td>
                     <td style="padding: 6px 4px; color: #94a3b8">Withdrawn</td>
                     <td style="padding: 6px 4px; font-weight: bold;">92.0%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-green">âœ… Certified</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-green">✅ Certified</span></td>
                   </tr>
                   <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td style="padding: 6px 4px; font-family: monospace;">#e390ff45</td>
                     <td style="padding: 6px 4px;">Adult (Age 15)</td>
                     <td style="padding: 6px 4px; color: var(--warm)">Oppositional</td>
                     <td style="padding: 6px 4px; font-weight: bold;">74.2%</td>
-                    <td style="padding: 6px 4px;"><span class="badge-red">âš ï¸ Intervention</span></td>
+                    <td style="padding: 6px 4px;"><span class="badge-red">⚠️ Intervention</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -4117,12 +4117,12 @@ window.__selectSession = async (sid) => {
       const adviceIcon = document.querySelector("#cLiveAdviceIcon");
       if (adviceText && adviceBox && adviceIcon) {
         if (data.metrics.temperament === "transgressed") {
-          adviceText.innerHTML = "<strong>âš ï¸ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
+          adviceText.innerHTML = "<strong>⚠️ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
           adviceBox.style.background = "rgba(239, 68, 68, 0.08)";
           adviceBox.style.borderColor = "rgba(239, 68, 68, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,0.5)); margin-right:0;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>`;
         } else if (data.metrics.temperament === "secure") {
-          adviceText.innerHTML = "<strong>âœ… SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
+          adviceText.innerHTML = "<strong>✅ SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
           adviceBox.style.background = "rgba(34, 197, 94, 0.08)";
           adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#22c55e; filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); margin-right:0;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
@@ -4165,7 +4165,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
   const calOverlay = data.calendarOverlay || {};
   
   const slotsHtml = slots.map((s, idx) => {
-    const timeLabel = s.start.replace("T", " ") + " â†’ " + (s.end.split("T")[1] || s.end);
+    const timeLabel = s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end);
     return `
       <div class="slot-card ${idx === 0 ? "selected" : ""}" data-slot-idx="${idx}" data-slot-value='${JSON.stringify(s)}'>
         <div class="avatar-ring">ðŸ“…</div>
@@ -4178,7 +4178,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
         </div>
         <div class="slot-status">
           <button class="approve-pill ${idx === 0 ? "confirmed" : "pending"}" data-pill-idx="${idx}">
-            ${idx === 0 ? "âœ“ Selected" : "Select"}
+            ${idx === 0 ? "✓ Selected" : "Select"}
           </button>
         </div>
       </div>
@@ -4200,7 +4200,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <div class="slot-status"><span class="role-badge parent" style="font-size:10px;">Parent</span></div>
     </div>
     <div class="slot-card">
-      <div class="avatar-ring" style="border-color: var(--teal);">ðŸ‘©â€âš•ï¸</div>
+      <div class="avatar-ring" style="border-color: var(--teal);">👩‍⚕️</div>
       <div class="slot-info">
         <div class="slot-name">${clinicianId} <span class="role-badge clinician">#178f86</span></div>
         <div class="slot-time">${(calOverlay.clinician || []).length} free windows (${data.sources?.streams || "mock"})</div>
@@ -4208,7 +4208,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <div class="slot-status"><span class="role-badge clinician" style="font-size:10px;">Clinician</span></div>
     </div>
     <div class="slot-card">
-      <div class="avatar-ring" style="border-color: #F4F1EA;">âš–ï¸</div>
+      <div class="avatar-ring" style="border-color: #F4F1EA;">⚖️</div>
       <div class="slot-info">
         <div class="slot-name">${monitorId} <span class="role-badge monitor">#F4F1EA</span></div>
         <div class="slot-time">${(calOverlay.monitor || []).length} free windows (${data.sources?.streams || "mock"})</div>
@@ -4227,7 +4227,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       <label>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></label>
     </div>
     
-    <label>Calendar Overlay â€” All Parties</label>
+    <label>Calendar Overlay — All Parties</label>
     ${partyRows}
 
     <label style="margin-top: 12px;">Proposed Conflict-Free Slots</label>
@@ -4253,7 +4253,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       // Select this one
       slotCard.classList.add("selected");
       const pill = slotCard.querySelector(".approve-pill");
-      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "âœ“ Selected"; }
+      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "✓ Selected"; }
     });
   });
 
@@ -4343,17 +4343,17 @@ function renderAgent2ProvisionCard(data, context = {}) {
   // Build email delivery notifications
   const emails = [
     { icon: "ðŸ‘¤", name: context.parentId || "Parent", role: "Parent" },
-    { icon: "ðŸ‘©â€âš•ï¸", name: context.clinicianId || "Clinician", role: "Clinician" },
-    { icon: "âš–ï¸", name: context.monitorId || "Monitor", role: "Court Monitor" },
+    { icon: "👩‍⚕️", name: context.clinicianId || "Clinician", role: "Clinician" },
+    { icon: "⚖️", name: context.monitorId || "Monitor", role: "Court Monitor" },
   ];
   
   const emailHtml = emails.map(e => `
     <div class="email-notification">
       <span class="email-icon">${e.icon}</span>
       <div class="email-body">
-        <strong>${e.name}</strong> â€” ${e.role} invite for ${slotLabel}
+        <strong>${e.name}</strong> — ${e.role} invite for ${slotLabel}
       </div>
-      <span class="email-status">âœ“ Delivered</span>
+      <span class="email-status">✓ Delivered</span>
     </div>
   `).join("");
 
