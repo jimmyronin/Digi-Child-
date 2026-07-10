@@ -865,7 +865,7 @@ body.is-debug-view .crosshair {
   color: rgba(255, 255, 255, 0.6);
   padding: 12px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -879,8 +879,11 @@ body.is-debug-view .crosshair {
 }
 
 .sidebar-tab-btn.active {
-  background: rgba(23, 143, 134, 0.15);
+  background: rgba(23, 143, 134, 0.2);
   color: #ffffff;
+  font-weight: 800;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-tab-btn.active::after {
