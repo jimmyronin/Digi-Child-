@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -1121,7 +1121,6 @@ function buildHome() {
 
   // exterior walls
   wall(g, colliders, wallA, 0, -6, 14, 0.2);
-  wall(g, colliders, wallA, 0, 6, 14, 0.2);
   wall(g, colliders, wallB, -7, 0, 0.2, 12);
   wall(g, colliders, wallB, 7, 0, 0.2, 12);
 
@@ -1141,6 +1140,47 @@ function buildHome() {
   interiorDoor(g, 0.5, -3.1, Math.PI / 2, { color: 0x8f5f3a, gapWidth: 1.6 });
   interiorDoor(g, 0.5, 2.1, Math.PI / 2, { flip: true, color: 0xa0744a, gapWidth: 1.6 });
   interiorDoor(g, 3.0, 0, 0, { color: 0x8a6241, gapWidth: 1.6 });
+
+  // ── FRONT DOOR (south wall, centered, enters from outside) ──────────────────
+  // The south exterior wall is at z=6. We cut a gap for the front door at x~0.
+  // Wall was: wall(g,colliders,wallA, 0,6, 14,0.2) — full solid wall.
+  // Re-do it as two segments flanking a 1.8-unit gap centred at x=0:
+  {
+    const wallA2 = mat(0xd6cbbf, 0.92);
+    // left segment: from x=-7 to x=-0.9, width = 6.1
+    box(g, 6.1, 3.0, 0.2, wallA2, -3.55, 1.5, 6, { cast: true });
+    solid(colliders, -3.55, 6, 6.1, 0.2);
+    // right segment: from x=+0.9 to x=+7, width = 6.1
+    box(g, 6.1, 3.0, 0.2, wallA2, 3.55, 1.5, 6, { cast: true });
+    solid(colliders, 3.55, 6, 6.1, 0.2);
+    // door frame posts
+    const frameMat = mat(0xb98b5d, 0.7);
+    box(g, 0.14, 2.4, 0.26, frameMat, -0.9, 1.2, 6, { cast: false });
+    box(g, 0.14, 2.4, 0.26, frameMat,  0.9, 1.2, 6, { cast: false });
+    box(g, 2.0,  0.18, 0.26, frameMat, 0,   2.47, 6, { cast: false });
+    // filler above door to ceiling
+    box(g, 1.8, 0.53, 0.22, wallA2, 0, 2.76, 6, { cast: false });
+    // door leaf (slightly open, hinged left)
+    const hinge = new THREE.Group();
+    hinge.position.set(-0.82, 0, 5.9);
+    hinge.rotation.y = 0.75;          // 43° open
+    g.add(hinge);
+    const leafW = 1.68;
+    box(hinge, leafW, 2.1, 0.06, mat(0x6b4228, 0.7), leafW / 2, 1.05, 0);
+    // door knob
+    sph(hinge, 0.052, mat(0xd8ae5e, 0.35, { metalness: 0.35 }), leafW - 0.15, 1.05, 0.06, { w: 12, h: 8 });
+    // front step / porch slab
+    box(g, 2.2, 0.12, 0.9, mat(0x9e9287, 0.9), 0, 0.06, 6.5, { cast: false });
+    // doorbell light
+    sph(g, 0.04, glowMat(0xffdf80), 1.05, 1.45, 5.82, { cast: false });
+    // door number plate
+    {
+      const plate = textPanel("42", 0.28, 0.18, "#3a2410", "#f0dfc0");
+      plate.position.set(-0.74, 2.1, 5.82);
+      g.add(plate);
+    }
+    solid(colliders, 0, 6.5, 2.2, 0.9); // block the porch
+  }
 
   // windows (emissive daylight) with curtains
   const win = glowMat(0xcfe8ff);
@@ -1930,7 +1970,6 @@ function buildMarket() {
   box(g, 26, 0.1, 20, mat(0xb9bec2, 1), 0, 4.4, 0, { cast: false, receive: false });
   const wallM = mat(0xd9b477, 0.9);
   wall(g, colliders, wallM, 0, -10, 26, 0.2, 4.5);
-  wall(g, colliders, wallM, 0, 10, 26, 0.2, 4.5);
   wall(g, colliders, wallM, -13, 0, 0.2, 20, 4.5);
   wall(g, colliders, wallM, 13, 0, 0.2, 20, 4.5);
 
@@ -2063,6 +2102,57 @@ function buildMarket() {
     box(g, 0.1, 0.01, 0.07, glowMat(0x38bdf8), cx + 0.38, 1.595, 6.85, { cast: false, receive: false });
   }
 
+  // ── ENTRANCE DOUBLE SLIDING DOORS (south wall, z=+10) ───────────────────────
+  // The south wall is solid at z=10. We re-place it as two wings flanking the door.
+  // Original: wall(g,colliders,wallM, 0,10, 26,0.2, 4.5) — replaced below with gap.
+  {
+    const wm2 = mat(0xd9b477, 0.9);
+    // left wing: x from -13 to -2.5  (width=10.5)
+    box(g, 10.5, 4.5, 0.2, wm2, -7.75, 2.25, 10, { cast: true });
+    solid(colliders, -7.75, 10, 10.5, 0.3);
+    // right wing: x from +2.5 to +13 (width=10.5)
+    box(g, 10.5, 4.5, 0.2, wm2,  7.75, 2.25, 10, { cast: true });
+    solid(colliders, 7.75, 10, 10.5, 0.3);
+
+    // door frame (header bar + side posts)
+    const frameMat = mat(0x607080, 0.55, { metalness: 0.6 });
+    box(g, 5.2, 0.22, 0.32, frameMat, 0, 2.72, 10, { cast: false });   // header
+    box(g, 0.16, 2.72, 0.32, frameMat, -2.5, 1.36, 10, { cast: false }); // left post
+    box(g, 0.16, 2.72, 0.32, frameMat,  2.5, 1.36, 10, { cast: false }); // right post
+
+    // sliding glass door panels (two leaves, each slightly slid open)
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0xa8cce8, transparent: true, opacity: 0.22,
+      roughness: 0.05, metalness: 0.0, transmission: 0.6,
+    });
+    // left leaf slid left
+    const glL = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.5, 0.04), glassMat);
+    glL.position.set(-2.05, 1.25, 9.98);
+    g.add(glL);
+    // right leaf slid right
+    const glR = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.5, 0.04), glassMat);
+    glR.position.set(2.05, 1.25, 9.98);
+    g.add(glR);
+
+    // glowing "EXIT / ENTER" panel strip above doors
+    box(g, 4.8, 0.28, 0.06, glowMat(0x38bdf8), 0, 2.58, 9.88, { cast: false, receive: false });
+    {
+      const entrySign = textPanel("ENTER / EXIT", 2.4, 0.22, "#0f2030", "#a0e8ff");
+      entrySign.position.set(0, 2.6, 9.82);
+      g.add(entrySign);
+    }
+
+    // rubber door mat on the inside
+    prop(g, "furniture/rugDoormat", 0, 8.9, { s: 2.2 });
+
+    // concrete step outside
+    box(g, 5.0, 0.14, 1.0, mat(0x8a8f95, 0.85), 0, 0.07, 10.55, { cast: false });
+  }
+
+  // ── POTTED PLANTS (entrance doors) ──────────────────────────────────────────
+  prop(g, "furniture/pottedPlant", -2.8, 9.6, { s: 2 });
+  prop(g, "furniture/pottedPlant",  2.8, 9.6, { s: 2 });
+
   // â”€â”€ CARDBOARD STOCK BOXES (back corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   prop(g, "furniture/cardboardBoxClosed", -11.4, -7.6, { s: 2 });
   prop(g, "furniture/cardboardBoxOpen",   -10.7, -8.2, { s: 2, ry: 0.5 });
@@ -2140,9 +2230,40 @@ function buildParty() {
   box(g, 16, 0.1, 12, mat(0xd8c6ae, 1), 0, 3.42, 0, { cast: false, receive: false });
   const warmWall = mat(0xc09a6d, 0.9);
   wall(g, colliders, warmWall, 0, -6, 16, 0.2, 3.4);
-  wall(g, colliders, warmWall, 0, 6, 16, 0.2, 3.4);
+  // south wall: two segments flanking a 1.8-wide door gap at x=0
+  box(g, 7.1, 3.4, 0.2, warmWall, -4.55, 1.7, 6, { cast: true });
+  solid(colliders, -4.55, 6, 7.1, 0.3);
+  box(g, 7.1, 3.4, 0.2, warmWall,  4.55, 1.7, 6, { cast: true });
+  solid(colliders, 4.55, 6, 7.1, 0.3);
   wall(g, colliders, warmWall, -8, 0, 0.2, 12, 3.4);
   wall(g, colliders, warmWall, 8, 0, 0.2, 12, 3.4);
+
+  // ── PARTY ENTRANCE DOOR (south wall, z=6) ───────────────────────────────────
+  {
+    const frameMat = mat(0xb98b5d, 0.7);
+    // door frame
+    box(g, 0.14, 2.35, 0.28, frameMat, -0.88, 1.175, 6, { cast: false });
+    box(g, 0.14, 2.35, 0.28, frameMat,  0.88, 1.175, 6, { cast: false });
+    box(g, 1.88, 0.18, 0.28, frameMat,  0,    2.38,  6, { cast: false });
+    // filler above door frame to ceiling
+    box(g, 1.76, 1.02, 0.22, warmWall, 0, 2.89, 6, { cast: false });
+    // door leaf (hinged left, slightly open inward)
+    const hinge = new THREE.Group();
+    hinge.position.set(-0.80, 0, 5.9);
+    hinge.rotation.y = -0.65;        // ~37° open inward
+    g.add(hinge);
+    const leafW = 1.6;
+    box(hinge, leafW, 2.2, 0.06, mat(0x7a3820, 0.75), leafW / 2, 1.1, 0);
+    // door knob
+    sph(hinge, 0.052, mat(0xd4a03a, 0.3, { metalness: 0.5 }), leafW - 0.14, 1.1, 0.06, { w: 12, h: 8 });
+    // small doorbell / intercom panel
+    box(g, 0.09, 0.14, 0.06, mat(0x1a1a1f, 0.5), 1.06, 1.25, 5.84, { cast: false });
+    sph(g, 0.035, glowMat(0x80ff80), 1.06, 1.12, 5.82, { cast: false });
+    // welcome mat
+    prop(g, "furniture/rugDoormat", 0, 4.65, { s: 1.8 });
+    // short step
+    box(g, 2.2, 0.1, 0.7, mat(0x9e8070, 0.85), 0, 0.05, 6.45, { cast: false });
+  }
 
   // window with night sky + curtains + banner
   box(g, 2.6, 1.7, 0.06, glowMat(0x1d2c4d), 0, 1.9, -5.88, { cast: false, receive: false });
