@@ -3847,7 +3847,7 @@ function initClinicianHub() {
         <div id="panel-monitor" class="hub-panel">
           <div class="panel-grid">
             <div class="panel-col">
-              <div id="cLiveControls" class="section" style="display: none; height: 100%;">
+              <div id="cLiveControls" class="section" style="display: none;">
                 <span class="section-title">Active Session Controls</span>
                 <label>Active Session: <strong id="cActiveSessionLabel">None</strong></label>
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
