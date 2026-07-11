@@ -20,6 +20,19 @@ const _defaultBackend = ["localhost", "127.0.0.1", ""].includes(window.location.
   : "https://digichild-backend.onrender.com";   // deployed default; override with ?backend=
 const API_BASE = localStorage.getItem("DIGICHILD_BACKEND_URL") || _defaultBackend;
 
+function getSimulationLaunchUrl(sessionId) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("session", sessionId);
+  url.searchParams.set("loc", "home");
+  return url.toString();
+}
+
+window.__openSimulationSession = (sessionId) => {
+  window.open(getSimulationLaunchUrl(sessionId), "_blank", "noopener");
+};
+
 // Redirect client console.log to backend uvicorn log
 const originalLog = console.log;
 console.log = function(...args) {
@@ -4464,7 +4477,7 @@ window.__provisionSession = async (sid) => {
     });
     if (res.ok) {
       alert("Session launched! Redirecting to parent view...");
-      window.open(`http://${window.location.host}/?session=${sid}`, "_blank");
+      window.__openSimulationSession(sid);
       window.__selectSession(sid);
     }
   } catch (e) {
@@ -4845,7 +4858,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
       ${emailHtml}
     </div>
 
-    <button class="btn-launch" onclick="window.open('http://' + window.location.host + '/?session=${sid}', '_blank')">Launch Simulation Sandbox</button>
+    <button class="btn-launch" onclick="window.__openSimulationSession('${sid}')">Launch Simulation Sandbox</button>
   `;
 }
 

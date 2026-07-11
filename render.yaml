@@ -10,6 +10,8 @@ services:
         value: 3.11.0
       - key: DIGICHILD_DB_PATH
         value: /data/digichild.db
+      - key: DIGICHILD_SIM_URL
+        value: https://mitraker.github.io/Digi-Child-Live
     disk:
       name: digichild-data
       mountPath: /data

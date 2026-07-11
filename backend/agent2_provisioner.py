@@ -17,7 +17,7 @@ import json
 import database
 
 # Where the playable simulation is served (the first-person Digi-Child UI).
-SIM_BASE_URL = os.environ.get("DIGICHILD_SIM_URL", "http://127.0.0.1:5178")
+SIM_BASE_URL = os.environ.get("DIGICHILD_SIM_URL", "http://127.0.0.1:5178").rstrip("/")
 
 # Profile -> starting behavioral baseline the sandbox is calibrated to.
 _PROFILE_BASELINES = {
