@@ -1,7 +1,10 @@
 import sqlite3
 import json
+import os
 
-DB_PATH = "digichild.db"
+# Allow the database path to be overridden via environment variable.
+# On Render, set DIGICHILD_DB_PATH=/data/digichild.db (persistent disk mount).
+DB_PATH = os.environ.get("DIGICHILD_DB_PATH", "digichild.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
