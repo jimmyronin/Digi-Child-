@@ -9,8 +9,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
-const backendHost = window.location.hostname === "localhost" ? "localhost" : "127.0.0.1";
-const API_BASE = `http://${backendHost}:8000`;
+// Dynamic backend URL: pass ?backend=https://your-render-app.onrender.com to override.
+// The value is stored in localStorage so it persists across page refreshes.
+const _qp = new URLSearchParams(window.location.search);
+if (_qp.has("backend")) {
+  localStorage.setItem("DIGICHILD_BACKEND_URL", _qp.get("backend"));
+}
+const _defaultBackend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname)
+  ? `http://${window.location.hostname || "127.0.0.1"}:8000`
+  : "";   // on Vercel, backend must be set explicitly via ?backend= on first load
+const API_BASE = localStorage.getItem("DIGICHILD_BACKEND_URL") || _defaultBackend;
 
 // Redirect client console.log to backend uvicorn log
 const originalLog = console.log;
