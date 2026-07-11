@@ -766,7 +766,7 @@ function pickIdleLine(lines) {
 }
 
 function triggerIdleChildAction() {
-  activePlayPoint = null;
+  clearActivePlayPoint();
   if (currentId !== "car") {
     const dx = camWorld.x - childWorld.x;
     const dz = camWorld.z - childWorld.z;
@@ -1066,6 +1066,46 @@ const playPoints = {
 };
 
 let activePlayPoint = null;
+let activePlayPointStartedAt = 0;
+let activePlayPointBestDistance = Infinity;
+let activePlayPointStuckFor = 0;
+let lastPlayPointName = "";
+
+function clearActivePlayPoint() {
+  activePlayPoint = null;
+  activePlayPointStartedAt = 0;
+  activePlayPointBestDistance = Infinity;
+  activePlayPointStuckFor = 0;
+}
+
+function beginActivePlayPoint(point, t) {
+  activePlayPoint = point;
+  activePlayPointStartedAt = t;
+  activePlayPointBestDistance = Infinity;
+  activePlayPointStuckFor = 0;
+  childTarget.x = point.x;
+  childTarget.z = point.z;
+}
+
+function chooseReachablePlayPoint(points) {
+  if (!points || points.length === 0) return null;
+  const scored = points
+    .map((point) => ({
+      point,
+      fromChild: Math.hypot(point.x - childWorld.x, point.z - childWorld.z),
+      fromParent: Math.hypot(point.x - camWorld.x, point.z - camWorld.z),
+    }))
+    .filter(({ point, fromChild, fromParent }) =>
+      point.name !== lastPlayPointName &&
+      fromChild > 0.8 &&
+      fromChild < 5.6 &&
+      fromParent < 6.8
+    )
+    .sort((a, b) => (a.fromParent + a.fromChild * 0.35) - (b.fromParent + b.fromChild * 0.35));
+  if (scored.length === 0) return null;
+  const top = scored.slice(0, 3);
+  return top[Math.floor(Math.random() * top.length)].point;
+}
 
 function setChildPose(pose) {
   childPose = pose;
@@ -1123,6 +1163,8 @@ function placeChild() {
   childTarget.x = a.x;
   childTarget.z = a.z;
   nextWanderAt = 0;
+  lastPlayPointName = "";
+  clearActivePlayPoint();
   walkAmt = 0;
   setChildPose(a.pose);
 
@@ -1693,8 +1735,8 @@ function buildCar() {
   g.add(standardBelt);
   standardBelt.visible = false;
 
-  // Grocery/shopping bag on driver's seat
-  prop(g, "food/bag", -0.5, 0.35, { s: 1.15, ry: 0.4, y: 0.85 });
+  // Grocery bag rides low on the rear bench, away from the driver's camera seat.
+  prop(g, "food/bag", -0.58, 1.42, { s: 0.42, ry: -0.35, y: 1.02 });
   // Child's items on back seat: toy car, stuffed animals, coloring book
   prop(g, "car/kart-oopi", 0.52, -0.45, { s: 0.12, ry: Math.PI * 0.7, y: 1.07 });
   prop(g, "food/lollypop", 0.7, -0.05, { s: 0.5, ry: 0.8, y: 1.09 });
@@ -2948,7 +2990,7 @@ function performChildAction(action) {
       placeChild();
       handled = true;
     } else if (type === "come_to_parent") {
-      activePlayPoint = null;
+      clearActivePlayPoint();
       setChildPose("stand");
       const dx = camWorld.x - childWorld.x, dz = camWorld.z - childWorld.z;
       const d = Math.hypot(dx, dz) || 0.1;
@@ -2965,7 +3007,7 @@ function performChildAction(action) {
       handled = true;
     } else if (type === "run_play") {
       setChildPose("stand");
-      activePlayPoint = null;
+      clearActivePlayPoint();
       childTarget.x = childWorld.x + (Math.random() - 0.5) * 4;
       childTarget.z = childWorld.z + (Math.random() - 0.5) * 4;
       handled = true;
@@ -3472,22 +3514,22 @@ function updateFrame(dt, t) {
   const goodMood = state.values.volatility < 45 && state.values.trust > 50 && !isSadOrUpset;
 
   if (canWalk) {
-    // If parent is too far away, prioritize following the parent to stay near
-    if (distP > 2.6) {
+    const followDistance = 2.9;
+    const playLeash = 7.2;
+    const tooFarFromParent = distP > (activePlayPoint ? playLeash : followDistance);
+
+    if (tooFarFromParent) {
+      clearActivePlayPoint();
       childTarget.x = camWorld.x - (dxp / distP) * 1.25; // stop 1.25m away from parent
       childTarget.z = camWorld.z - (dzp / distP) * 1.25;
-    } else {
-      // If parent is close, explore play points periodically
-      if (t > nextWanderAt) {
-        const points = playPoints[currentId];
-        if (points && points.length > 0) {
-          const pt = points[Math.floor(Math.random() * points.length)];
-          childTarget.x = pt.x;
-          childTarget.z = pt.z;
-          activePlayPoint = pt;
-        }
-        nextWanderAt = t + 25 + Math.random() * 20; // wander every 25-45 seconds
-      }
+      nextWanderAt = t + 8 + Math.random() * 8;
+    } else if (activePlayPoint) {
+      childTarget.x = activePlayPoint.x;
+      childTarget.z = activePlayPoint.z;
+    } else if (distP < 3.4 && t > nextWanderAt) {
+      const point = chooseReachablePlayPoint(playPoints[currentId]);
+      if (point) beginActivePlayPoint(point, t);
+      nextWanderAt = t + 28 + Math.random() * 24;
     }
   }
 
@@ -3499,7 +3541,7 @@ function updateFrame(dt, t) {
   let walking = false;
   if (canWalk && distT > 0.18) {
     walking = true;
-    const spd = state.values.volatility > 55 ? 1.4 : 2.0; // speed
+    const spd = state.values.volatility > 55 ? 1.15 : 0.95; // walk, don't sprint in loops
     const step = Math.min(distT, spd * dt);
     childWorld.x += (dxT / distT) * step;
     childWorld.z += (dzT / distT) * step;
@@ -3535,14 +3577,21 @@ function updateFrame(dt, t) {
     childWorld.z = THREE.MathUtils.clamp(childWorld.z, b.minZ, b.maxZ);
   }
 
-  walkAmt += ((walking ? 1 : 0) - walkAmt) * Math.min(1, dt * 8);
-
   if (activePlayPoint) {
     const dx = childWorld.x - activePlayPoint.x;
     const dz = childWorld.z - activePlayPoint.z;
-    if (Math.hypot(dx, dz) < 0.35) {
+    const playDistance = Math.hypot(dx, dz);
+    if (playDistance + 0.04 < activePlayPointBestDistance) {
+      activePlayPointBestDistance = playDistance;
+      activePlayPointStuckFor = 0;
+    } else if (walking) {
+      activePlayPointStuckFor += dt;
+    }
+
+    if (playDistance < 0.45) {
       const text = activePlayPoint.dialogue[state.band] || "";
-      if (text) {
+      if (text && text !== lastIdleLine) {
+        lastIdleLine = text;
         state.childLine = text;
         syncUi();
         
@@ -3553,10 +3602,21 @@ function updateFrame(dt, t) {
           triggerReaction("happy");
         }
       }
-      activePlayPoint = null;
+      lastPlayPointName = activePlayPoint.name;
+      clearActivePlayPoint();
+      childTarget.x = childWorld.x;
+      childTarget.z = childWorld.z;
+      nextWanderAt = t + 18 + Math.random() * 18;
+    } else if (activePlayPointStuckFor > 2.8 || t - activePlayPointStartedAt > 14) {
+      lastPlayPointName = activePlayPoint.name;
+      clearActivePlayPoint();
+      childTarget.x = childWorld.x;
+      childTarget.z = childWorld.z;
+      nextWanderAt = t + 10 + Math.random() * 12;
     }
   }
-  if (walking) walkPhase += dt * 8.5;
+  walkAmt += ((walking ? 1 : 0) - walkAmt) * Math.min(1, dt * 8);
+  if (walking) walkPhase += dt * (state.values.volatility > 55 ? 6.5 : 5.4);
 
   // --- is the parent looking at her? then she beams up (or scowls if upset) ---
   const fwdX = -Math.sin(player.yaw), fwdZ = -Math.cos(player.yaw);
