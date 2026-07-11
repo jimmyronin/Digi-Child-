@@ -17,7 +17,7 @@ if (_qp.has("backend")) {
 }
 const _defaultBackend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname)
   ? `http://${window.location.hostname || "127.0.0.1"}:8000`
-  : "";   // on Vercel, backend must be set explicitly via ?backend= on first load
+  : "https://digichild-backend.onrender.com";
 const API_BASE = localStorage.getItem("DIGICHILD_BACKEND_URL") || _defaultBackend;
 
 // Redirect client console.log to backend uvicorn log
