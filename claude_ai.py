@@ -80,6 +80,32 @@ LIBRARY = """You ground every reaction in these developmental-psychology sources
 - John Bowlby & Mary Ainsworth, Attachment Theory: secure vs. anxious/avoidant patterns. Low trust produces hesitancy, testing, or withdrawal even when the parent is being warm.
 - Chip Wood, "Yardsticks: Child and Adolescent Development": age-typical language, needs, attention span, and milestones for each stage."""
 
+# What the 3D simulation can physically execute. Mira's structured `action`
+# is constrained to these so anything the chat describes becomes real motion.
+ACTION_TYPES = [
+    "none",            # no physical change; she just speaks
+    "come_to_parent",  # walk over and stand near the parent
+    "go_to_spot",      # walk to a named spot (see SPOTS), set `spot`
+    "sit",             # sit down where she is (or at `spot` if also set)
+    "stand",           # stand up
+    "jump",            # excited jumping in place
+    "dance",           # dance / happy wiggle
+    "spin",            # twirl around
+    "wave",            # wave at the parent
+    "hide",            # crouch and cover her face (shy / playing / scared)
+    "hold_prop",       # pick up and hold a prop (set `prop`)
+    "drop_prop",       # put down whatever she is holding
+    "run_play",        # run around playing nearby
+]
+PROPS = ["none", "book", "toy_car", "cookie", "lollypop", "apple", "banana"]
+SPOTS = {
+    "home": ["play_corner", "kitchen_table", "bathroom", "bedroom", "sofa"],
+    "park": ["swings", "slide", "sandbox"],
+    "market": ["checkout", "snack_shelf"],
+    "party": ["buffet", "couch", "kids_corner"],
+    "car": [],  # buckled into her seat; movement actions unavailable
+}
+
 # JSON schema for the structured response (guarantees a parseable shape).
 SCHEMA = {
     "type": "object",
@@ -92,6 +118,20 @@ SCHEMA = {
             "type": "string",
             "enum": ["happy", "curious", "playful", "analytical", "guarded", "resistant", "withdrawn", "upset"],
         },
+        "action": {
+            "type": "object",
+            "description": "The physical action Mira performs in the 3D simulation, matching what the conversation describes. Use 'none' when she only speaks.",
+            "properties": {
+                "type": {"type": "string", "enum": ACTION_TYPES},
+                "prop": {"type": "string", "enum": PROPS},
+                "spot": {
+                    "type": "string",
+                    "description": "Destination for go_to_spot / sit, one of the current location's spots, or 'none'.",
+                },
+            },
+            "required": ["type", "prop", "spot"],
+            "additionalProperties": False,
+        },
         "reasoning": {
             "type": "string",
             "description": "One clinical sentence explaining the developmental mechanism behind this reaction.",
@@ -101,7 +141,7 @@ SCHEMA = {
             "description": "The single book/framework most responsible, e.g. 'The Explosive Child (Ross Greene)'.",
         },
     },
-    "required": ["childLine", "mood", "reasoning", "framework_cited"],
+    "required": ["childLine", "mood", "action", "reasoning", "framework_cited"],
     "additionalProperties": False,
 }
 
@@ -137,6 +177,14 @@ def generate_child_response(state, req, treatment, history, persona=""):
         + "\n\nSafety: keep all friction age-appropriate and representative of ordinary developmental "
         "challenges (defiance, sulking, testing limits, tears) -- never severe trauma or unsafe content. "
         "Put clinical explanation only in the 'reasoning' field, never in Mira's spoken line."
+        + "\n\nEMBODIMENT: Mira has a real 3D body in the simulation, and your 'action' field drives it. "
+        "Whenever the conversation describes or invites something physical -- come here, sit down, go play, "
+        "grab your book, let's eat, dance for me, hide-and-seek, put that down -- choose the matching action "
+        "so she actually DOES it. If she's upset she may refuse (choose 'none' or even 'hide' / walk away "
+        "via 'go_to_spot'), and if she's happy she may add exuberance (jump, spin, dance). Available action "
+        f"types: {', '.join(ACTION_TYPES)}. Props she can hold: {', '.join(PROPS[1:])}. "
+        f"Spots she can walk to in the current setting '{{location}}': {{spots}}. "
+        "In the car she is buckled in: only 'none', 'wave', 'hold_prop' or 'drop_prop' are possible there."
     )
     if persona:
         system += "\n\nStage persona: " + persona
