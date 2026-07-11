@@ -8,17 +8,18 @@ The product idea is simple: the user is not just chatting with an AI. The user a
 ## Live Deployment
 
 - Frontend: https://mitraker.github.io/Digi-Child-Live/
+- Backend API: https://digichild-backend.onrender.com
 - Source repo: https://github.com/MITRAKER/Digi-Child-Live
 - Backend source is included in `backend/` and Render configuration is in `render.yaml`.
 
-To deploy the backend on Render, create a Render Blueprint or web service from this repository. Use `render.yaml`; it sets `rootDir: backend`, installs `backend/requirements.txt`, starts `uvicorn main:app`, and stores the SQLite database on a persistent disk at `/data/digichild.db`.
+The backend is deployed on Render as `digichild-backend` from the `main` branch with auto-deploy enabled. It uses the Python runtime, `rootDir: backend`, installs `backend/requirements.txt`, and starts `uvicorn main:app`.
 
-After Render creates the backend service, add the Render deploy hook URL as a GitHub Actions secret named `RENDER_DEPLOY_HOOK_URL`. The backend workflow will then redeploy the API when backend files change.
+The live backend currently runs on Render's free plan without a persistent disk. A persistent `/data` disk requires billing on Render; after billing is enabled, attach a disk at `/data` and set `DIGICHILD_DB_PATH=/data/digichild.db` for durable SQLite storage.
 
-The frontend can point at the live backend by opening it once with:
+The deployed frontend uses the live backend by default. You can still override the backend by opening:
 
 ```text
-https://mitraker.github.io/Digi-Child-Live/?backend=https://YOUR-RENDER-SERVICE.onrender.com
+https://mitraker.github.io/Digi-Child-Live/?backend=https://YOUR-BACKEND.onrender.com
 ```
 
 That backend URL is saved in browser local storage for later visits.
