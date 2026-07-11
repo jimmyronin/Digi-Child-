@@ -20,6 +20,8 @@ const _defaultBackend = ["localhost", "127.0.0.1", ""].includes(window.location.
   : "https://digichild-backend.onrender.com";   // deployed default; override with ?backend=
 const API_BASE = localStorage.getItem("DIGICHILD_BACKEND_URL") || _defaultBackend;
 
+// Build the sandbox launch URL from the CURRENT origin+path so it works on
+// localhost and on GitHub Pages (https + /Digi-Child-Live/ subpath) alike.
 function getSimulationLaunchUrl(sessionId) {
   const url = new URL(window.location.href);
   url.search = "";
@@ -766,25 +768,28 @@ function pickIdleLine(lines) {
 }
 
 function triggerIdleChildAction() {
-  clearActivePlayPoint();
-  if (currentId !== "car") {
-    const dx = camWorld.x - childWorld.x;
-    const dz = camWorld.z - childWorld.z;
-    const d = Math.hypot(dx, dz) || 0.1;
-
-    childTarget.x = camWorld.x - (dx / d) * 1.1;
-    childTarget.z = camWorld.z - (dz / d) * 1.1;
-  }
-
-  let text = "";
+  // Mood-based idle life. She is NOT always doing something: most of the time
+  // she simply stands and exists, and only sometimes plays, claps, twirls, or
+  // says a little line -- weighted by how she currently feels.
   const vol = state.values.volatility;
   const tr = state.values.trust;
   const t = clock.getElapsedTime();
+  const roll = Math.random();
 
   if (vol > 62) {
+    // distressed: she withdraws or protests -- comes near the parent
+    clearActivePlayPoint();
+    if (currentId !== "car") {
+      const dx = camWorld.x - childWorld.x;
+      const dz = camWorld.z - childWorld.z;
+      const d = Math.hypot(dx, dz) || 0.1;
+      childTarget.x = camWorld.x - (dx / d) * 1.1;
+      childTarget.z = camWorld.z - (dz / d) * 1.1;
+    }
+    if (roll < 0.35) return; // sometimes she just sulks silently
     const choice = Math.random() > 0.5 ? "cry" : "upset";
     triggerReaction(choice);
-    text = pickIdleLine(choice === "cry" ? [
+    state.childLine = pickIdleLine(choice === "cry" ? [
       "*sobs* I hate when you just stand there and don't say anything...",
       "*sniffles* You never listen to me anymore...",
       "*wipes eyes* Nobody plays with me...",
@@ -793,42 +798,69 @@ function triggerIdleChildAction() {
       "*kicks the ground* You're not even looking at me.",
       "*frowns* You promised we'd do something fun...",
     ]);
-  } else if (tr > 55 && vol < 45) {
-    // she's content: gentle, varied, mostly happy little moments
-    const roll = Math.random();
-    if (roll < 0.3) {
+    syncUi();
+    return;
+  }
+
+  if (tr > 55 && vol < 45) {
+    // content: mostly calm presence, with occasional spontaneous little joys
+    if (roll < 0.35) {
+      // just stand there, being a kid -- maybe a soft smile, no words
+      smileSpikeUntil = t + 2.0;
+      return;
+    }
+    if (roll < 0.50 && currentId !== "car") {
+      // wander off to play at something nearby (no announcement needed)
+      const point = chooseReachablePlayPoint(playPoints[currentId]);
+      if (point) beginActivePlayPoint(point, t);
+      return;
+    }
+    if (roll < 0.63 && currentId !== "car") {
+      // clap happily
+      actionType = "clap";
+      actionUntil = t + 3.2;
+      smileSpikeUntil = t + 3.2;
       triggerReaction("happy");
-      smileSpikeUntil = t + 3.0;
-      waveUntil = t + 4.0;
-    } else if (roll < 0.45 && currentId !== "car") {
+      return;
+    }
+    if (roll < 0.75 && currentId !== "car") {
+      // a twirl or an excited hop
       actionType = Math.random() < 0.5 ? "spin" : "jump";
       actionUntil = t + 3.5;
       smileSpikeUntil = t + 3.5;
-    } else {
-      smileSpikeUntil = t + 2.0;
+      return;
     }
-    text = pickIdleLine([
+    if (roll < 0.85) {
+      // wave hello
+      triggerReaction("happy");
+      smileSpikeUntil = t + 3.0;
+      waveUntil = t + 4.0;
+      return;
+    }
+    // occasionally she says a little something
+    state.childLine = pickIdleLine([
       "*hums a little song to herself*",
-      "*waves* Hi! I'm right here!",
       "What should we play next?",
-      "*twirls around* Did you see that?",
       "I like it when we hang out together.",
       "*giggles* You make a funny face when you think.",
       "Can we stay a little longer? This is fun.",
       "*looks around* What's that over there? Can we go see?",
     ]);
-  } else {
-    triggerReaction("upset");
-    text = pickIdleLine([
-      "Why are you just standing there staring?",
-      "I'm bored. Let's do something...",
-      "*looks down* Are you checking your phone again?",
-      "*shuffles feet* Can we do something together?",
-      "Hey... are you still here with me?",
-    ]);
+    smileSpikeUntil = t + 2.5;
+    syncUi();
+    return;
   }
 
-  state.childLine = text;
+  // in-between mood: mostly quiet, sometimes a small bid for attention
+  if (roll < 0.5) return; // she just stands, thinking her own thoughts
+  triggerReaction("upset");
+  state.childLine = pickIdleLine([
+    "Why are you just standing there staring?",
+    "I'm bored. Let's do something...",
+    "*looks down* Are you checking your phone again?",
+    "*shuffles feet* Can we do something together?",
+    "Hey... are you still here with me?",
+  ]);
   syncUi();
 }
 
@@ -3019,8 +3051,8 @@ function performChildAction(action) {
   if (type === "wave") {
     waveUntil = t + 4.0;
     handled = true;
-  } else if (type === "jump" || type === "dance" || type === "spin" || type === "hide") {
-    if (!inCar && childPose !== "stand") setChildPose("stand"); // get off the seat first
+  } else if (type === "jump" || type === "dance" || type === "spin" || type === "hide" || type === "clap") {
+    if (!inCar && childPose !== "stand" && type !== "clap") setChildPose("stand"); // get off the seat first
     actionType = type;
     actionUntil = t + (type === "hide" ? 6.0 : 4.5);
     if (type !== "hide") smileSpikeUntil = t + 4.0;
@@ -3590,11 +3622,12 @@ function updateFrame(dt, t) {
 
     if (playDistance < 0.45) {
       const text = activePlayPoint.dialogue[state.band] || "";
+      // don't announce the same arrival line she said last time -- just play there quietly
       if (text && text !== lastIdleLine) {
         lastIdleLine = text;
         state.childLine = text;
         syncUi();
-        
+
         if (text.includes("waves") || text.includes("waves hand") || text.includes("Look!")) {
           waveUntil = t + 4.0;
           triggerReaction("happy");
@@ -3755,6 +3788,14 @@ function updateFrame(dt, t) {
       LlX = -2.2; RlX = -2.2;
       spineXAdd = 0.32; posOY = -0.16;                 // crouch small
       headExtraX = 0.25;
+    } else if (actionType === "clap") {
+      // hands meet in front of her chest in a clapping rhythm
+      const cl = (Math.sin(t * 11) + 1) / 2;           // 0..1 clap cycle
+      LuZ = -1.32 + 0.95; RuZ = 1.32 - 0.95;
+      LuX = -0.85; RuX = -0.85;
+      LlX = -1.45; RlX = -1.45;
+      LuY = 0.55 - cl * 0.4; RuY = -0.55 + cl * 0.4;   // arms swing toward each other
+      posOY += Math.abs(Math.sin(t * 5.5)) * 0.03;     // tiny excited bounce
     }
   } else if (actionType && t >= actionUntil) {
     actionType = null;

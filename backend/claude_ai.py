@@ -91,6 +91,7 @@ ACTION_TYPES = [
     "jump",            # excited jumping in place
     "dance",           # dance / happy wiggle
     "spin",            # twirl around
+    "clap",            # clap her hands (praise, excitement, applause)
     "wave",            # wave at the parent
     "hide",            # crouch and cover her face (shy / playing / scared)
     "hold_prop",       # pick up and hold a prop (set `prop`)
@@ -184,7 +185,7 @@ def generate_child_response(state, req, treatment, history, persona=""):
         "via 'go_to_spot'), and if she's happy she may add exuberance (jump, spin, dance). Available action "
         f"types: {', '.join(ACTION_TYPES)}. Props she can hold: {', '.join(PROPS[1:])}. "
         f"Spots she can walk to in the current setting '{{location}}': {{spots}}. "
-        "In the car she is buckled in: only 'none', 'wave', 'hold_prop' or 'drop_prop' are possible there."
+        "In the car she is buckled in: only 'none', 'wave', 'clap', 'hold_prop' or 'drop_prop' are possible there."
     )
     # fill the embodiment placeholders with the current scene's real spots
     spots = SPOTS.get(location, [])
