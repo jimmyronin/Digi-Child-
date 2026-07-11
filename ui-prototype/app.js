@@ -725,6 +725,7 @@ let nextGiggleAt = 8;
 
 let lastParentActivityTime = 0;
 let nextIdleActionTime = 10;
+let fmPhase = 0; // round-robin phase for party guest updates
 let waveUntil = 0;
 let smileSpikeUntil = 0;
 // LLM-driven timed gesture (jump / dance / spin / hide) from the child's structured action
@@ -734,12 +735,22 @@ let actionUntil = 0;
 function resetParentIdle() {
   if (clock) {
     lastParentActivityTime = clock.getElapsedTime();
-    nextIdleActionTime = lastParentActivityTime + 10 + Math.random() * 5;
+    nextIdleActionTime = lastParentActivityTime + 35 + Math.random() * 25;
   }
 }
 window.addEventListener("mousemove", resetParentIdle);
 window.addEventListener("keydown", resetParentIdle);
 window.addEventListener("click", resetParentIdle);
+
+let lastIdleLine = "";
+
+function pickIdleLine(lines) {
+  // never say the same idle line twice in a row
+  const pool = lines.filter((l) => l !== lastIdleLine);
+  const line = pool[Math.floor(Math.random() * pool.length)];
+  lastIdleLine = line;
+  return line;
+}
 
 function triggerIdleChildAction() {
   activePlayPoint = null;
@@ -747,45 +758,63 @@ function triggerIdleChildAction() {
     const dx = camWorld.x - childWorld.x;
     const dz = camWorld.z - childWorld.z;
     const d = Math.hypot(dx, dz) || 0.1;
-    
+
     childTarget.x = camWorld.x - (dx / d) * 1.1;
     childTarget.z = camWorld.z - (dz / d) * 1.1;
   }
-  
+
   let text = "";
   const vol = state.values.volatility;
   const tr = state.values.trust;
-  
+  const t = clock.getElapsedTime();
+
   if (vol > 62) {
-    const choice = Math.random() > 0.5 ? "cry" : "scream";
+    const choice = Math.random() > 0.5 ? "cry" : "upset";
     triggerReaction(choice);
-    if (choice === "scream") {
-      text = "*shouts* Why are you ignoring me?! Pay attention!";
-    } else {
-      text = "*sobs* I hate when you just stand there and don't say anything...";
-    }
+    text = pickIdleLine(choice === "cry" ? [
+      "*sobs* I hate when you just stand there and don't say anything...",
+      "*sniffles* You never listen to me anymore...",
+      "*wipes eyes* Nobody plays with me...",
+    ] : [
+      "*crosses arms* Fine. I'll just play by myself then.",
+      "*kicks the ground* You're not even looking at me.",
+      "*frowns* You promised we'd do something fun...",
+    ]);
   } else if (tr > 55 && vol < 45) {
-    if (Math.random() < 0.35) {
+    // she's content: gentle, varied, mostly happy little moments
+    const roll = Math.random();
+    if (roll < 0.3) {
       triggerReaction("happy");
-      smileSpikeUntil = clock.getElapsedTime() + 3.0;
+      smileSpikeUntil = t + 3.0;
+      waveUntil = t + 4.0;
+    } else if (roll < 0.45 && currentId !== "car") {
+      actionType = Math.random() < 0.5 ? "spin" : "jump";
+      actionUntil = t + 3.5;
+      smileSpikeUntil = t + 3.5;
+    } else {
+      smileSpikeUntil = t + 2.0;
     }
-    waveUntil = clock.getElapsedTime() + 4.5;
-    const lines = [
-      "*waves hand* Hellooo? Are we still playing?",
-      "*waves* What are we doing now?",
-      "*waves* Look at me! Pay attention!"
-    ];
-    text = lines[Math.floor(Math.random() * lines.length)];
+    text = pickIdleLine([
+      "*hums a little song to herself*",
+      "*waves* Hi! I'm right here!",
+      "What should we play next?",
+      "*twirls around* Did you see that?",
+      "I like it when we hang out together.",
+      "*giggles* You make a funny face when you think.",
+      "Can we stay a little longer? This is fun.",
+      "*looks around* What's that over there? Can we go see?",
+    ]);
   } else {
     triggerReaction("upset");
-    const lines = [
+    text = pickIdleLine([
       "Why are you just standing there staring?",
       "I'm bored. Let's do something...",
-      "*looks down* Are you checking your phone again?"
-    ];
-    text = lines[Math.floor(Math.random() * lines.length)];
+      "*looks down* Are you checking your phone again?",
+      "*shuffles feet* Can we do something together?",
+      "Hey... are you still here with me?",
+    ]);
   }
-  
+
   state.childLine = text;
   syncUi();
 }
@@ -861,7 +890,8 @@ function familyMember(parent, file, x, z, ry, seat = 0.85, pose = "sit") {
       if (!fv) return;
       VRMUtils.rotateVRM0(fv);
       fv.scene.traverse((o) => {
-        if (o.isMesh) o.castShadow = true;
+        // guests don't cast shadows: 17 skinned shadow casters tank the party FPS
+        if (o.isMesh) o.castShadow = false;
         o.frustumCulled = false;
       });
       const bounds = new THREE.Box3().setFromObject(fv.scene);
@@ -1571,7 +1601,7 @@ function buildCar() {
   cyl(g, 0.09, 0.09, 0.055, glowMat(0x31485a), -0.45, 1.2, -0.63, { rx: Math.PI / 2, seg: 18 });
 
   // Tiny dashboard plant
-  prop(g, "furniture/plantSmall3", 0.52, 1.37, -1.0, { s: 0.42 });
+  prop(g, "furniture/plantSmall3", 0.52, -1.0, { s: 0.42, y: 1.37 });
 
   // steering column
   cyl(g, 0.035, 0.045, 0.42, darkTrim, -0.46, 1.0, -0.72, { rx: 0.6 });
@@ -1651,12 +1681,12 @@ function buildCar() {
   standardBelt.visible = false;
 
   // Grocery/shopping bag on driver's seat
-  prop(g, "food/bag", -0.5, 0.85, 0.35, { s: 1.15, ry: 0.4 });
+  prop(g, "food/bag", -0.5, 0.35, { s: 1.15, ry: 0.4, y: 0.85 });
   // Child's items on back seat: toy car, stuffed animals, coloring book
-  prop(g, "car/kart-oopi", 0.52, 1.07, -0.45, { s: 0.12, ry: Math.PI * 0.7 });
-  prop(g, "food/lollypop", 0.7, 1.09, -0.05, { s: 0.5, ry: 0.8 });
-  prop(g, "food/cookie", 0.42, 1.09, 0.55, { s: 0.55 });
-  prop(g, "food/soda", 0.75, 1.09, 0.62, { s: 0.55, ry: 0.3 });
+  prop(g, "car/kart-oopi", 0.52, -0.45, { s: 0.12, ry: Math.PI * 0.7, y: 1.07 });
+  prop(g, "food/lollypop", 0.7, -0.05, { s: 0.5, ry: 0.8, y: 1.09 });
+  prop(g, "food/cookie", 0.42, 0.55, { s: 0.55, y: 1.09 });
+  prop(g, "food/soda", 0.75, 0.62, { s: 0.55, ry: 0.3, y: 1.09 });
 
   rbox(g, 1.7, 0.16, 0.62, 0.03, 3, mat(0x5b4741, 0.82), 0, 0.78, 1.55);
   rbox(g, 1.7, 0.7, 0.16, 0.03, 3, mat(0x5b4741, 0.82), 0, 1.2, 1.85, { rx: -0.08 });
@@ -1673,16 +1703,16 @@ function buildCar() {
   box(g, 0.01, 0.01, 0.72, stitch, 0.19, 1.112, 1.02, { cast: false });
 
   // Console donut snack
-  prop(g, "food/donut-sprinkles", 0.02, 1.135, 1.02, { s: 0.45, ry: 0.3 });
+  prop(g, "food/donut-sprinkles", 0.02, 1.02, { s: 0.45, ry: 0.3, y: 1.135 });
 
   gearSelector(g, 0.02, 0.96, -0.02);
 
   // Cup holders with coffee and soda
   cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.38, { seg: 24 });
-  prop(g, "food/cup-coffee", -0.12, 1.04, 0.38, { s: 0.65, ry: 1.5 });
+  prop(g, "food/cup-coffee", -0.12, 0.38, { s: 0.65, ry: 1.5, y: 1.04 });
 
   cyl(g, 0.095, 0.095, 0.035, darkTrim, -0.12, 1.04, 0.52, { seg: 24 });
-  prop(g, "food/soda-can", -0.12, 1.04, 0.52, { s: 0.6, ry: -0.8 });
+  prop(g, "food/soda-can", -0.12, 0.52, { s: 0.6, ry: -0.8, y: 1.04 });
   cyl(g, 0.095, 0.095, 0.035, darkTrim, 0.14, 1.04, 0.38, { seg: 24 });
   for (let i = 0; i < 5; i++) carButton(g, -0.15 + i * 0.075, 1.07, 0.17, 0.052, 0.04);
   
@@ -2003,9 +2033,9 @@ function buildMarket() {
   // ── shelf builder (gondola) ──────────────────────────────────────────────────
   // foodList omits "carton" and "watermelon" (too big for shelves)
   const shelfFoods = [
-    "can", "soda", "loaf", "cheese", "pizza-box", "bottle-ketchup",
+    "can", "soda", "loaf", "cheese", "bottle-ketchup",
     "honey", "chocolate", "peanut-butter", "bread", "croissant",
-    "cookie", "soda-can", "egg-cup", "jam", "muffin", "donut",
+    "cookie", "soda-can", "jam", "muffin", "donut",
   ];
 
   // Aisle gondola – items on both sides of a central back-panel
@@ -2034,25 +2064,28 @@ function buildMarket() {
   // "dir" = "N" | "S" | "E" | "W"  (which wall face items are placed on)
   function wallShelf(cx, cz, len, seed, dir) {
     const isNS = dir === "N" || dir === "S";
-    const shelfD = isNS ? len : 0.6;
-    const shelfW = isNS ? 0.6 : len;
-    const itemOffset = dir === "S" ? -0.22 : dir === "N" ? 0.22 : 0; // z offset
-    const itemOffsetX = dir === "E" ? -0.22 : dir === "W" ? 0.22 : 0; // x offset
+    const shelfW = isNS ? len : 0.6;  // extent along X
+    const shelfD = isNS ? 0.6 : len;  // extent along Z
+    // the side the food faces (toward the store interior)
+    const faceZ = dir === "N" ? 0.16 : dir === "S" ? -0.16 : 0;
+    const faceX = dir === "E" ? 0.16 : dir === "W" ? -0.16 : 0;
 
-    // Base + back panel
+    // Base
     box(g, shelfW, 0.28, shelfD, mat(0xb5413a, 0.7), cx, 0.14, cz);
-    box(g, shelfW, 2.0, 0.12, mat(0x8f9498, 0.6), cx, 1.1, cz + (isNS ? (dir === "S" ? -0.24 : 0.24) : 0));
+    // Back panel hugging the wall (opposite the food face)
+    if (isNS) box(g, shelfW, 2.0, 0.12, mat(0x8f9498, 0.6), cx, 1.1, cz - faceZ * 1.6);
+    else box(g, 0.12, 2.0, shelfD, mat(0x8f9498, 0.6), cx - faceX * 1.6, 1.1, cz);
 
     for (let lvl = 0; lvl < 4; lvl++) {
       const y = 0.46 + lvl * 0.5;
-      box(g, shelfW, 0.05, shelfD - 0.08, mat(0x9aa0a4, 0.5), cx, y, cz, { cast: false });
-      const slots = Math.floor((isNS ? len : len) / 0.6);
+      box(g, isNS ? shelfW : shelfW - 0.08, 0.05, isNS ? shelfD - 0.08 : shelfD, mat(0x9aa0a4, 0.5), cx, y, cz, { cast: false });
+      const slots = Math.floor(len / 0.6);
       for (let s = 0; s < slots; s++) {
         const idx = seed + lvl * 37 + s * 11;
         if (rnd(idx) < 0.15) continue;
         const item = shelfFoods[Math.floor(rnd(idx + 1) * shelfFoods.length)];
-        const itemX = isNS ? (cx - len / 2 + 0.35 + s * 0.6) : cx + itemOffsetX;
-        const itemZ = isNS ? cz + itemOffset : (cz - len / 2 + 0.35 + s * 0.6) + itemOffset;
+        const itemX = isNS ? (cx - len / 2 + 0.35 + s * 0.6) : cx + faceX;
+        const itemZ = isNS ? cz + faceZ : (cz - len / 2 + 0.35 + s * 0.6);
         prop(g, `food/${item}`, itemX, itemZ, { s: 0.92, y: y + 0.04, ry: rnd(idx + 2) * 6.28 });
       }
     }
@@ -2114,9 +2147,9 @@ function buildMarket() {
     g.add(laneSign);
     solid(colliders, cx, 6.4, 1.2, 2.9);
     // items on conveyor belt
-    prop(g, "food/bread",    cx - 0.2, 1.05, 5.2, { s: 0.55, ry: 0.3 });
-    prop(g, "food/cheese",   cx + 0.1, 1.05, 5.5, { s: 0.40, ry: -0.5 });
-    prop(g, "food/soda-can", cx,       1.05, 5.8, { s: 0.55 });
+    prop(g, "food/bread",    cx - 0.2, 5.2, { s: 0.55, ry: 0.3, y: 1.05 });
+    prop(g, "food/cheese",   cx + 0.1, 5.5, { s: 0.40, ry: -0.5, y: 1.05 });
+    prop(g, "food/soda-can", cx,       5.8, { s: 0.55, y: 1.05 });
     // card reader terminal
     box(g, 0.12, 0.22, 0.08, mat(0x18191e, 0.5), cx + 0.38, 1.48, 6.85);
     box(g, 0.1, 0.01, 0.07, glowMat(0x38bdf8), cx + 0.38, 1.595, 6.85, { cast: false, receive: false });
@@ -3459,9 +3492,10 @@ function updateFrame(dt, t) {
     childWorld.z += (dzT / distT) * step;
   }
 
-  // Resolve collisions & keep in bounds
+  // Resolve collisions & keep in bounds -- but never shove her out of a seat
+  // she was deliberately placed in (car safety seat, swings, kitchen chair...)
   const r = 0.26;
-  if (current && current.colliders) {
+  if (canWalk && current && current.colliders) {
     for (const c of current.colliders) {
       const minX = c.minX - r;
       const maxX = c.maxX + r;
@@ -3482,7 +3516,7 @@ function updateFrame(dt, t) {
     }
   }
 
-  if (current && current.bounds) {
+  if (canWalk && current && current.bounds) {
     const b = current.bounds;
     childWorld.x = THREE.MathUtils.clamp(childWorld.x, b.minX, b.maxX);
     childWorld.z = THREE.MathUtils.clamp(childWorld.z, b.minZ, b.maxZ);
@@ -3721,8 +3755,11 @@ function updateFrame(dt, t) {
     vrm.update(dt);
   }
 
-  // Animate all active family members (nodding, turning head, breathing, gesturing)
-  for (let i = 0; i < familyMembers.length; i++) {
+  // Animate all active family members (nodding, turning head, breathing, gesturing).
+  // Round-robin: each guest updates every 3rd frame -- the sine poses are absolute
+  // in t so nothing visibly changes, but the party renders ~3x cheaper.
+  fmPhase = (fmPhase + 1) % 3;
+  for (let i = fmPhase; i < familyMembers.length; i += 3) {
     const fv = familyMembers[i];
     
     // Breathing (spine movement)
@@ -3753,7 +3790,7 @@ function updateFrame(dt, t) {
       rightUpperArm.rotation.x = Math.sin(t * 1.7 + i * 1.5) * 0.05;
     }
     
-    fv.update(dt);
+    fv.update(dt * 3);
   }
 
   // blink every few seconds
@@ -3774,7 +3811,7 @@ function animate() {
 
   if (t > nextIdleActionTime) {
     triggerIdleChildAction();
-    nextIdleActionTime = t + 10 + Math.random() * 5;
+    nextIdleActionTime = t + 35 + Math.random() * 25;
   }
 
   updateFrame(dt, t);
