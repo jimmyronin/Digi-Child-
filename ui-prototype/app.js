@@ -2842,7 +2842,6 @@ function updateChildLook() {
   exprAngry = volatility > 70 ? 0.35 : 0;
   childLight.intensity = security > 65 ? 0.6 : 0.3;
   loadMira(miraStage());
-  placeChild();
 }
 
 /* ============================================================
@@ -4375,14 +4374,30 @@ function initClinicianHub() {
     document.querySelector("#cAgent1Card").style.display = "none";
     document.querySelector("#cAgent2Card").style.display = "none";
 
-    const clinicianAvail = [
-      { start: "2026-07-08T10:00:00", end: "2026-07-08T12:00:00" },
-      { start: "2026-07-08T14:00:00", end: "2026-07-08T16:00:00" }
-    ];
-    const monitorAvail = [
-      { start: "2026-07-08T09:00:00", end: "2026-07-08T12:00:00" },
-      { start: "2026-07-08T14:00:00", end: "2026-07-08T18:00:00" }
-    ];
+    // Mock calendar streams: realistic, varied availability over the NEXT 14
+    // days (weekdays only), so the week grid looks like a real calendar and
+    // always has future overlap to propose. Live Google Calendar replaces
+    // these on the backend when GOOGLE_CALENDAR_ENABLED is set.
+    const pad = (n) => String(n).padStart(2, "0");
+    const dayISO = (d, h) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(h)}:00:00`;
+    const clinicianAvail = [];
+    const monitorAvail = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(base.getTime() + i * 864e5);
+      if (d.getDay() === 0 || d.getDay() === 6) continue; // weekends off
+      // clinician: mornings most days, full day on Tue/Thu
+      if (d.getDay() === 2 || d.getDay() === 4) {
+        clinicianAvail.push({ start: dayISO(d, 9), end: dayISO(d, 17) });
+      } else {
+        clinicianAvail.push({ start: dayISO(d, 9), end: dayISO(d, 12) });
+      }
+      // court monitor: late mornings/afternoons, off on Fridays
+      if (d.getDay() !== 5) {
+        monitorAvail.push({ start: dayISO(d, 10), end: dayISO(d, 15) });
+      }
+    }
 
     try {
       // Step 1: Create the session
@@ -4413,7 +4428,8 @@ function initClinicianHub() {
       });
       
       const intakeData = await intakeRes.json();
-      renderAgent1ApprovalCard(sessionId, intakeData);
+      // /api/agent1/intake wraps the card ({status, checkpoint, card}); unwrap it
+      renderAgent1ApprovalCard(sessionId, intakeData.card || intakeData);
       refreshSessionList();
     } catch (e) {
       console.error(e);
@@ -4670,6 +4686,41 @@ window.__selectSession = async (sid) => {
   }
 };
 
+// Film-style week calendar: everyone's availability as tiny colored bars in a
+// 7-day grid, with the proposed conflict-free slots GLOWING orange.
+function buildWeekCalendarHtml(cal, slots) {
+  const days = [];
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  for (let d = 0; d < 7; d++) days.push(new Date(base.getTime() + d * 864e5));
+  const inWin = (wins, cs, ce) => (wins || []).some((w) => new Date(w.start) < ce && new Date(w.end) > cs);
+  const head = days.map((d) =>
+    `<div class="cal-day-head">${d.toLocaleDateString("en-US", { weekday: "short" })}<b>${d.getDate()}</b></div>`
+  ).join("");
+  let rows = "";
+  for (let h = 8; h < 20; h++) {
+    rows += days.map((d) => {
+      const cs = new Date(d); cs.setHours(h);
+      const ce = new Date(d); ce.setHours(h + 1);
+      const p = inWin(cal.parent, cs, ce);
+      const c = inWin(cal.clinician, cs, ce);
+      const m = inWin(cal.monitor, cs, ce);
+      const glow = inWin(slots, cs, ce);
+      const title = `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getDate()} — ${h}:00`;
+      return `<div class="cal-cell${glow ? " cal-glow" : ""}" title="${title}">` +
+        (p ? '<i class="cb cb-p"></i>' : "") + (c ? '<i class="cb cb-c"></i>' : "") + (m ? '<i class="cb cb-m"></i>' : "") +
+        `</div>`;
+    }).join("");
+  }
+  return `<div class="cal-grid">${head}${rows}</div>
+    <div class="cal-legend">
+      <span><i class="cb cb-p"></i>Parent</span>
+      <span><i class="cb cb-c"></i>Clinician</span>
+      <span><i class="cb cb-m"></i>Monitor</span>
+      <span><i class="cb cb-glow"></i>Proposed slot</span>
+    </div>`;
+}
+
 function renderAgent1ApprovalCard(sessionId, data) {
   const card = document.querySelector("#cAgent1Card");
   if (!card) return;
@@ -4688,7 +4739,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
   const calOverlay = data.calendarOverlay || {};
   
   const slotsHtml = slots.map((s, idx) => {
-    const timeLabel = s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end);
+    const nice = s.label || (s.start.replace("T", " ") + " → " + (s.end.split("T")[1] || s.end));
     return `
       <div class="slot-card ${idx === 0 ? "selected" : ""}" data-slot-idx="${idx}" data-slot-value='${JSON.stringify(s)}'>
         <div class="avatar-ring">📅</div>
@@ -4697,11 +4748,11 @@ function renderAgent1ApprovalCard(sessionId, data) {
             Slot ${idx + 1}
             <span class="role-badge clinician">#178f86</span>
           </div>
-          <div class="slot-time">${timeLabel}</div>
+          <div class="slot-time">${nice}</div>
         </div>
         <div class="slot-status">
-          <button class="approve-pill ${idx === 0 ? "confirmed" : "pending"}" data-pill-idx="${idx}">
-            ${idx === 0 ? "✓ Selected" : "Select"}
+          <button class="approve-pill ${idx === 0 ? "approve-now" : "pending"}" data-pill-idx="${idx}">
+            ${idx === 0 ? "Approve" : "Select"}
           </button>
         </div>
       </div>
@@ -4751,6 +4802,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
     </div>
     
     <label>Calendar Overlay — All Parties</label>
+    ${buildWeekCalendarHtml(calOverlay, slots)}
     ${partyRows}
 
     <label style="margin-top: 12px;">Proposed Conflict-Free Slots</label>
@@ -4764,9 +4816,15 @@ function renderAgent1ApprovalCard(sessionId, data) {
     </div>
   `;
 
-  // Bind slot card click selection (scene6-style)
+  // Film-style row behavior: click a row to highlight it (dark, elevated,
+  // orange Approve pill on the row); click that Approve pill to book the slot.
   card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
-    slotCard.addEventListener("click", () => {
+    slotCard.addEventListener("click", (e) => {
+      const clickedApprove = e.target.closest(".approve-pill");
+      if (slotCard.classList.contains("selected") && clickedApprove) {
+        document.querySelector("#cApproveIntakeBtn")?.click();
+        return;
+      }
       // Deselect all
       card.querySelectorAll(".slot-card[data-slot-idx]").forEach(sc => {
         sc.classList.remove("selected");
@@ -4776,7 +4834,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       // Select this one
       slotCard.classList.add("selected");
       const pill = slotCard.querySelector(".approve-pill");
-      if (pill) { pill.className = "approve-pill confirmed"; pill.textContent = "✓ Selected"; }
+      if (pill) { pill.className = "approve-pill approve-now"; pill.textContent = "Approve"; }
     });
   });
 

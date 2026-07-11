@@ -1470,8 +1470,11 @@ body.is-debug-view .crosshair {
   border-color: rgba(255, 255, 255, 0.15);
 }
 .slot-card.selected {
-  background: rgba(23, 143, 134, 0.12);
-  border-color: var(--teal);
+  /* film-style highlighted approval row: dark, elevated, glowing */
+  background: #232a36;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  transform: scale(1.015);
 }
 .slot-card .avatar-ring {
   width: 42px;
@@ -1551,6 +1554,83 @@ body.is-debug-view .crosshair {
 .approve-pill.confirmed {
   background: var(--teal);
   color: #fff;
+}
+.approve-pill.approve-now {
+  background: var(--warm);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(217, 134, 50, 0.55);
+}
+.approve-pill.approve-now:hover {
+  background: #f0953c;
+  transform: scale(1.06);
+}
+
+/* ── Agent 1 film-style week calendar (checkpoint card) ─────────────── */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin: 8px 0 6px;
+}
+.cal-day-head {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+  padding-bottom: 2px;
+}
+.cal-day-head b {
+  display: block;
+  font-size: 12px;
+  color: #ffffff;
+}
+.cal-cell {
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5px;
+  padding: 2px 3px;
+}
+.cal-cell .cb {
+  display: block;
+  height: 2.5px;
+  border-radius: 2px;
+}
+.cb-p { background: var(--warm); }
+.cb-c { background: var(--teal); }
+.cb-m { background: rgba(255, 255, 255, 0.75); }
+.cal-cell.cal-glow {
+  background: rgba(217, 134, 50, 0.30);
+  border-color: var(--warm);
+  animation: calPulse 1.6s ease-in-out infinite;
+}
+@keyframes calPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(217, 134, 50, 0.55), inset 0 0 4px rgba(217, 134, 50, 0.35); }
+  50% { box-shadow: 0 0 14px rgba(217, 134, 50, 0.95), inset 0 0 7px rgba(217, 134, 50, 0.55); }
+}
+.cal-legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+.cal-legend .cb {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.cb-glow {
+  background: var(--warm);
+  box-shadow: 0 0 6px rgba(217, 134, 50, 0.9);
 }
 
 /* Email Notification Cards */
