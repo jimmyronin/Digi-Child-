@@ -17,7 +17,7 @@ if (_qp.has("backend")) {
 }
 const _defaultBackend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname)
   ? `http://${window.location.hostname || "127.0.0.1"}:8000`
-  : "https://digichild-backend.onrender.com";
+  : "https://digichild-backend.onrender.com";   // deployed default; override with ?backend=
 const API_BASE = localStorage.getItem("DIGICHILD_BACKEND_URL") || _defaultBackend;
 
 // Redirect client console.log to backend uvicorn log
@@ -727,6 +727,9 @@ let lastParentActivityTime = 0;
 let nextIdleActionTime = 10;
 let waveUntil = 0;
 let smileSpikeUntil = 0;
+// LLM-driven timed gesture (jump / dance / spin / hide) from the child's structured action
+let actionType = null;
+let actionUntil = 0;
 
 function resetParentIdle() {
   if (clock) {
@@ -2835,6 +2838,109 @@ function attachPropToChild(path, opts = {}) {
   }
 }
 
+/* ============================================================
+   LLM-driven embodiment: the backend returns a structured action
+   (type / prop / spot) chosen by Claude to match whatever the
+   conversation describes -- this executor makes Mira actually do it.
+   ============================================================ */
+const ACTION_SPOTS = {
+  home: {
+    play_corner:   { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" },
+    kitchen_table: { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" },
+    bathroom:      { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" },
+    bedroom:       { x: 5.0, z: -4.2, yaw: Math.PI / 2, pose: "stand" },
+    sofa:          { x: -6.0, z: 4.5, seat: 0.45, yaw: Math.PI / 2, pose: "sit" },
+  },
+  park: {
+    swings:  { x: 2.5, z: -2.0, seat: 0.6, yaw: 0, pose: "sit" },
+    slide:   { x: -2.5, z: -2.0, yaw: 0, pose: "stand" },
+    sandbox: { x: 0, z: 1.5, seat: 0.2, yaw: 0, pose: "sit" },
+  },
+  market: {
+    checkout:    { x: -0.8, z: 2.0, yaw: 0, pose: "stand" },
+    snack_shelf: { x: 1.5, z: -0.5, yaw: Math.PI, pose: "stand" },
+  },
+  party: {
+    buffet:      { x: -1.0, z: -1.5, yaw: 0, pose: "stand" },
+    couch:       { x: 0, z: -2.5, seat: 0.5, yaw: 0, pose: "sit" },
+    kids_corner: { x: -4.0, z: 2.5, yaw: 0.5, pose: "sit" },
+  },
+};
+const ACTION_PROPS = {
+  book:     ["single_book", { bone: "rightHand", s: 1.0 }],
+  toy_car:  ["car/kart-oopi", { bone: "rightHand", s: 1.0 }],
+  cookie:   ["food/cookie", { bone: "rightHand", s: 1.2 }],
+  lollypop: ["food/lollypop", { bone: "rightHand", s: 1.2 }],
+  apple:    ["food/apple", { bone: "rightHand", s: 1.2 }],
+  banana:   ["food/banana", { bone: "rightHand", s: 1.2 }],
+};
+
+function performChildAction(action) {
+  if (!action || !action.type || action.type === "none") return false;
+  const type = action.type;
+  const loc = state.location;
+  const inCar = currentId === "car";
+  let handled = false;
+
+  // 1) hands: pick up / put down (she can hold something AND move)
+  if (action.prop && action.prop !== "none" && ACTION_PROPS[action.prop]) {
+    const [p, o] = ACTION_PROPS[action.prop];
+    attachPropToChild(p, { ...o });
+    handled = true;
+  }
+  if (type === "drop_prop") {
+    clearChildAttachedProp();
+    handled = true;
+  }
+
+  // 2) feet: destinations and poses (never while buckled into the car seat)
+  const spots = ACTION_SPOTS[loc] || {};
+  if (!inCar) {
+    if (action.spot && action.spot !== "none" && spots[action.spot]) {
+      current.childAnchor = { ...spots[action.spot] };
+      if (type === "sit") current.childAnchor.pose = "sit";
+      placeChild();
+      handled = true;
+    } else if (type === "come_to_parent") {
+      activePlayPoint = null;
+      setChildPose("stand");
+      const dx = camWorld.x - childWorld.x, dz = camWorld.z - childWorld.z;
+      const d = Math.hypot(dx, dz) || 0.1;
+      childTarget.x = camWorld.x - (dx / d) * 1.15;
+      childTarget.z = camWorld.z - (dz / d) * 1.15;
+      handled = true;
+    } else if (type === "sit") {
+      // sit down right where she is
+      current.childAnchor = { x: childWorld.x, z: childWorld.z, yaw: child.rotation.y, pose: "sit" };
+      placeChild();
+      handled = true;
+    } else if (type === "stand") {
+      setChildPose("stand");
+      handled = true;
+    } else if (type === "run_play") {
+      setChildPose("stand");
+      activePlayPoint = null;
+      childTarget.x = childWorld.x + (Math.random() - 0.5) * 4;
+      childTarget.z = childWorld.z + (Math.random() - 0.5) * 4;
+      handled = true;
+    }
+  }
+
+  // 3) whole-body timed gestures
+  const t = clock ? clock.getElapsedTime() : 0;
+  if (type === "wave") {
+    waveUntil = t + 4.0;
+    handled = true;
+  } else if (type === "jump" || type === "dance" || type === "spin" || type === "hide") {
+    if (!inCar && childPose !== "stand") setChildPose("stand"); // get off the seat first
+    actionType = type;
+    actionUntil = t + (type === "hide" ? 6.0 : 4.5);
+    if (type !== "hide") smileSpikeUntil = t + 4.0;
+    handled = true;
+  }
+  return handled;
+}
+
 function handleDynamicChatActions(userMsg, childMsg) {
   const combined = (userMsg + " " + childMsg).toLowerCase();
   
@@ -2844,7 +2950,7 @@ function handleDynamicChatActions(userMsg, childMsg) {
       attachPropToChild("single_book", { bone: "rightHand", s: 1.0 });
       
       // Move to play corner/rug and sit down
-      locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+      current.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
       player.targetX = -2.0;
       player.targetZ = 1.8;
       player.targetYaw = 0.5;
@@ -2855,7 +2961,7 @@ function handleDynamicChatActions(userMsg, childMsg) {
     // 2. Lego blocks / Building a tower
     if (combined.includes("lego") || combined.includes("block") || combined.includes("tower") || combined.includes("build")) {
       attachPropToChild("car/kart-oopi", { bone: "rightHand", s: 1.0 }); // oopi cart as toy car
-      locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+      current.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
       player.targetX = -2.0;
       player.targetZ = 1.8;
       player.targetYaw = 0.5;
@@ -2872,12 +2978,12 @@ function handleDynamicChatActions(userMsg, childMsg) {
       
       // If kitchen or table is mentioned, move to kitchen table, else play corner
       if (combined.includes("kitchen") || combined.includes("table") || combined.includes("dining")) {
-        locationDefs.home.childAnchor = { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" };
+        current.childAnchor = { x: -3.0, z: -3.1, yaw: -Math.PI * 0.5, pose: "sit" };
         player.targetX = -2.05;
         player.targetZ = -3.1;
         player.targetYaw = -Math.PI * 0.5;
       } else {
-        locationDefs.home.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
+        current.childAnchor = { x: -2.35, z: 1.15, yaw: -0.7, pose: "sit" };
         player.targetX = -2.0;
         player.targetZ = 1.8;
         player.targetYaw = 0.5;
@@ -2888,7 +2994,7 @@ function handleDynamicChatActions(userMsg, childMsg) {
     
     // 4. Brushing teeth / Washing / Bathroom
     if (combined.includes("brush") || combined.includes("teeth") || combined.includes("wash") || combined.includes("bathroom") || combined.includes("sink") || combined.includes("toilet")) {
-      locationDefs.home.childAnchor = { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" };
+      current.childAnchor = { x: 2.48, z: 5.43, yaw: Math.PI, pose: "stand" };
       player.targetX = 2.48;
       player.targetZ = 4.2;
       player.targetYaw = 0;
@@ -2898,45 +3004,45 @@ function handleDynamicChatActions(userMsg, childMsg) {
   } else if (state.location === "park") {
     // swings
     if (combined.includes("swing")) {
-      locationDefs.park.childAnchor = { x: 2.5, z: -2.0, seat: 0.6, yaw: 0, pose: "sit" };
+      current.childAnchor = { x: 2.5, z: -2.0, seat: 0.6, yaw: 0, pose: "sit" };
       placeChild();
       return;
     }
     // slide
     if (combined.includes("slide")) {
-      locationDefs.park.childAnchor = { x: -2.5, z: -2.0, yaw: 0, pose: "stand" };
+      current.childAnchor = { x: -2.5, z: -2.0, yaw: 0, pose: "stand" };
       placeChild();
       return;
     }
     // sandbox
     if (combined.includes("sand") || combined.includes("castle") || combined.includes("box")) {
-      locationDefs.park.childAnchor = { x: 0, z: 1.5, seat: 0.2, yaw: 0, pose: "sit" };
+      current.childAnchor = { x: 0, z: 1.5, seat: 0.2, yaw: 0, pose: "sit" };
       placeChild();
       return;
     }
   } else if (state.location === "market") {
     // checkout
     if (combined.includes("checkout") || combined.includes("pay") || combined.includes("cashier") || combined.includes("card")) {
-      locationDefs.market.childAnchor = { x: -0.8, z: 2.0, yaw: 0, pose: "stand" };
+      current.childAnchor = { x: -0.8, z: 2.0, yaw: 0, pose: "stand" };
       placeChild();
       return;
     }
     // snack
     if (combined.includes("cookie") || combined.includes("snack") || combined.includes("candy")) {
-      locationDefs.market.childAnchor = { x: 1.5, z: -0.5, yaw: Math.PI, pose: "stand" };
+      current.childAnchor = { x: 1.5, z: -0.5, yaw: Math.PI, pose: "stand" };
       placeChild();
       return;
     }
   } else if (state.location === "party") {
     // buffet
     if (combined.includes("eat") || combined.includes("food") || combined.includes("cake") || combined.includes("buffet")) {
-      locationDefs.party.childAnchor = { x: -1.0, z: -1.5, yaw: 0, pose: "stand" };
+      current.childAnchor = { x: -1.0, z: -1.5, yaw: 0, pose: "stand" };
       placeChild();
       return;
     }
     // couch
     if (combined.includes("grandma") || combined.includes("couch") || combined.includes("sit")) {
-      locationDefs.party.childAnchor = { x: 0, z: -2.5, seat: 0.5, yaw: 0, pose: "sit" };
+      current.childAnchor = { x: 0, z: -2.5, seat: 0.5, yaw: 0, pose: "sit" };
       placeChild();
       return;
     }
@@ -3040,7 +3146,9 @@ async function handleSubmit(event) {
   }
   state.mood = result.mood;
   state.childLine = result.childLine;
-  handleDynamicChatActions(message, result.childLine);
+  // Claude's structured action drives her body; keyword matching is only the offline fallback
+  const acted = result.action ? performChildAction(result.action) : false;
+  if (!acted) handleDynamicChatActions(message, result.childLine);
   syncUi();
 }
 
@@ -3249,11 +3357,20 @@ function openInsight(title, text) {
    ============================================================ */
 window.addEventListener("resize", resize);
 function resize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return; // hidden/background tab reports 0x0 -- never size down to nothing
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
 }
+// If the page loaded in a background tab (0x0 viewport), no resize event fires
+// when it becomes visible -- recover the canvas the moment we can see it.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) resize(); });
+setInterval(() => {
+  const c = renderer.domElement;
+  if (window.innerWidth && (!c.width || Math.abs(c.clientWidth - window.innerWidth) > 2)) resize();
+}, 1500);
 
 const clock = new THREE.Clock();
 const camWorld = new THREE.Vector3();
@@ -3513,8 +3630,33 @@ function updateFrame(dt, t) {
     LuX += Math.sin(t * 3) * 0.1; RuX += Math.sin(t * 3 + 1) * 0.1;
   }
 
+  // LLM-driven timed gestures override the generic poses while active
+  if (t < actionUntil && actionType) {
+    if (actionType === "jump") {
+      posOY += Math.abs(Math.sin(t * 7)) * 0.22;      // big excited hops
+      LuZ = -1.32 + 1.1; RuZ = 1.32 - 1.1;            // arms thrown up
+      LuX = -1.15; RuX = -1.15;
+    } else if (actionType === "dance") {
+      const dsw = Math.sin(t * 6);
+      LuZ = -1.32 + 0.9 + dsw * 0.25; RuZ = 1.32 - 0.9 - dsw * 0.25;
+      LuX = -0.8 + dsw * 0.5; RuX = -0.8 - dsw * 0.5;  // alternating arm sways
+      posOY += Math.abs(dsw) * 0.09;
+      spineZ = Math.sin(t * 3) * 0.12;                 // hip sway
+    } else if (actionType === "hide") {
+      LuZ = -1.32 + 1.05; RuZ = 1.32 - 1.05;           // hands up covering her face
+      LuX = -1.15; RuX = -1.15;
+      LlX = -2.2; RlX = -2.2;
+      spineXAdd = 0.32; posOY = -0.16;                 // crouch small
+      headExtraX = 0.25;
+    }
+  } else if (actionType && t >= actionUntil) {
+    actionType = null;
+  }
+
   // body yaw: turn toward target direction when walking, otherwise turn to parent (faster while walking)
-  if (canWalk) {
+  if (t < actionUntil && actionType === "spin") {
+    child.rotation.y += dt * 7; // twirl!
+  } else if (canWalk) {
     const yawTarget = walking ? Math.atan2(dxT, dzT) : Math.atan2(dxp, dzp);
     let diff = yawTarget - child.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -4705,10 +4847,30 @@ if (activeSessionId) {
 
 // dev helpers for testing reactions from the console
 window.__digiReact = (type) => triggerReaction(type);
+window.__digiAct = (type, prop = "none", spot = "none") => performChildAction({ type, prop, spot });
 window.__digiEye = (e) => { if (current) current.eye = e; };
 window.__digiState = () => ({
   reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
   expr: { ...expr },
+  child: {
+    x: +childWorld.x.toFixed(2), z: +childWorld.z.toFixed(2), pose: childPose,
+    y: +child.position.y.toFixed(2), baseY: +childBaseY.toFixed(2), h: +vrmHeight.toFixed(2), scale: +child.scale.x.toFixed(2),
+    graph: (() => {
+      let meshes = 0, visMeshes = 0, mats = new Set();
+      const hidden = [];
+      if (vrm) vrm.scene.traverse((o) => {
+        if (o.visible === false) hidden.push(o.type + ":" + (o.name || "?"));
+        if (o.isMesh) { meshes++; if (o.visible) visMeshes++; mats.add(o.material?.type || (Array.isArray(o.material) ? o.material[0]?.type : "?")); }
+      });
+      const chain = []; let p = child; while (p) { chain.push(p.type + (p.name ? ":" + p.name : "")); p = p.parent; }
+      const wp = vrm ? vrm.scene.getWorldPosition(new THREE.Vector3()) : null;
+      return { meshes, visMeshes, hidden: hidden.slice(0, 8), childVisible: child.visible, vrmSceneVisible: vrm ? vrm.scene.visible : null, mats: [...mats], childChain: chain, vrmInChild: vrm ? vrm.scene.parent === child : null, vrmWorld: wp ? [+wp.x.toFixed(2), +wp.y.toFixed(2), +wp.z.toFixed(2)] : null };
+    })(),
+    action: actionType, actionLeft: +(actionUntil - clock.getElapsedTime()).toFixed(1),
+    target: { x: +childTarget.x.toFixed(2), z: +childTarget.z.toFixed(2) },
+    prop: childAttachedProp ? (childAttachedProp.name || "prop") : null,
+  },
+  player: { x: +player.x.toFixed(2), z: +player.z.toFixed(2), yaw: +player.yaw.toFixed(2) },
   bones: vrm
     ? {
         Lu: ["x", "y", "z"].map((k) => +(vrm.humanoid.getNormalizedBoneNode("leftUpperArm")?.rotation[k] ?? 0).toFixed(2)),
