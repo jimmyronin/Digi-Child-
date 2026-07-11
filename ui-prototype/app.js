@@ -4557,7 +4557,7 @@ function renderAgent1ApprovalCard(sessionId, data) {
       
       await sleep(1000);
 
-      renderAgent2ProvisionCard(result, { parentId, clinicianId, monitorId, chosenSlot });
+      renderAgent2ProvisionCard(result, { sessionId, parentId, clinicianId, monitorId, chosenSlot });
       card.style.display = "none";
       refreshSessionList();
     } catch (e) {
@@ -4619,6 +4619,7 @@ function renderAgent2ProvisionCard(data, context = {}) {
   const baseline = prov.baseline_state || {};
   const slotLabel = context.chosenSlot ? context.chosenSlot.start.replace("T", " ") : "Scheduled";
   const sid = prov.session_id || data.session_id || context.sessionId || "";
+  console.log(`[PROVISION] sid=${sid} prov.session_id=${prov.session_id} data.session_id=${data.session_id} context.sessionId=${context.sessionId}`);
   
   // Build email delivery notifications
   const emails = [
