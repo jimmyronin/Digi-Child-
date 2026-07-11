@@ -5,6 +5,24 @@ Digi-Child is the UI and product package for the AI-native parenting simulator M
 
 The product idea is simple: the user is not just chatting with an AI. The user acts as the parent, and the child changes over time based on how the parent communicates, guides, neglects, contradicts, supports, or challenges it.
 
+## Live Deployment
+
+- Frontend: https://mitraker.github.io/Digi-Child-Live/
+- Source repo: https://github.com/MITRAKER/Digi-Child-Live
+- Backend source is included in `backend/` and Render configuration is in `render.yaml`.
+
+To deploy the backend on Render, create a Render Blueprint or web service from this repository. Use `render.yaml`; it sets `rootDir: backend`, installs `backend/requirements.txt`, starts `uvicorn main:app`, and stores the SQLite database on a persistent disk at `/data/digichild.db`.
+
+After Render creates the backend service, add the Render deploy hook URL as a GitHub Actions secret named `RENDER_DEPLOY_HOOK_URL`. The backend workflow will then redeploy the API when backend files change.
+
+The frontend can point at the live backend by opening it once with:
+
+```text
+https://mitraker.github.io/Digi-Child-Live/?backend=https://YOUR-RENDER-SERVICE.onrender.com
+```
+
+That backend URL is saved in browser local storage for later visits.
+
 ## Folder Structure
 
 - `docs/` contains the PRD and project brief.

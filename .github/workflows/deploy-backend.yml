@@ -17,6 +17,12 @@ jobs:
     env:
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
+      - name: Check Render Deploy Hook
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL == '' }}
+        run: |
+          echo "::error::Set the RENDER_DEPLOY_HOOK_URL repository secret to deploy the backend to Render."
+          exit 1
+
       - name: Trigger Render Deploy Hook
         # Set RENDER_DEPLOY_HOOK_URL in your GitHub repo secrets:
         # GitHub repo -> Settings -> Secrets and variables -> Actions -> New secret
