@@ -2564,6 +2564,7 @@ function buildLocationBar() {
 const keys = new Set();
 
 canvas.addEventListener("click", () => {
+  if (sessionRole === "clinician") return; // No pointer lock in dashboard mode
   ensureAudio(); // unlock audio playback on first user gesture
   if (currentId === "party") playPartySound(true);
   if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
@@ -2581,6 +2582,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
+  if (sessionRole === "clinician") return; // No keyboard controls in dashboard mode
   if (e.target === input) return;
   if (/^Digit[1-5]$/.test(e.code)) {
     setLocation(locationOrder[Number(e.code.slice(5)) - 1]);
@@ -2595,7 +2597,10 @@ window.addEventListener("keydown", (e) => {
   if (e.code.startsWith("Arrow")) e.preventDefault();
   keys.add(e.code);
 });
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+window.addEventListener("keyup", (e) => {
+  if (sessionRole === "clinician") return;
+  keys.delete(e.code);
+});
 
 function updateHint() {
   const locked = document.pointerLockElement === canvas;
@@ -3759,10 +3764,6 @@ function initClinicianHub() {
   document.body.classList.add("clinician-mode");
   clinicianHub.style.display = "flex";
   child.visible = false;
-  
-  // Hide 3D canvas to avoid rendering in the background
-  const canvasEl = document.querySelector("#scene");
-  if (canvasEl) canvasEl.style.display = "none";
 
   // In clinician dashboard mode, fade out the splash screen after 1.5 seconds
   setTimeout(dismissSplashScreen, 1500);
@@ -4681,14 +4682,12 @@ if (toggleBtn && statePanel) {
 
 initClinicianHub();
 buildLocationBar();
-const defaultLoc = queryParams.get("role") === "clinician" ? "park" : "home";
+const defaultLoc = sessionRole === "clinician" ? "park" : "home";
 setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : defaultLoc);
 renderStats();
 syncUi();
 
-if (sessionRole !== "clinician") {
-  animate();
-}
+animate();
 
 // Fallback to ensure splash screen is eventually dismissed even if loading fails/stalls
 if (activeSessionId) {
