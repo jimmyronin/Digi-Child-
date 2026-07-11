@@ -2842,7 +2842,6 @@ function updateChildLook() {
   exprAngry = volatility > 70 ? 0.35 : 0;
   childLight.intensity = security > 65 ? 0.6 : 0.3;
   loadMira(miraStage());
-  placeChild();
 }
 
 /* ============================================================
