@@ -186,6 +186,10 @@ def generate_child_response(state, req, treatment, history, persona=""):
         f"Spots she can walk to in the current setting '{{location}}': {{spots}}. "
         "In the car she is buckled in: only 'none', 'wave', 'hold_prop' or 'drop_prop' are possible there."
     )
+    # fill the embodiment placeholders with the current scene's real spots
+    spots = SPOTS.get(location, [])
+    system = system.replace("{location}", str(location)).replace(
+        "{spots}", ", ".join(spots) if spots else "(none here)")
     if persona:
         system += "\n\nStage persona: " + persona
 
@@ -229,6 +233,7 @@ Respond as Mira reacting in this moment, consistent with her age, state, and the
         "reasoning": data.get("reasoning", ""),
         "framework_cited": data.get("framework_cited", ""),
         "mood": data.get("mood", ""),
+        "action": data.get("action"),
         "source": "claude",
     }
 
