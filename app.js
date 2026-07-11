@@ -4721,6 +4721,69 @@ function buildWeekCalendarHtml(cal, slots) {
     </div>`;
 }
 
+function buildCaseManagerReviewHtml() {
+  return `
+    <div id="caseReviewPanel" class="case-review-panel" hidden>
+      <div class="case-review-head">
+        <span>Case Manager Review</span>
+        <strong id="caseReviewStatus">Waiting for approval decision</strong>
+      </div>
+      <div class="case-review-steps">
+        <div id="caseReviewStep1" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Review intake summary</span>
+        </div>
+        <div id="caseReviewStep2" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Check parent, clinician, and monitor availability</span>
+        </div>
+        <div id="caseReviewStep3" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Validate safety checkpoint and selected slot</span>
+        </div>
+        <div id="caseReviewStep4" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Record approval and prepare Agent 2 handoff</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function runCaseManagerReview(card) {
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const reviewPanel = card.querySelector("#caseReviewPanel");
+  const status = card.querySelector("#caseReviewStatus");
+  const steps = [
+    ["caseReviewStep1", "Case manager is reading intake notes...", "Intake notes reviewed."],
+    ["caseReviewStep2", "Checking all party availability windows...", "Availability windows confirmed."],
+    ["caseReviewStep3", "Validating the selected slot and safety checkpoint...", "Safety checkpoint validated."],
+    ["caseReviewStep4", "Recording approval for Agent 2 handoff...", "Approval recorded for Agent 2."]
+  ];
+
+  if (reviewPanel) reviewPanel.hidden = false;
+
+  for (const [stepId, activeText, doneText] of steps) {
+    const step = card.querySelector(`#${stepId}`);
+    const copy = step?.querySelector(".case-review-copy");
+    if (status) status.textContent = activeText;
+    if (step) {
+      step.classList.add("is-active");
+      step.classList.remove("is-done");
+    }
+    if (copy) copy.textContent = activeText;
+    await wait(1150);
+    if (step) {
+      step.classList.remove("is-active");
+      step.classList.add("is-done");
+    }
+    if (copy) copy.textContent = doneText;
+  }
+
+  if (status) status.textContent = "Case management approval complete.";
+  await wait(650);
+}
+
 function renderAgent1ApprovalCard(sessionId, data) {
   const card = document.querySelector("#cAgent1Card");
   if (!card) return;
@@ -4810,6 +4873,8 @@ function renderAgent1ApprovalCard(sessionId, data) {
       ${slotsHtml || "<p style='font-size:11px;color:rgba(255,255,255,0.4);margin:0;'>No overlap slots found.</p>"}
     </div>
 
+    ${buildCaseManagerReviewHtml()}
+
     <div style="display: flex; gap: 8px;">
       <button id="cApproveIntakeBtn">Approve & Launch Agent 2</button>
       <button id="cRejectIntakeBtn" class="btn-danger">Reject</button>
@@ -4841,13 +4906,23 @@ function renderAgent1ApprovalCard(sessionId, data) {
   // Bind Approval Action
   document.querySelector("#cApproveIntakeBtn").addEventListener("click", async () => {
     const approveBtn = document.querySelector("#cApproveIntakeBtn");
+    const rejectBtn = document.querySelector("#cRejectIntakeBtn");
+    if (approveBtn.disabled) return;
     approveBtn.disabled = true;
-    approveBtn.textContent = "Approving...";
+    if (rejectBtn) rejectBtn.disabled = true;
+    approveBtn.textContent = "Case Manager Reviewing...";
+    card.classList.add("is-reviewing");
+    card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
+      slotCard.style.pointerEvents = "none";
+    });
 
     const selectedCard = card.querySelector(".slot-card.selected");
     const chosenSlot = selectedCard ? JSON.parse(selectedCard.dataset.slotValue) : (slots[0] || null);
 
     try {
+      await runCaseManagerReview(card);
+      approveBtn.textContent = "Launching Agent 2...";
+
       const res = await fetch(`${API_BASE}/api/agent1/decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4923,8 +4998,15 @@ function renderAgent1ApprovalCard(sessionId, data) {
       console.error(e);
       alert("Error confirming booking.");
     } finally {
-      approveBtn.disabled = false;
-      approveBtn.textContent = "Approve & Launch Agent 2";
+      if (document.body.contains(approveBtn)) {
+        approveBtn.disabled = false;
+        approveBtn.textContent = "Approve & Launch Agent 2";
+      }
+      if (rejectBtn && document.body.contains(rejectBtn)) rejectBtn.disabled = false;
+      card.classList.remove("is-reviewing");
+      card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
+        slotCard.style.pointerEvents = "";
+      });
     }
   });
 
