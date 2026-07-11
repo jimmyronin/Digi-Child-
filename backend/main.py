@@ -138,6 +138,7 @@ async def interact(req: InteractRequest):
     return {
         "childLine": child_line,
         "mood": mood,
+        "action": ai_response.get("action"),
         "developmentNote": development_note,
         "values": {
             "trust": state["trust"],
