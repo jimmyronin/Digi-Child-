@@ -826,9 +826,18 @@ function loadMira(stage) {
       const bounds = new THREE.Box3().setFromObject(vrm.scene);
       vrmHeight = Math.max(0.8, bounds.max.y - Math.min(bounds.min.y, 0));
       placeChild();
+
+      if (activeSessionId) {
+        dismissSplashScreen();
+      }
     },
     undefined,
-    (e) => console.warn(`Could not load ${url}`, e)
+    (e) => {
+      console.warn(`Could not load ${url}`, e);
+      if (activeSessionId) {
+        dismissSplashScreen();
+      }
+    }
   );
 }
 
@@ -3621,7 +3630,8 @@ function animate() {
    Clinical Orchestrator Logic
    ============================================================ */
 let activeSessionId = queryParams.get("session");
-let sessionRole = queryParams.get("role"); // "clinician"
+// Default to clinician (dashboard) mode if there is no active session ID
+let sessionRole = activeSessionId ? queryParams.get("role") : "clinician";
 let sessionPaused = false;
 let selectedClinicianSession = null;
 
@@ -3734,11 +3744,28 @@ function renderAvailabilityPortal() {
   });
 }
 
+function dismissSplashScreen() {
+  const splash = document.querySelector("#splashScreen");
+  if (splash && !splash.classList.contains("fade-out")) {
+    splash.classList.add("fade-out");
+    setTimeout(() => {
+      splash.style.display = "none";
+    }, 800); // matches the transition duration in CSS
+  }
+}
+
 function initClinicianHub() {
   if (sessionRole !== "clinician") return;
   document.body.classList.add("clinician-mode");
   clinicianHub.style.display = "flex";
   child.visible = false;
+  
+  // Hide 3D canvas to avoid rendering in the background
+  const canvasEl = document.querySelector("#scene");
+  if (canvasEl) canvasEl.style.display = "none";
+
+  // In clinician dashboard mode, fade out the splash screen after 1.5 seconds
+  setTimeout(dismissSplashScreen, 1500);
   
   // Render hub layout with left sidebar tabs
   clinicianHub.innerHTML = `
@@ -4658,7 +4685,15 @@ const defaultLoc = queryParams.get("role") === "clinician" ? "park" : "home";
 setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : defaultLoc);
 renderStats();
 syncUi();
-animate();
+
+if (sessionRole !== "clinician") {
+  animate();
+}
+
+// Fallback to ensure splash screen is eventually dismissed even if loading fails/stalls
+if (activeSessionId) {
+  setTimeout(dismissSplashScreen, 8000);
+}
 
 // dev helpers for testing reactions from the console
 window.__digiReact = (type) => triggerReaction(type);
