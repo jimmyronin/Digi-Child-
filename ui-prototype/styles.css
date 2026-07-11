@@ -755,7 +755,9 @@ body.is-debug-view .crosshair {
    Clinician Hub & Scheduling Portal Styling
    ============================================================ */
 .clinician-mode {
-  background: #0f1216 url("./assets/clinician_bg.png") no-repeat center center / cover !important;
+  background: rgba(10, 12, 16, 0.45) !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
 }
 
 /* Splash Screen / Loader styles */
