@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/deploy-backend.yml"
+      - "backend"
       - "backend/**"
       - "render.yaml"
   workflow_dispatch:
@@ -12,13 +14,15 @@ on:
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
       - name: Trigger Render Deploy Hook
         # Set RENDER_DEPLOY_HOOK_URL in your GitHub repo secrets:
-        # GitHub repo → Settings → Secrets and variables → Actions → New secret
+        # GitHub repo -> Settings -> Secrets and variables -> Actions -> New secret
         # Name: RENDER_DEPLOY_HOOK_URL
-        # Value: (paste your Render deploy hook URL)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        # Value: paste your Render deploy hook URL
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-          echo "✅ Render deploy triggered successfully"
+          curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+          echo "Render deploy triggered successfully"
