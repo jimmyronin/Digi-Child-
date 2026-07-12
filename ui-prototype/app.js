@@ -711,11 +711,36 @@ function childGiggle(ctx, start) {
   }
 }
 
+// soft "bonk" when a thrown toy lands on the parent
+function childThud(ctx, start) {
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  const gain = ctx.createGain();
+  osc.frequency.setValueAtTime(130, start);
+  osc.frequency.exponentialRampToValueAtTime(45, start + 0.12);
+  gain.gain.setValueAtTime(0.5, start);
+  gain.gain.exponentialRampToValueAtTime(0.01, start + 0.16);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + 0.18);
+}
+
 function detectReaction(message, result) {
   const m = " " + message.toLowerCase() + " ";
   if (/(hit|slap|spank|smack|beat|punch|shake you|hurt you|hit you)/.test(m)) return "scream";
   if (/(stupid|shut up|shut it|hate you|i hate|dumb|idiot|ugly|worthless|useless|bad kid|annoying|go away|don'?t love you|you'?re nothing|crybaby)/.test(m)) return "cry";
-  if (/(love you|so proud|proud of you|good girl|good boy|good job|well done|you'?re amazing|hug|beautiful|so smart|my sweet|sweetheart|let'?s play|play with|good idea)/.test(m)) return "happy";
+  // dismissing / ignoring her: repeated brush-offs (or one while she's already
+  // wound up) tip her into a full protest -- stomping, screaming, throwing toys
+  if (/(whatever|not now|maybe later|i'?m busy|stop bothering|be quiet|quiet now|stop talking|don'?t care|so what|leave me alone|not listening|can'?t you see i'?m|stop it|enough|no time for)/.test(m)) {
+    dismissStreak++;
+    if (state.values.volatility > 55 || dismissStreak >= 2) return "tantrum";
+    return "upset";
+  }
+  if (/(love you|so proud|proud of you|good girl|good boy|good job|well done|you'?re amazing|hug|beautiful|so smart|my sweet|sweetheart|let'?s play|play with|good idea)/.test(m)) {
+    dismissStreak = 0; // warmth repairs the brush-off streak
+    return "happy";
+  }
   
   if (result && result.childLine) {
     const cl = result.childLine.toLowerCase();
@@ -743,9 +768,15 @@ let nextIdleActionTime = 10;
 let fmPhase = 0; // round-robin phase for party guest updates
 let waveUntil = 0;
 let smileSpikeUntil = 0;
-// LLM-driven timed gesture (jump / dance / spin / hide) from the child's structured action
+// LLM-driven timed gesture (jump / dance / spin / hide / clap / throw / tantrum)
 let actionType = null;
 let actionUntil = 0;
+// protest behaviors: she can hurl a toy at the parent and melt down when dismissed
+let throwLaunchAt = 0;
+let throwDone = true;
+let shakeUntil = 0;      // brief camera shake when a thrown toy hits the parent
+let dismissStreak = 0;   // consecutive dismissive/ignoring parent messages
+const flyingProps = [];  // toys currently in the air
 
 function resetParentIdle() {
   if (clock) {
@@ -787,6 +818,20 @@ function triggerIdleChildAction() {
       childTarget.z = camWorld.z - (dz / d) * 1.1;
     }
     if (roll < 0.35) return; // sometimes she just sulks silently
+    if (roll < 0.55 && currentId !== "car") {
+      // boiling over: stomping meltdown, sometimes hurling a toy at you
+      performChildAction({ type: "tantrum", prop: "none", spot: "none" });
+      if (Math.random() < 0.5) {
+        setTimeout(() => performChildAction({ type: "throw_toy", prop: "none", spot: "none" }), 1600);
+      }
+      state.childLine = pickIdleLine([
+        "*stomps feet and screams* YOU'RE NOT LISTENING TO ME!",
+        "*throws her toy* You NEVER pay attention to me!!",
+        "*screams* I've been talking and talking and you don't CARE!",
+      ]);
+      syncUi();
+      return;
+    }
     const choice = Math.random() > 0.5 ? "cry" : "upset";
     triggerReaction(choice);
     state.childLine = pickIdleLine(choice === "cry" ? [
@@ -2994,6 +3039,23 @@ const ACTION_PROPS = {
   banana:   ["food/banana", { bone: "rightHand", s: 1.2 }],
 };
 
+// She grabs a toy block and hurls it at the parent -- an age-appropriate
+// protest when she feels dismissed or ignored. It arcs toward the camera,
+// bonks, and shakes the view for a beat.
+function childThrowProp() {
+  const colors = [0xd98632, 0x178f86, 0xb54135, 0x245b95];
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(0.09, 0.09, 0.09),
+    new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)], roughness: 0.55 })
+  );
+  const start = new THREE.Vector3(child.position.x, child.position.y + vrmHeight * 0.55, child.position.z);
+  const target = camWorld.clone();
+  target.y -= 0.12; // lands just below the parent's eyes
+  m.position.copy(start);
+  scene.add(m);
+  flyingProps.push({ mesh: m, start, target, t0: clock.getElapsedTime(), dur: 0.55 });
+}
+
 function performChildAction(action) {
   if (!action || !action.type || action.type === "none") return false;
   const type = action.type;
@@ -3050,11 +3112,21 @@ function performChildAction(action) {
   if (type === "wave") {
     waveUntil = t + 4.0;
     handled = true;
-  } else if (type === "jump" || type === "dance" || type === "spin" || type === "hide" || type === "clap") {
-    if (!inCar && childPose !== "stand" && type !== "clap") setChildPose("stand"); // get off the seat first
-    actionType = type;
-    actionUntil = t + (type === "hide" ? 6.0 : 4.5);
-    if (type !== "hide") smileSpikeUntil = t + 4.0;
+  } else if (type === "jump" || type === "dance" || type === "spin" || type === "hide" || type === "clap"
+      || type === "throw_toy" || type === "tantrum") {
+    const gesture = type === "throw_toy" ? "throw" : type;
+    const seated = type === "clap" || (inCar && gesture === "throw"); // she can throw a toy from her car seat
+    if (!inCar && childPose !== "stand" && !seated) setChildPose("stand"); // get off the seat first
+    actionType = gesture;
+    actionUntil = t + (type === "hide" ? 6.0 : type === "tantrum" ? 4.2 : gesture === "throw" ? 1.15 : 4.5);
+    if (gesture === "throw") {
+      throwLaunchAt = t + 0.42; // release mid arm-swing
+      throwDone = false;
+    } else if (type === "tantrum") {
+      triggerReaction("scream"); // scream + angry face + sound
+    } else if (type !== "hide") {
+      smileSpikeUntil = t + 4.0;
+    }
     handled = true;
   }
   return handled;
@@ -3256,7 +3328,14 @@ async function handleSubmit(event) {
 
   // Mira reacts emotionally to what the parent just said or did
   const react = detectReaction(message, result);
-  if (react) triggerReaction(react);
+  const meltdown = react === "tantrum";
+  if (meltdown) {
+    // dismissed once too often: she stomps, screams, and hurls a toy at you
+    performChildAction({ type: "tantrum", prop: "none", spot: "none" });
+    setTimeout(() => performChildAction({ type: "throw_toy", prop: "none", spot: "none" }), 1700);
+  } else if (react) {
+    triggerReaction(react);
+  }
 
   window.interactionCount = (window.interactionCount || 0) + 1;
   if (window.interactionCount >= 3) {
@@ -3265,8 +3344,9 @@ async function handleSubmit(event) {
   }
   state.mood = result.mood;
   state.childLine = result.childLine;
-  // Claude's structured action drives her body; keyword matching is only the offline fallback
-  const acted = result.action ? performChildAction(result.action) : false;
+  // Claude's structured action drives her body; keyword matching is only the
+  // offline fallback. A local meltdown overrides both -- she's beyond requests.
+  const acted = meltdown ? true : (result.action ? performChildAction(result.action) : false);
   if (!acted) handleDynamicChatActions(message, result.childLine);
   syncUi();
 }
@@ -3507,6 +3587,35 @@ function updateFrame(dt, t) {
 
   // Mira: reactions, playful idle, breathing, and head/eye tracking
   camera.getWorldPosition(camWorld);
+
+  // protest physics: release the toy mid-swing, fly it in an arc, bonk + shake
+  if (actionType === "throw" && !throwDone && t >= throwLaunchAt) {
+    childThrowProp();
+    throwDone = true;
+  }
+  for (let i = flyingProps.length - 1; i >= 0; i--) {
+    const fp = flyingProps[i];
+    const k = (t - fp.t0) / fp.dur;
+    if (k >= 1) {
+      scene.remove(fp.mesh);
+      flyingProps.splice(i, 1);
+      shakeUntil = t + 0.35; // it got you
+      const ac = ensureAudio();
+      if (ac) childThud(ac, ac.currentTime);
+      continue;
+    }
+    fp.mesh.position.lerpVectors(fp.start, fp.target, k);
+    fp.mesh.position.y += Math.sin(Math.PI * k) * 0.5; // arc through the air
+    fp.mesh.rotation.x += dt * 14;
+    fp.mesh.rotation.y += dt * 10;
+  }
+  if (t < shakeUntil) {
+    const s = (shakeUntil - t) / 0.35;
+    camRig.position.x += (Math.random() - 0.5) * 0.05 * s;
+    camRig.position.y += (Math.random() - 0.5) * 0.05 * s;
+    camera.rotation.x = player.pitch + (Math.random() - 0.5) * 0.045 * s;
+  }
+
   const sitting = childPose === "sit";
   const anchor = current.childAnchor;
 
@@ -3795,6 +3904,28 @@ function updateFrame(dt, t) {
       LlX = -1.45; RlX = -1.45;
       LuY = 0.55 - cl * 0.4; RuY = -0.55 + cl * 0.4;   // arms swing toward each other
       posOY += Math.abs(Math.sin(t * 5.5)) * 0.03;     // tiny excited bounce
+    } else if (actionType === "throw") {
+      // windup, then whip the right arm forward as the toy releases
+      const k = Math.min(1, Math.max(0, 1 - (actionUntil - t) / 1.15));
+      if (k < 0.37) {
+        RuZ = 1.32 - 0.5; RuX = 0.95; RlX = -1.6;      // arm cocked back over her shoulder
+        spineXAdd = -0.09;
+      } else {
+        RuZ = 1.32 - 1.15; RuX = -1.25; RlX = -0.2;    // arm whipped forward
+        spineXAdd = 0.15; posOZ = -0.03;
+      }
+      headExtraX = -0.1;
+    } else if (actionType === "tantrum") {
+      // full meltdown: stomping feet, fists clenched at her sides, head thrown back
+      const stomp = Math.sin(t * 9);
+      LUpLegX = Math.max(0, stomp) * 0.85;
+      RUpLegX = Math.max(0, -stomp) * 0.85;
+      LuZ = -1.32 + 0.15; RuZ = 1.32 - 0.15;           // arms pinned straight down
+      LuX = 0.15 + Math.sin(t * 18) * 0.08;            // fists trembling with rage
+      RuX = 0.15 - Math.sin(t * 18) * 0.08;
+      headExtraX = -0.28;                              // head thrown back wailing
+      spineXAdd = -0.1;
+      posOY += Math.abs(stomp) * 0.05;                 // stomping bounces her
     }
   } else if (actionType && t >= actionUntil) {
     actionType = null;
@@ -4721,6 +4852,69 @@ function buildWeekCalendarHtml(cal, slots) {
     </div>`;
 }
 
+function buildCaseManagerReviewHtml() {
+  return `
+    <div id="caseReviewPanel" class="case-review-panel" hidden>
+      <div class="case-review-head">
+        <span>Case Manager Review</span>
+        <strong id="caseReviewStatus">Waiting for approval decision</strong>
+      </div>
+      <div class="case-review-steps">
+        <div id="caseReviewStep1" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Review intake summary</span>
+        </div>
+        <div id="caseReviewStep2" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Check parent, clinician, and monitor availability</span>
+        </div>
+        <div id="caseReviewStep3" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Validate safety checkpoint and selected slot</span>
+        </div>
+        <div id="caseReviewStep4" class="case-review-step">
+          <span class="case-review-dot"></span>
+          <span class="case-review-copy">Record approval and prepare Agent 2 handoff</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function runCaseManagerReview(card) {
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const reviewPanel = card.querySelector("#caseReviewPanel");
+  const status = card.querySelector("#caseReviewStatus");
+  const steps = [
+    ["caseReviewStep1", "Case manager is reading intake notes...", "Intake notes reviewed."],
+    ["caseReviewStep2", "Checking all party availability windows...", "Availability windows confirmed."],
+    ["caseReviewStep3", "Validating the selected slot and safety checkpoint...", "Safety checkpoint validated."],
+    ["caseReviewStep4", "Recording approval for Agent 2 handoff...", "Approval recorded for Agent 2."]
+  ];
+
+  if (reviewPanel) reviewPanel.hidden = false;
+
+  for (const [stepId, activeText, doneText] of steps) {
+    const step = card.querySelector(`#${stepId}`);
+    const copy = step?.querySelector(".case-review-copy");
+    if (status) status.textContent = activeText;
+    if (step) {
+      step.classList.add("is-active");
+      step.classList.remove("is-done");
+    }
+    if (copy) copy.textContent = activeText;
+    await wait(1150);
+    if (step) {
+      step.classList.remove("is-active");
+      step.classList.add("is-done");
+    }
+    if (copy) copy.textContent = doneText;
+  }
+
+  if (status) status.textContent = "Case management approval complete.";
+  await wait(650);
+}
+
 function renderAgent1ApprovalCard(sessionId, data) {
   const card = document.querySelector("#cAgent1Card");
   if (!card) return;
@@ -4810,6 +5004,8 @@ function renderAgent1ApprovalCard(sessionId, data) {
       ${slotsHtml || "<p style='font-size:11px;color:rgba(255,255,255,0.4);margin:0;'>No overlap slots found.</p>"}
     </div>
 
+    ${buildCaseManagerReviewHtml()}
+
     <div style="display: flex; gap: 8px;">
       <button id="cApproveIntakeBtn">Approve & Launch Agent 2</button>
       <button id="cRejectIntakeBtn" class="btn-danger">Reject</button>
@@ -4841,13 +5037,23 @@ function renderAgent1ApprovalCard(sessionId, data) {
   // Bind Approval Action
   document.querySelector("#cApproveIntakeBtn").addEventListener("click", async () => {
     const approveBtn = document.querySelector("#cApproveIntakeBtn");
+    const rejectBtn = document.querySelector("#cRejectIntakeBtn");
+    if (approveBtn.disabled) return;
     approveBtn.disabled = true;
-    approveBtn.textContent = "Approving...";
+    if (rejectBtn) rejectBtn.disabled = true;
+    approveBtn.textContent = "Case Manager Reviewing...";
+    card.classList.add("is-reviewing");
+    card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
+      slotCard.style.pointerEvents = "none";
+    });
 
     const selectedCard = card.querySelector(".slot-card.selected");
     const chosenSlot = selectedCard ? JSON.parse(selectedCard.dataset.slotValue) : (slots[0] || null);
 
     try {
+      await runCaseManagerReview(card);
+      approveBtn.textContent = "Launching Agent 2...";
+
       const res = await fetch(`${API_BASE}/api/agent1/decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4923,8 +5129,15 @@ function renderAgent1ApprovalCard(sessionId, data) {
       console.error(e);
       alert("Error confirming booking.");
     } finally {
-      approveBtn.disabled = false;
-      approveBtn.textContent = "Approve & Launch Agent 2";
+      if (document.body.contains(approveBtn)) {
+        approveBtn.disabled = false;
+        approveBtn.textContent = "Approve & Launch Agent 2";
+      }
+      if (rejectBtn && document.body.contains(rejectBtn)) rejectBtn.disabled = false;
+      card.classList.remove("is-reviewing");
+      card.querySelectorAll(".slot-card[data-slot-idx]").forEach(slotCard => {
+        slotCard.style.pointerEvents = "";
+      });
     }
   });
 
