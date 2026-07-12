@@ -3379,13 +3379,34 @@ let pendingTone = null;   // attached to the next /api/interact call
 let micBusy = false;
 let miraVoiceOn = true;   // Mira speaks her replies out loud
 
+// Every mic and every voice is different (browser auto-gain makes quiet
+// voices LOUD), so raw features alone mislabel normal speech as tense.
+// We score with generous floors AND calibrate against this speaker's own
+// typical delivery, learned across turns (EMA persisted in localStorage).
+function getToneBaseline() {
+  const v = parseFloat(localStorage.getItem("DIGICHILD_TONE_BASE"));
+  return Number.isFinite(v) ? v : 0;
+}
+function updateToneBaseline(rawScore) {
+  // don't learn shouting as "normal" -- only absorb ordinary turns
+  if (rawScore >= 0.75) return;
+  const prev = getToneBaseline();
+  const next = prev === 0 ? rawScore : prev * 0.7 + rawScore * 0.3;
+  localStorage.setItem("DIGICHILD_TONE_BASE", next.toFixed(3));
+}
+
 function computeAggression(m) {
-  // loud + sharp + fast + spiky pitch reads as an aggressive delivery
-  const loud = Math.min(1, m.peak * 1.15);
-  const sharp = Math.min(1, m.sharpness * 1.35);
-  const fast = Math.min(1, m.wordsPerSec / 4.5);
-  const spiky = Math.min(1, m.pitchVar / 90);
-  return Math.min(1, loud * 0.45 + sharp * 0.3 + fast * 0.1 + spiky * 0.15);
+  // floors: ordinary conversational levels score ~0; only excess counts
+  const loud = Math.min(1, Math.max(0, m.peak - 0.3) * 1.6);
+  const sharp = Math.min(1, Math.max(0, m.sharpness - 0.25) * 1.7);
+  const fast = Math.min(1, Math.max(0, m.wordsPerSec - 2.8) / 2.4);
+  const spiky = Math.min(1, m.pitchVar / 150);
+  const raw = Math.min(1, loud * 0.42 + sharp * 0.28 + fast * 0.15 + spiky * 0.15);
+  // personal calibration: subtract how "hot" this speaker/mic normally runs
+  const base = getToneBaseline();
+  const adjusted = base > 0.3 ? Math.max(0, Math.min(1, raw - (base - 0.3))) : raw;
+  updateToneBaseline(raw);
+  return adjusted;
 }
 
 function estimatePitch(buf, sr) {
@@ -3418,7 +3439,11 @@ async function startVoiceCapture() {
   let stream = null, actx = null, rafId = null;
   const samples = { rms: [], cent: [], pitch: [] };
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // autoGainControl OFF: the browser's AGC boosts quiet voices to full
+    // volume, which made every normal voice read as "tense"
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { autoGainControl: false, echoCancellation: true, noiseSuppression: true },
+    });
     actx = new (window.AudioContext || window.webkitAudioContext)();
     const srcNode = actx.createMediaStreamSource(stream);
     const an = actx.createAnalyser();
@@ -3538,7 +3563,7 @@ function hideGovernorBanner() {
 function showToneChip(toneRead, aggression) {
   const c = document.querySelector("#toneChip");
   if (!c) return;
-  const level = aggression >= 0.7 ? "🔴 aggressive" : aggression >= 0.45 ? "🟠 tense" : "🟢 calm";
+  const level = aggression >= 0.7 ? "🔴 aggressive" : aggression >= 0.55 ? "🟠 tense" : "🟢 calm";
   c.textContent = `🎙 Your tone: ${level}` + (toneRead && toneRead.includes("INCONGRUENT") ? " — words don't match your voice" : "");
   c.style.display = "block";
   clearTimeout(c._hideT);
@@ -5470,6 +5495,7 @@ if (activeSessionId) {
 // dev helpers for testing reactions from the console
 window.__digiReact = (type) => triggerReaction(type);
 window.__digiAct = (type, prop = "none", spot = "none") => performChildAction({ type, prop, spot });
+window.__digiCalib = (m) => computeAggression(m); // test the tone scorer from the console
 // simulate a voice turn without a microphone: attach a synthetic tone to the next message
 window.__digiTone = (aggression = 0.7) => {
   pendingTone = {
