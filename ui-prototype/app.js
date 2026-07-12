@@ -3316,6 +3316,8 @@ async function handleSubmit(event) {
     }
   }
 
+  const spokenTone = pendingTone; // set by the mic flow; null for typed turns
+  pendingTone = null;
   const result = await sendToBackend({
     message,
     day: state.day,
@@ -3323,13 +3325,26 @@ async function handleSubmit(event) {
     band: state.band,
     location: state.location,
     values: { ...state.values },
+    tone: spokenTone,
   });
   Object.assign(state.values, result.values);
 
+  // Conflict Governor: intervention banner + tone readout (PRD UI Feedback)
+  if (result.governor && result.governor.intervened) {
+    showGovernorBanner(result.governor.reason);
+  } else {
+    hideGovernorBanner();
+  }
+  if (spokenTone) showToneChip(result.toneRead, spokenTone.aggression);
+
   // Mira reacts emotionally to what the parent just said or did
-  const react = detectReaction(message, result);
+  const govIntercepted = !!(result.governor && result.governor.intervened);
+  const react = govIntercepted ? null : detectReaction(message, result);
   const meltdown = react === "tantrum";
-  if (meltdown) {
+  if (govIntercepted) {
+    // forced Cool Down: soft distressed withdrawal, no escalation allowed
+    triggerReaction("cry");
+  } else if (meltdown) {
     // dismissed once too often: she stomps, screams, and hurls a toy at you
     performChildAction({ type: "tantrum", prop: "none", spot: "none" });
     setTimeout(() => performChildAction({ type: "throw_toy", prop: "none", spot: "none" }), 1700);
@@ -3348,10 +3363,194 @@ async function handleSubmit(event) {
   // offline fallback. A local meltdown overrides both -- she's beyond requests.
   const acted = meltdown ? true : (result.action ? performChildAction(result.action) : false);
   if (!acted) handleDynamicChatActions(message, result.childLine);
+  speakAsMira(result.childLine, result.mood); // she says it out loud, mood-aware
   syncUi();
 }
 
 let sessionParentId = "mira";
+
+/* ============================================================
+   Voice & tone (PRD 3b Audio-Stream): the mic captures BOTH the
+   words (speech-to-text) and the vocal delivery -- volume, pitch,
+   sharpness, rate. Children believe the tone, not the words, and
+   the tone is what exposes performative parenting.
+   ============================================================ */
+let pendingTone = null;   // attached to the next /api/interact call
+let micBusy = false;
+let miraVoiceOn = true;   // Mira speaks her replies out loud
+
+function computeAggression(m) {
+  // loud + sharp + fast + spiky pitch reads as an aggressive delivery
+  const loud = Math.min(1, m.peak * 1.15);
+  const sharp = Math.min(1, m.sharpness * 1.35);
+  const fast = Math.min(1, m.wordsPerSec / 4.5);
+  const spiky = Math.min(1, m.pitchVar / 90);
+  return Math.min(1, loud * 0.45 + sharp * 0.3 + fast * 0.1 + spiky * 0.15);
+}
+
+function estimatePitch(buf, sr) {
+  // coarse normalized autocorrelation -- plenty for prosody tracking
+  const N = buf.length;
+  const minLag = Math.floor(sr / 500), maxLag = Math.min(N - 1, Math.floor(sr / 60));
+  let best = -1, bestCorr = 0;
+  for (let lag = minLag; lag <= maxLag; lag += 2) {
+    let corr = 0;
+    for (let i = 0; i < N - lag; i += 4) corr += buf[i] * buf[i + lag];
+    if (corr > bestCorr) { bestCorr = corr; best = lag; }
+  }
+  return best > 0 ? sr / best : 0;
+}
+
+async function startVoiceCapture() {
+  if (micBusy) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Voice input needs Chrome or Edge with a microphone.");
+    return;
+  }
+  micBusy = true;
+  const micBtn = document.querySelector("#micBtn");
+  const input = document.querySelector("#messageInput");
+  micBtn.classList.add("recording");
+  input.placeholder = "Listening... speak to Mira";
+
+  // audio feature stream (runs while you speak)
+  let stream = null, actx = null, rafId = null;
+  const samples = { rms: [], cent: [], pitch: [] };
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const srcNode = actx.createMediaStreamSource(stream);
+    const an = actx.createAnalyser();
+    an.fftSize = 2048;
+    srcNode.connect(an);
+    const tbuf = new Float32Array(an.fftSize);
+    const fbuf = new Float32Array(an.frequencyBinCount);
+    const nyquist = actx.sampleRate / 2;
+    const tick = () => {
+      an.getFloatTimeDomainData(tbuf);
+      let sum = 0;
+      for (let i = 0; i < tbuf.length; i++) sum += tbuf[i] * tbuf[i];
+      const rms = Math.sqrt(sum / tbuf.length);
+      if (rms > 0.012) { // only voiced frames
+        samples.rms.push(rms);
+        an.getFloatFrequencyData(fbuf);
+        let wsum = 0, esum = 0;
+        for (let i = 1; i < fbuf.length; i++) {
+          const e = Math.pow(10, fbuf[i] / 10);
+          wsum += e * (i * nyquist / fbuf.length);
+          esum += e;
+        }
+        if (esum > 0) samples.cent.push(wsum / esum);
+        const p = estimatePitch(tbuf, actx.sampleRate);
+        if (p > 60 && p < 500) samples.pitch.push(p);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    tick();
+  } catch (e) {
+    console.warn("Microphone unavailable:", e);
+  }
+
+  const rec = new SR();
+  rec.lang = "en-US";
+  rec.interimResults = true;
+  rec.continuous = false;
+  const t0 = performance.now();
+  let finalText = "";
+  rec.onresult = (ev) => {
+    let interim = "";
+    for (const r of ev.results) {
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    input.value = (finalText + " " + interim).trim();
+  };
+  rec.onerror = (e) => console.warn("Speech recognition error:", e.error);
+  rec.onend = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (stream) stream.getTracks().forEach((tr) => tr.stop());
+    if (actx) actx.close();
+    micBtn.classList.remove("recording");
+    input.placeholder = "Speak to Mira...";
+    micBusy = false;
+
+    const text = (finalText || input.value).trim();
+    if (!text) return;
+    const dur = Math.max(0.6, (performance.now() - t0) / 1000);
+    const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+    const pm = mean(samples.pitch);
+    const tone = {
+      volume: Math.min(1, mean(samples.rms) * 6),
+      peak: Math.min(1, (samples.rms.length ? Math.max(...samples.rms) : 0) * 4),
+      pitch: Math.round(pm),
+      pitchVar: Math.round(Math.sqrt(mean(samples.pitch.map((p) => (p - pm) ** 2)))),
+      sharpness: Math.min(1, mean(samples.cent) / 3200),
+      wordsPerSec: +(text.split(/\s+/).length / dur).toFixed(2),
+      source: "voice",
+    };
+    tone.aggression = +computeAggression(tone).toFixed(2);
+    pendingTone = tone;
+    input.value = text;
+    document.querySelector("#messageForm").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  };
+  rec.start();
+}
+
+// Mira speaks her replies with a mood-aware child voice (PRD Sim Agent)
+function speakAsMira(line, mood) {
+  if (!miraVoiceOn || !("speechSynthesis" in window) || !line) return;
+  const text = line.replace(/\*[^*]*\*/g, "").trim(); // strip *actions*
+  if (!text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const band = state.band || "";
+  const base = band.includes("14") ? 1.15 : band.includes("10") ? 1.3 : 1.5;
+  const m = mood || state.mood || "";
+  if (m === "happy" || m === "playful" || m === "curious") { u.pitch = Math.min(2, base + 0.2); u.rate = 1.05; }
+  else if (m === "upset" || m === "resistant") { u.pitch = Math.min(2, base + 0.3); u.rate = 1.12; }
+  else if (m === "withdrawn" || m === "guarded") { u.pitch = base; u.rate = 0.8; u.volume = 0.6; }
+  else { u.pitch = base + 0.1; u.rate = 0.98; }
+  const pick = () => {
+    const voices = speechSynthesis.getVoices();
+    const v = voices.find((v) => /child|kid|zira|jenny|aria|samantha|female/i.test(v.name) && v.lang.startsWith("en"))
+      || voices.find((v) => v.lang.startsWith("en"));
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  };
+  if (speechSynthesis.getVoices().length) pick();
+  else speechSynthesis.onvoiceschanged = pick;
+}
+
+function showGovernorBanner(reason) {
+  const b = document.querySelector("#governorBanner");
+  if (!b) return;
+  b.style.display = "flex";
+  const r = document.querySelector("#governorReason");
+  if (r) r.textContent = "Cool-down: " + (reason || "conflict throttled") +
+    ". She has withdrawn — soften your voice, validate her feelings, repair.";
+}
+function hideGovernorBanner() {
+  const b = document.querySelector("#governorBanner");
+  if (b) b.style.display = "none";
+}
+
+function showToneChip(toneRead, aggression) {
+  const c = document.querySelector("#toneChip");
+  if (!c) return;
+  const level = aggression >= 0.7 ? "🔴 aggressive" : aggression >= 0.45 ? "🟠 tense" : "🟢 calm";
+  c.textContent = `🎙 Your tone: ${level}` + (toneRead && toneRead.includes("INCONGRUENT") ? " — words don't match your voice" : "");
+  c.style.display = "block";
+  clearTimeout(c._hideT);
+  c._hideT = setTimeout(() => { c.style.display = "none"; }, 7000);
+}
+
+document.querySelector("#micBtn")?.addEventListener("click", startVoiceCapture);
+document.querySelector("#voiceBtn")?.addEventListener("click", () => {
+  miraVoiceOn = !miraVoiceOn;
+  if (!miraVoiceOn) speechSynthesis.cancel();
+  document.querySelector("#voiceBtn").textContent = miraVoiceOn ? "🔊 Voice On" : "🔇 Voice Off";
+});
 
 async function sendToBackend(payload) {
   const requestPayload = {
@@ -3362,6 +3561,7 @@ async function sendToBackend(payload) {
     mode: "conversation",
     location: payload.location,
     values: payload.values,
+    tone: payload.tone || null,
     session: {
       childId: sessionParentId,
       runId: activeSessionId || "local-demo"
@@ -5270,6 +5470,15 @@ if (activeSessionId) {
 // dev helpers for testing reactions from the console
 window.__digiReact = (type) => triggerReaction(type);
 window.__digiAct = (type, prop = "none", spot = "none") => performChildAction({ type, prop, spot });
+// simulate a voice turn without a microphone: attach a synthetic tone to the next message
+window.__digiTone = (aggression = 0.7) => {
+  pendingTone = {
+    volume: Math.min(1, 0.3 + aggression * 0.6), peak: Math.min(1, 0.4 + aggression * 0.6),
+    pitch: 200, pitchVar: Math.round(30 + aggression * 90), sharpness: Math.min(1, 0.3 + aggression * 0.6),
+    wordsPerSec: 2.5 + aggression * 2.5, aggression, source: "voice",
+  };
+  return pendingTone;
+};
 window.__digiEye = (e) => { if (current) current.eye = e; };
 window.__digiState = () => ({
   reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
