@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=5" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
   </head>
   <body>
     <!-- Splash Screen / Loader -->
@@ -85,11 +85,13 @@
             placeholder="Speak to Mira..."
             aria-label="Message to child"
           />
+          <button type="button" id="micBtn" class="mic-btn" aria-label="Talk with your voice" title="Talk with your voice — Mira hears your tone">🎤</button>
           <button type="submit">Speak</button>
         </form>
         <div class="actions">
           <button id="milestoneBtn" type="button">Milestone</button>
           <button id="reportBtn" type="button">Architect Report</button>
+          <button id="voiceBtn" type="button" title="Mira speaks her replies out loud">🔊 Voice On</button>
           <button id="ageBtn" type="button" style="display: none;">Age Up</button>
         </div>
       </section>
@@ -108,6 +110,18 @@
       <!-- Parent Availability Calendar matching portal -->
       <div id="availabilityPortal" class="availability-portal" style="display: none;"></div>
 
+      <!-- Conflict Governor Intervention Banner (PRD: alerts on throttled conflict) -->
+      <div id="governorBanner" class="governor-banner" style="display: none;">
+        <span class="gov-icon">⚠️</span>
+        <div>
+          <strong>GOVERNOR INTERVENTION</strong>
+          <p id="governorReason">Cool-down active — the child has withdrawn.</p>
+        </div>
+      </div>
+
+      <!-- Live tone readout after a voice turn -->
+      <div id="toneChip" class="tone-chip" style="display: none;"></div>
+
       <!-- Pause Overlay -->
       <div id="pauseOverlay" class="pause-overlay" style="display: none;">
         <h2>Session Paused</h2>
@@ -124,6 +138,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=71"></script>
+    <script type="module" src="./app.js?v=72"></script>
   </body>
 </html>
