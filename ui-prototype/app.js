@@ -2740,7 +2740,7 @@ function buildLocationBar() {
 const keys = new Set();
 
 canvas.addEventListener("click", () => {
-  if (sessionRole === "clinician") return; // No pointer lock in dashboard mode
+  if (sessionRole === "clinician" || sessionRole === "landing") return; // No pointer lock in dashboard/landing
   ensureAudio(); // unlock audio playback on first user gesture
   if (currentId === "party") playPartySound(true);
   if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
@@ -2758,7 +2758,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (sessionRole === "clinician") return; // No keyboard controls in dashboard mode
+  if (sessionRole === "clinician" || sessionRole === "landing") return; // No keyboard controls in dashboard/landing
   if (e.target === input) return;
   if (/^Digit[1-5]$/.test(e.code)) {
     setLocation(locationOrder[Number(e.code.slice(5)) - 1]);
@@ -2774,7 +2774,7 @@ window.addEventListener("keydown", (e) => {
   keys.add(e.code);
 });
 window.addEventListener("keyup", (e) => {
-  if (sessionRole === "clinician") return;
+  if (sessionRole === "clinician" || sessionRole === "landing") return;
   keys.delete(e.code);
 });
 
@@ -4292,7 +4292,8 @@ function animate() {
    ============================================================ */
 let activeSessionId = queryParams.get("session");
 // Default to clinician (dashboard) mode if there is no active session ID
-let sessionRole = activeSessionId ? queryParams.get("role") : "clinician";
+let sessionRole = activeSessionId ? queryParams.get("role")
+  : (queryParams.get("role") === "clinician" ? "clinician" : "landing");
 let sessionPaused = false;
 let selectedClinicianSession = null;
 
@@ -4413,6 +4414,100 @@ function dismissSplashScreen() {
       splash.style.display = "none";
     }, 800); // matches the transition duration in CSS
   }
+}
+
+/* ============================================================
+   Landing / intro page: role-based entry. Parents register and
+   pick among the team's ACTUALLY available dates; case managers
+   enroll into their console; approval triggers the launch email.
+   ============================================================ */
+function initLandingPage() {
+  if (sessionRole !== "landing") return;
+  document.body.classList.add("clinician-mode"); // hides all sim overlays
+  child.visible = false;
+  const page = document.querySelector("#landingPage");
+  if (!page) return;
+  page.style.display = "flex";
+  setTimeout(dismissSplashScreen, 1200);
+
+  // load the open, conflict-free session times parents can choose among
+  (async () => {
+    const box = document.querySelector("#regSlots");
+    try {
+      const res = await fetch(`${API_BASE}/api/register/options`);
+      const data = await res.json();
+      const slots = data.slots || [];
+      box.innerHTML = slots.length
+        ? slots.map((s) =>
+            `<label class="reg-slot"><input type="checkbox" value='${JSON.stringify(s)}' /><span>${s.label}</span></label>`
+          ).join("")
+        : "No open times right now — please check back soon.";
+      // allow at most 3 picks
+      box.addEventListener("change", () => {
+        const checked = box.querySelectorAll("input:checked");
+        box.querySelectorAll("input:not(:checked)").forEach((i) => { i.disabled = checked.length >= 3; });
+      });
+    } catch {
+      box.textContent = "Could not load available dates (is the backend running?).";
+    }
+  })();
+
+  // parent registration
+  document.querySelector("#regSubmit").addEventListener("click", async () => {
+    const name = document.querySelector("#regName").value.trim();
+    const email = document.querySelector("#regEmail").value.trim();
+    const age = parseInt(document.querySelector("#regAge").value, 10);
+    const picks = [...document.querySelectorAll("#regSlots input:checked")].map((i) => JSON.parse(i.value));
+    const msg = document.querySelector("#regMsg");
+    if (!name || !email.includes("@")) { msg.textContent = "Please enter your name and a valid email."; return; }
+    if (!picks.length) { msg.textContent = "Please pick at least one session time."; return; }
+    msg.textContent = "Submitting your enrollment...";
+    try {
+      const res = await fetch(`${API_BASE}/api/register/parent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, child_age: age, slots: picks }),
+      });
+      const data = await res.json();
+      msg.textContent = data.message || "Registered.";
+      if (data.status === "registered") {
+        document.querySelector("#statusEmail").value = email;
+      }
+    } catch {
+      msg.textContent = "Could not reach the enrollment service. Please try again.";
+    }
+  });
+
+  // enrollment status check (demo-mode mirror of the email)
+  document.querySelector("#statusCheck").addEventListener("click", async () => {
+    const email = document.querySelector("#statusEmail").value.trim();
+    const msg = document.querySelector("#statusMsg");
+    if (!email.includes("@")) { msg.textContent = "Enter the email you registered with."; return; }
+    msg.textContent = "Checking...";
+    try {
+      const res = await fetch(`${API_BASE}/api/register/status?email=${encodeURIComponent(email)}`);
+      const d = await res.json();
+      if (d.status === "not_found") msg.textContent = "No enrollment found for that email.";
+      else if (d.launch_url || d.status === "live" || d.status === "live_paused") {
+        const url = getSimulationLaunchUrl(d.sessionId); // always this site's own origin
+        msg.innerHTML = `✅ Approved for <strong>${d.scheduled_time || "your session"}</strong> — check your email, or ` +
+          `<a href="${url}" target="_blank" rel="noopener">launch your simulation now</a>.`;
+      } else if (d.status === "scheduled") msg.textContent = `Approved and scheduled for ${d.scheduled_time}. Your launch email is on its way.`;
+      else msg.textContent = "⏳ Your enrollment is awaiting case-manager approval. You'll get an email once approved.";
+    } catch {
+      msg.textContent = "Could not reach the enrollment service.";
+    }
+  });
+
+  // case manager entry
+  document.querySelector("#cmEnter").addEventListener("click", () => {
+    const name = document.querySelector("#cmName").value.trim();
+    const code = document.querySelector("#cmCode").value.trim();
+    const msg = document.querySelector("#cmMsg");
+    if (!name || !code) { msg.textContent = "Enter your name and clinic access code."; return; }
+    localStorage.setItem("DIGICHILD_CM_NAME", name);
+    window.location.search = "?role=clinician";
+  });
 }
 
 function initClinicianHub() {
@@ -5479,8 +5574,9 @@ if (toggleBtn && statePanel) {
 }
 
 initClinicianHub();
+initLandingPage();
 buildLocationBar();
-const defaultLoc = sessionRole === "clinician" ? "park" : "home";
+const defaultLoc = (sessionRole === "clinician" || sessionRole === "landing") ? "park" : "home";
 setLocation(locationDefs[queryParams.get("loc")] ? queryParams.get("loc") : defaultLoc);
 renderStats();
 syncUi();

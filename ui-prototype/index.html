@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <!-- Splash Screen / Loader -->
@@ -104,6 +104,53 @@
         <p id="insightText"></p>
       </section>
 
+      <!-- Landing / intro: role-based entry -->
+      <div id="landingPage" class="landing-page" style="display: none;">
+        <div class="landing-inner">
+          <img src="./assets/logo.png" class="landing-logo" alt="Digi-Child" />
+          <h1 class="landing-title">Digi-Child Clinical Orchestrator</h1>
+          <p class="landing-sub">Practice real parenting skills with an emotionally real digital child — scheduled, supervised, and measured by your clinical team.</p>
+          <div class="landing-panels">
+            <div class="landing-card" id="parentPanel">
+              <h2>👪 I'm a Parent / Caregiver</h2>
+              <p class="landing-desc">Register and choose the session times that work for you. Your case manager will review and approve your session.</p>
+              <input id="regName" placeholder="Full name" autocomplete="name" />
+              <input id="regEmail" type="email" placeholder="Email address" autocomplete="email" />
+              <select id="regAge">
+                <option value="5">Child track: Age 5–7</option>
+                <option value="11">Child track: Age 10–12</option>
+                <option value="15">Child track: Age 14–16</option>
+              </select>
+              <label class="landing-label">Pick up to 3 available session times</label>
+              <div id="regSlots" class="reg-slots">Loading available dates…</div>
+              <button id="regSubmit" type="button">Register &amp; Request Session</button>
+              <p id="regMsg" class="landing-msg"></p>
+              <div class="landing-status">
+                <label class="landing-label">Already registered? Check your status</label>
+                <div class="status-row">
+                  <input id="statusEmail" type="email" placeholder="Your email" />
+                  <button id="statusCheck" type="button">Check</button>
+                </div>
+                <p id="statusMsg" class="landing-msg"></p>
+              </div>
+            </div>
+            <div class="landing-card" id="managerPanel">
+              <h2>🩺 I'm a Case Manager</h2>
+              <p class="landing-desc">Enroll to review parent registrations, approve sessions, and monitor live evaluations from the console.</p>
+              <input id="cmName" placeholder="Your name" autocomplete="name" />
+              <input id="cmCode" type="password" placeholder="Clinic access code" />
+              <button id="cmEnter" type="button">Enter Case Manager Console</button>
+              <p id="cmMsg" class="landing-msg"></p>
+              <ul class="landing-points">
+                <li>Review each parent's info &amp; chosen dates</li>
+                <li>One-click approval books the panel &amp; emails the parent</li>
+                <li>Live tone &amp; de-escalation telemetry during sessions</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Clinician Control Hub -->
       <div id="clinicianHub" class="clinician-hub" style="display: none;"></div>
 
@@ -138,6 +185,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=73"></script>
+    <script type="module" src="./app.js?v=75"></script>
   </body>
 </html>
