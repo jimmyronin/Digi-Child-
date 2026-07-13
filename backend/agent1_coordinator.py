@@ -23,7 +23,7 @@ import database
 import scheduling
 import gcal
 import agent2_provisioner as agent2
-
+from orchestrator import broadcast_pause_signal
 try:
     import claude_ai
 except Exception:  # pragma: no cover - claude_ai should always import
@@ -231,3 +231,10 @@ def confirm(session_id, chosen_slot):
         "handoff": handoff,
         "provisioning": provisioning,
     }
+async def run_governor_logic(analysis_data):
+    # Your existing code that detects the conflict
+    if analysis_data['aggression_level'] > 0.8:
+        print("Governor Intervention: Threshold exceeded.")
+        
+        # This sends the signal to the UI Control Channel immediately
+        await broadcast_pause_signal("Governor Intervention: Aggressive Pattern Detected")
