@@ -4430,22 +4430,50 @@ function initLandingPage() {
   page.style.display = "flex";
   setTimeout(dismissSplashScreen, 1200);
 
-  // load the open, conflict-free session times parents can choose among
+  // load the open, conflict-free session times as a TAP-TO-PICK week calendar
   (async () => {
     const box = document.querySelector("#regSlots");
     try {
       const res = await fetch(`${API_BASE}/api/register/options`);
       const data = await res.json();
       const slots = data.slots || [];
-      box.innerHTML = slots.length
-        ? slots.map((s) =>
-            `<label class="reg-slot"><input type="checkbox" value='${JSON.stringify(s)}' /><span>${s.label}</span></label>`
-          ).join("")
-        : "No open times right now — please check back soon.";
-      // allow at most 3 picks
-      box.addEventListener("change", () => {
-        const checked = box.querySelectorAll("input:checked");
-        box.querySelectorAll("input:not(:checked)").forEach((i) => { i.disabled = checked.length >= 3; });
+      if (!slots.length) { box.textContent = "No open times right now — please check back soon."; return; }
+
+      // index available slots by day+hour
+      const byKey = {};
+      slots.forEach((s) => { byKey[`${s.start.slice(0, 10)}|${new Date(s.start).getHours()}`] = s; });
+      const base = new Date();
+      base.setHours(0, 0, 0, 0);
+      const days = [];
+      for (let i = 1; i <= 14; i++) days.push(new Date(base.getTime() + i * 864e5));
+      const hours = [...new Set(slots.map((s) => new Date(s.start).getHours()))].sort((a, b) => a - b);
+      const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      box.innerHTML = [days.slice(0, 7), days.slice(7, 14)].map((wk, wi) => {
+        const head = wk.map((d) =>
+          `<div class="cal-day-head">${d.toLocaleDateString("en-US", { weekday: "short" })}<b>${d.getDate()}</b></div>`
+        ).join("");
+        const rows = hours.map((h) => wk.map((d) => {
+          const s = byKey[`${dayKey(d)}|${h}`];
+          const hl = `${((h + 11) % 12) + 1}${h >= 12 ? "pm" : "am"}`;
+          return s
+            ? `<div class="reg-cal-cell open" data-slot='${JSON.stringify(s)}' title="${s.label}">${hl}</div>`
+            : `<div class="reg-cal-cell" aria-hidden="true"></div>`;
+        }).join("")).join("");
+        return `<div class="cal-week-label">Week ${wi + 1}</div><div class="cal-grid reg-cal">${head}${rows}</div>`;
+      }).join("") + `<p class="cal-picked" id="regPicked">Tap up to 3 highlighted times.</p>`;
+
+      // tap-to-select, max 3, with a live summary of the picks
+      box.addEventListener("click", (e) => {
+        const cell = e.target.closest(".reg-cal-cell.open");
+        if (!cell) return;
+        const selected = box.querySelectorAll(".reg-cal-cell.selected");
+        if (!cell.classList.contains("selected") && selected.length >= 3) return;
+        cell.classList.toggle("selected");
+        const picks = [...box.querySelectorAll(".reg-cal-cell.selected")].map((c) => JSON.parse(c.dataset.slot));
+        document.querySelector("#regPicked").textContent = picks.length
+          ? "Selected: " + picks.map((p) => p.label).join("  ·  ")
+          : "Tap up to 3 highlighted times.";
       });
     } catch {
       box.textContent = "Could not load available dates (is the backend running?).";
@@ -4457,7 +4485,7 @@ function initLandingPage() {
     const name = document.querySelector("#regName").value.trim();
     const email = document.querySelector("#regEmail").value.trim();
     const age = parseInt(document.querySelector("#regAge").value, 10);
-    const picks = [...document.querySelectorAll("#regSlots input:checked")].map((i) => JSON.parse(i.value));
+    const picks = [...document.querySelectorAll("#regSlots .reg-cal-cell.selected")].map((c) => JSON.parse(c.dataset.slot));
     const msg = document.querySelector("#regMsg");
     if (!name || !email.includes("@")) { msg.textContent = "Please enter your name and a valid email."; return; }
     if (!picks.length) { msg.textContent = "Please pick at least one session time."; return; }
