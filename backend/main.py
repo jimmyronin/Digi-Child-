@@ -397,3 +397,7 @@ async def api_session_report(sessionId: str):
     
     return {"status": "ok", "reportText": "\n".join(report)}
 
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

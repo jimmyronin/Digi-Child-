@@ -299,3 +299,6 @@ def parse_availability(raw_text, now_iso):
     text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "")
     data = json.loads(text)
     return data.get("windows", [])
+async def call_claude(prompt):
+    # This is where your actual API call code will go
+    return "Mira is thinking..."
