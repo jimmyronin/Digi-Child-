@@ -224,10 +224,23 @@ def confirm(session_id, chosen_slot):
     }
     provisioning = agent2.provision(**handoff)
 
+    # 4) EMAIL: the approved parent receives their personal launch link
+    email_result = None
+    parent_addr = session.get("parent_id") or ""
+    if "@" in parent_addr:
+        import emailer
+        email_result = emailer.send_launch_email(
+            parent_addr,
+            (session.get("parent_name") if isinstance(session, dict) else None) or parent_addr.split("@")[0],
+            chosen_slot.get("label") or chosen_slot["start"],
+            provisioning.get("launch_url", ""),
+        )
+
     return {
         "status": "booked",
         "slot": chosen_slot,
         "invites": invite,
         "handoff": handoff,
         "provisioning": provisioning,
+        "email": email_result,
     }

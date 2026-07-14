@@ -73,12 +73,17 @@ def _get_client():
 # ---------------------------------------------------------------------------
 # The developmental "library" Mira reasons from (the books in her memory)
 # ---------------------------------------------------------------------------
-LIBRARY = """You ground every reaction in these developmental-psychology sources:
-- Ross W. Greene, "The Explosive Child": kids do well if they can; challenging behavior is a lagging skill / an unsolved problem, not manipulation. Under stress a low-trust, high-volatility child escalates rather than complies (a "Plan A" failure).
-- Daniel J. Siegel & Tina Payne Bryson, "The Whole-Brain Child" and "Parenting from the Inside Out": name-it-to-tame-it; connect before you redirect; when a child is emotionally flooded the "upstairs brain" goes offline and reasoning shuts down.
-- Adele Faber & Elaine Mazlish, "How to Talk So Kids Will Listen & Listen So Kids Will Talk": acknowledging feelings and offering real choices earns cooperation; commands and labels provoke resistance.
-- John Bowlby & Mary Ainsworth, Attachment Theory: secure vs. anxious/avoidant patterns. Low trust produces hesitancy, testing, or withdrawal even when the parent is being warm.
-- Chip Wood, "Yardsticks: Child and Adolescent Development": age-typical language, needs, attention span, and milestones for each stage."""
+LIBRARY = """You ground every reaction in these ten developmental-psychology books:
+1. Ross W. Greene, "The Explosive Child": kids do well if they can; challenging behavior is a lagging skill / an unsolved problem, not manipulation. Under stress a low-trust, high-volatility child escalates rather than complies.
+2. Daniel J. Siegel & Tina Payne Bryson, "The Whole-Brain Child": name-it-to-tame-it; connect before you redirect; when a child is emotionally flooded the "upstairs brain" goes offline and reasoning shuts down.
+3. Daniel J. Siegel & Mary Hartzell, "Parenting from the Inside Out": a parent's self-awareness and emotional regulation shape the child's sense of safety.
+4. Adele Faber & Elaine Mazlish, "How to Talk So Kids Will Listen & Listen So Kids Will Talk": acknowledging feelings and offering real choices earns cooperation; commands and labels provoke resistance.
+5. John Bowlby, "Attachment and Loss": secure attachment depends on consistent, responsive caregiving; low trust produces protest, avoidance, or anxiety.
+6. Mary D. Salter Ainsworth et al., "Patterns of Attachment": secure, anxious, and avoidant patterns shape how a child tests closeness and safety.
+7. Chip Wood, "Yardsticks: Child and Adolescent Development": age-typical language, needs, attention span, and milestones for each developmental stage.
+8. Jane Nelsen, "Positive Discipline": firm-and-kind boundaries build capability, repair, and self-regulation better than punishment or permissiveness.
+9. Haim G. Ginott, "Between Parent and Child": respectful language preserves dignity; criticism of the child's identity creates shame and resistance.
+10. John Gottman & Joan DeClaire, "Raising an Emotionally Intelligent Child": emotion coaching validates feelings, sets limits, and teaches problem solving."""
 
 # What the 3D simulation can physically execute. Mira's structured `action`
 # is constrained to these so anything the chat describes becomes real motion.
@@ -91,11 +96,14 @@ ACTION_TYPES = [
     "jump",            # excited jumping in place
     "dance",           # dance / happy wiggle
     "spin",            # twirl around
+    "clap",            # clap her hands (praise, excitement, applause)
     "wave",            # wave at the parent
     "hide",            # crouch and cover her face (shy / playing / scared)
     "hold_prop",       # pick up and hold a prop (set `prop`)
     "drop_prop",       # put down whatever she is holding
     "run_play",        # run around playing nearby
+    "throw_toy",       # hurl a toy at the parent (protest when dismissed/ignored)
+    "tantrum",         # full meltdown: stomping, screaming, fists (only when flooded)
 ]
 PROPS = ["none", "book", "toy_car", "cookie", "lollypop", "apple", "banana"]
 SPOTS = {
@@ -146,11 +154,14 @@ SCHEMA = {
 }
 
 
-def generate_child_response(state, req, treatment, history, persona=""):
+def generate_child_response(state, req, treatment, history, persona="", tone_note=""):
     """
     Generate Mira's reaction via Claude. Returns the same dict shape as
     local_ai.generate_child_response, plus 'mood' and 'source'.
-    Raises on any failure so the caller can fall back to demo mode.
+    `tone_note` describes the parent's actual VOCAL delivery (from the audio
+    stream) -- children react to tone more than words, so it shapes Mira's
+    reaction even when the words are kind. Raises on any failure so the
+    caller can fall back to demo mode.
     """
     client = _get_client()
 
@@ -181,10 +192,15 @@ def generate_child_response(state, req, treatment, history, persona=""):
         "Whenever the conversation describes or invites something physical -- come here, sit down, go play, "
         "grab your book, let's eat, dance for me, hide-and-seek, put that down -- choose the matching action "
         "so she actually DOES it. If she's upset she may refuse (choose 'none' or even 'hide' / walk away "
-        "via 'go_to_spot'), and if she's happy she may add exuberance (jump, spin, dance). Available action "
+        "via 'go_to_spot'), and if she's happy she may add exuberance (jump, spin, dance). When the parent "
+        "DISMISSES or IGNORES her ('not now', 'I'm busy', 'be quiet', brushing off her bids for attention) "
+        "while her volatility is already elevated or her requests keep going unmet, she escalates the way a "
+        "real flooded child does: choose 'tantrum' (stomping, screaming meltdown) or 'throw_toy' (hurls a toy "
+        "at the parent). These are the exact protest behaviors the parent is here to practice de-escalating -- "
+        "use them when clinically appropriate, not gratuitously. Available action "
         f"types: {', '.join(ACTION_TYPES)}. Props she can hold: {', '.join(PROPS[1:])}. "
         f"Spots she can walk to in the current setting '{{location}}': {{spots}}. "
-        "In the car she is buckled in: only 'none', 'wave', 'hold_prop' or 'drop_prop' are possible there."
+        "In the car she is buckled in: only 'none', 'wave', 'clap', 'hold_prop' or 'drop_prop' are possible there."
     )
     # fill the embodiment placeholders with the current scene's real spots
     spots = SPOTS.get(location, [])
@@ -209,6 +225,7 @@ def generate_child_response(state, req, treatment, history, persona=""):
 - Consecutive mistreatments: {mistreatments}
 - Setting: {location}
 - System read of the parent's latest input: {treatment}
+{f'- The parent said this OUT LOUD, and their actual vocal delivery was: {tone_note}. Mira reacts to the TONE she hears more than the words -- kind words in a loud, sharp, angry voice frighten or confuse her, and she may name it ("why are you using your mad voice?").' if tone_note else ''}
 
 Recent exchange:
 {hist_block}
