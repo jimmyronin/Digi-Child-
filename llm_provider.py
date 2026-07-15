@@ -1,10 +1,20 @@
-# backend/llm_client.py
-import anthropic # Replace with your provider's library (e.g., openai)
-import anthropic
 import os
-# Using your API key
-print(f"DEBUG: API Key loaded: {os.environ.get('ANTHROPIC_API_KEY')}")
-client = anthropic.Anthropic(api_key="hu4rii8psj0d83494uxsmfj7xzmduu8lrecs7eqrfj14zrb1m6wqbc8pwxf29k")
+from pathlib import Path
+from dotenv import load_dotenv
+import anthropic
+
+# Locate the .env file at the root (one level up from this file)
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
+# Grab the key securely from the environment
+api_key = os.environ.get('ANTHROPIC_API_KEY')
+
+if not api_key:
+    raise ValueError("Error: ANTHROPIC_API_KEY not found in the root .env file.")
+
+# Initialize the client safely
+client = anthropic.Anthropic(api_key=api_key)
 
 def query_llm(system_prompt: str, user_input: str) -> str:
     message = client.messages.create(
