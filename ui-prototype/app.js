@@ -4548,14 +4548,61 @@ function dismissSplashScreen() {
    pick among the team's ACTUALLY available dates; case managers
    enroll into their console; approval triggers the launch email.
    ============================================================ */
+/* ============================================================
+   Intro film: plays on arrival, then the two role panels rise
+   over it and it settles into a live backdrop behind them.
+   ============================================================ */
+function playIntroFilm() {
+  const stage = document.querySelector("#introStage");
+  const video = document.querySelector("#introVideo");
+  const page = document.querySelector("#landingPage");
+  if (!stage || !video || !page) return false;
+
+  // ?nointro=1 for when you're iterating and don't want 10s every reload
+  if (queryParams.get("nointro") === "1") return false;
+
+  stage.style.display = "block";
+  page.style.display = "none";
+  dismissSplashScreen(); // the film IS the splash
+
+  let handedOver = false;
+  const handOver = () => {
+    if (handedOver) return;
+    handedOver = true;
+    stage.classList.add("backdrop"); // scrim up, film recedes
+    page.style.display = "flex";
+    page.classList.add("over-film");
+  };
+
+  video.addEventListener("ended", handOver);
+  document.querySelector("#introSkip")?.addEventListener("click", handOver);
+  // never strand the user on a black screen if the file 404s or the codec fails
+  video.addEventListener("error", handOver);
+  setTimeout(handOver, 14000); // hard backstop
+
+  const sound = document.querySelector("#introSound");
+  sound?.addEventListener("click", () => {
+    video.muted = !video.muted;
+    sound.textContent = video.muted ? "🔇" : "🔊";
+    sound.setAttribute("aria-label", video.muted ? "Unmute" : "Mute");
+  });
+
+  // Autoplay is only permitted while muted; if even that is refused, don't sit
+  // on a frozen poster -- go straight to the panels.
+  video.play().catch(() => handOver());
+  return true;
+}
+
 function initLandingPage() {
   if (sessionRole !== "landing") return;
   document.body.classList.add("clinician-mode"); // hides all sim overlays
   child.visible = false;
   const page = document.querySelector("#landingPage");
   if (!page) return;
-  page.style.display = "flex";
-  setTimeout(dismissSplashScreen, 1200);
+  if (!playIntroFilm()) {
+    page.style.display = "flex";
+    setTimeout(dismissSplashScreen, 1200);
+  }
 
   // load the open, conflict-free session times as a TAP-TO-PICK week calendar
   (async () => {

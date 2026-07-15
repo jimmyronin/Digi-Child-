@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=9" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <!-- Splash Screen / Loader -->
@@ -104,6 +104,21 @@
         </div>
         <p id="insightText"></p>
       </section>
+
+      <!-- Intro film: plays first, then the landing panels rise over it and it
+           stays as the living backdrop. Muted autoplay is the only kind browsers
+           allow; the speaker button unmutes on a real user gesture. -->
+      <div id="introStage" class="intro-stage" style="display: none;">
+        <video id="introVideo" class="intro-video" muted playsinline preload="auto"
+               poster="./assets/intro-poster.jpg" aria-label="Digi-Child introduction">
+          <source src="./assets/intro.mp4" type="video/mp4" />
+        </video>
+        <div class="intro-scrim" aria-hidden="true"></div>
+        <div class="intro-controls">
+          <button id="introSound" class="intro-btn" type="button" aria-label="Unmute">🔇</button>
+          <button id="introSkip" class="intro-btn" type="button">Skip ▸</button>
+        </div>
+      </div>
 
       <!-- Landing / intro: role-based entry -->
       <div id="landingPage" class="landing-page" style="display: none;">
@@ -203,6 +218,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=77"></script>
+    <script type="module" src="./app.js?v=78"></script>
   </body>
 </html>
