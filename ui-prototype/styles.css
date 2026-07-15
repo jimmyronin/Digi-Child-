@@ -2982,3 +2982,33 @@ body.clinician-mode textarea:focus {
   .session-list-item:hover,
   .analytics-stat-card:hover { transform: none; }
 }
+
+/* ============================================================
+   Custom dropdown: keyboard states.
+   The control is operated by keyboard now (Enter/Space/arrows/
+   Home/End/Esc), so it must SHOW where the focus actually is --
+   otherwise it is navigable but invisible to navigate.
+   ============================================================ */
+.custom-select-trigger:focus-visible {
+  outline: none;
+  border-color: rgba(23, 143, 134, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(23, 143, 134, 0.28);
+}
+
+/* Arrow-key highlight, distinct from the chosen value. */
+.custom-option.active {
+  background: rgba(23, 143, 134, 0.28) !important;
+  box-shadow: inset 2px 0 0 var(--teal);
+}
+.custom-option.selected {
+  font-weight: 700;
+}
+.custom-option.selected::after {
+  content: "✓";
+  float: right;
+  color: var(--teal);
+}
+
+/* The landing page now uses the same control as the console; keep it inside the
+   card width rather than inheriting the console's sizing. */
+#parentPanel .custom-select-wrapper { width: 100%; margin-bottom: 10px; }

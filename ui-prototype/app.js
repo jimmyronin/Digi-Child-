@@ -571,7 +571,8 @@ let exprAngry = 0;
    work (no network, matches the project's offline-first goal).
    ============================================================ */
 const audioCry = new Audio("./assets/baby_cry.ogg");
-const audioLaugh = new Audio("./assets/baby_laugh.ogg");
+// baby_laugh.ogg is intentionally gone: it fired on every happy turn, so warmth
+// sounded like the same giggle on repeat. Contentment is the ambient hum now.
 
 let audioCtx = null;
 function ensureAudio() {
@@ -599,7 +600,7 @@ function playChildSound(type) {
   
   try {
     if (type === "cry" || type === "upset" || type === "scream") {
-      audioLaugh.pause();
+      stopAmbientHum(0.25);  // she stops humming the moment she is distressed
       audioCry.currentTime = 0;
       audioCry.play()
         .catch(e => {
@@ -614,13 +615,11 @@ function playChildSound(type) {
           }
         });
     } else if (type === "happy") {
+      // The recorded laugh fired on EVERY happy turn, so a warm conversation
+      // became the same giggle over and over. Her contentment now reads as the
+      // ambient humming resuming instead -- present, but not a repeated sample.
       audioCry.pause();
-      audioLaugh.currentTime = 0;
-      audioLaugh.play()
-        .catch(e => {
-          console.warn("Real laugh audio play blocked, falling back to synth:", e);
-          if (ctx) childGiggle(ctx, now);
-        });
+      startAmbientHum();
     }
   } catch (e) {
     console.warn("Audio play failed:", e);
@@ -724,6 +723,111 @@ function childThud(ctx, start) {
   gain.connect(ctx.destination);
   osc.start(start);
   osc.stop(start + 0.18);
+}
+
+/* ============================================================
+   Ambient humming: a child quietly humming to herself while she
+   plays, so the room is never silent.
+
+   Synthesised rather than looped on purpose. The source clip only
+   holds ~2s of real humming (the rest is room tone), and a 2s loop
+   would repeat far harder than the giggle it replaces. Here each
+   note is chosen at random from a pentatonic scale -- which has no
+   dissonant intervals, so any order sounds musical -- and phrases
+   are separated by irregular breaths, so it never repeats exactly.
+   ============================================================ */
+let humTimer = null;
+let humGain = null;
+
+// Pentatonic (C major): any sequence is consonant, so random never sounds wrong.
+const HUM_SCALE = [523.25, 587.33, 659.25, 783.99, 880.0];
+
+function humNote(ctx, start, freq, dur, level) {
+  // Two detuned oscillators through a low-pass reads as a voice rather than a
+  // test tone; a pure sine sounds like a theremin, not a child.
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0.0001, start);
+  out.gain.exponentialRampToValueAtTime(level, start + 0.12);   // breathy swell
+  out.gain.setValueAtTime(level, start + dur - 0.16);
+  out.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(1100, start);   // closed-mouth "mmm"
+  lp.Q.setValueAtTime(0.7, start);
+
+  // gentle vibrato -- a child cannot hold a pitch perfectly still
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.setValueAtTime(4.6 + Math.random() * 1.2, start);
+  lfoGain.gain.setValueAtTime(freq * 0.006, start);
+  lfo.connect(lfoGain);
+
+  [0, 1].forEach((i) => {
+    const osc = ctx.createOscillator();
+    osc.type = i ? "sine" : "triangle";
+    osc.frequency.setValueAtTime(freq * (i ? 1.004 : 1), start); // slight detune
+    lfoGain.connect(osc.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(i ? 0.35 : 0.65, start);
+    osc.connect(g); g.connect(lp);
+    osc.start(start); osc.stop(start + dur + 0.05);
+  });
+
+  lp.connect(out);
+  out.connect(humGain);
+  lfo.start(start); lfo.stop(start + dur + 0.05);
+}
+
+function scheduleHumPhrase() {
+  const ctx = ensureAudio();
+  if (!ctx || !humGain) return;
+  const t = ctx.currentTime + 0.1;
+  const notes = 3 + Math.floor(Math.random() * 3);  // 3-5 note phrase
+  let at = t;
+  let idx = Math.floor(Math.random() * HUM_SCALE.length);
+  for (let i = 0; i < notes; i++) {
+    // step to a neighbouring degree: melodies wander, they don't leap randomly
+    idx = Math.max(0, Math.min(HUM_SCALE.length - 1, idx + (Math.floor(Math.random() * 3) - 1)));
+    const dur = 0.45 + Math.random() * 0.4;
+    humNote(ctx, at, HUM_SCALE[idx], dur, 0.05 + Math.random() * 0.02);
+    at += dur + Math.random() * 0.1;
+  }
+  // irregular breath between phrases so it reads as a person, not a loop
+  const gap = (at - t) + 2.5 + Math.random() * 4;
+  humTimer = setTimeout(scheduleHumPhrase, gap * 1000);
+}
+
+function startAmbientHum() {
+  const ctx = ensureAudio();
+  if (!ctx || humTimer) return;
+  if (!humGain) {
+    humGain = ctx.createGain();
+    humGain.gain.value = 0.0;
+    humGain.connect(ctx.destination);
+  }
+  humGain.gain.cancelScheduledValues(ctx.currentTime);
+  humGain.gain.setValueAtTime(humGain.gain.value, ctx.currentTime);
+  humGain.gain.linearRampToValueAtTime(0.75, ctx.currentTime + 2); // fade in
+  scheduleHumPhrase();
+}
+
+function stopAmbientHum(fade = 0.6) {
+  if (humTimer) { clearTimeout(humTimer); humTimer = null; }
+  const ctx = audioCtx;
+  if (ctx && humGain) {
+    humGain.gain.cancelScheduledValues(ctx.currentTime);
+    humGain.gain.setValueAtTime(humGain.gain.value, ctx.currentTime);
+    humGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + fade);
+  }
+}
+
+// She stops humming while she is upset, and picks it back up once settled --
+// humming through a meltdown would be eerie.
+function syncAmbientHum(mood) {
+  const distressed = ["upset", "resistant", "withdrawn", "guarded"].includes(mood);
+  if (distressed) stopAmbientHum();
+  else if (!humTimer) startAmbientHum();
 }
 
 function detectReaction(message, result) {
@@ -2742,6 +2846,9 @@ const keys = new Set();
 canvas.addEventListener("click", () => {
   if (sessionRole === "clinician" || sessionRole === "landing") return; // No pointer lock in dashboard/landing
   ensureAudio(); // unlock audio playback on first user gesture
+  // Browsers only allow audio after a gesture, so this is the earliest the room
+  // can have sound. She hums unless she is already distressed.
+  syncAmbientHum(state.mood);
   if (currentId === "party") playPartySound(true);
   if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
 });
@@ -3361,6 +3468,7 @@ async function handleSubmit(event) {
     ageUp();
   }
   state.mood = result.mood;
+  syncAmbientHum(state.mood); // she hums when settled, falls quiet when upset
   state.childLine = result.childLine;
   // Claude's structured action drives her body; keyword matching is only the
   // offline fallback. A local meltdown overrides both -- she's beyond requests.
@@ -4482,30 +4590,51 @@ async function checkSessionStatus() {
   }
 }
 
-function renderAvailabilityPortal() {
+let availPortalRendered = false;
+async function renderAvailabilityPortal() {
+  // The status poll calls this every 1.5s; without this guard it would rebuild
+  // the form under the parent's cursor and reset their choice on every tick.
+  if (availPortalRendered) return;
+  availPortalRendered = true;
+
   availabilityPortal.style.display = "flex";
   availabilityPortal.innerHTML = `
     <div class="portal-card">
       <h2>Digi-Child Scheduling Portal</h2>
       <p>Please enter your availability below to book the evaluation session with the clinician and court monitor.</p>
-      
-      <label>Your Name/ID</label>
-      <input type="text" id="parentNameInput" value="parent_test" readonly />
 
-      <label>Select Availability Slot (Day & Time)</label>
-      <select id="availSlotSelect">
-        <option value="2026-07-08T10:00:00|2026-07-08T11:00:00">Wednesday, July 8, 10:00 AM - 11:00 AM</option>
-        <option value="2026-07-08T14:00:00|2026-07-08T15:00:00">Wednesday, July 8, 2:00 PM - 3:00 PM</option>
-        <option value="2026-07-09T09:00:00|2026-07-09T10:00:00">Thursday, July 9, 9:00 AM - 10:00 AM</option>
-      </select>
+      <label for="availSlotSelect">Select Availability Slot (Day &amp; Time)</label>
+      <select id="availSlotSelect"><option>Loading open times…</option></select>
 
-      <button id="submitAvailBtn">Match & Book Session</button>
+      <button id="submitAvailBtn">Match &amp; Book Session</button>
       <p id="portalStatusMsg" style="margin-top:12px; font-size:12px; color:var(--warm);"></p>
     </div>
   `;
-  
+
+  // Real times from the team's live availability. These used to be three
+  // hardcoded 2026-07-08/09 options -- dates already in the past, so whatever the
+  // parent picked could never overlap and they were stranded in "pending_match".
+  const sel = document.querySelector("#availSlotSelect");
+  try {
+    const res = await fetch(`${API_BASE}/api/register/options`);
+    const slots = (await res.json()).slots || [];
+    if (!slots.length) {
+      sel.innerHTML = `<option value="">No open times right now — please check back soon</option>`;
+      document.querySelector("#submitAvailBtn").disabled = true;
+    } else {
+      sel.innerHTML = slots.slice(0, 40)
+        .map((s) => `<option value="${s.start}|${s.end}">${s.label}</option>`)
+        .join("");
+    }
+  } catch {
+    sel.innerHTML = `<option value="">Could not load times (is the backend running?)</option>`;
+    document.querySelector("#submitAvailBtn").disabled = true;
+  }
+
   document.querySelector("#submitAvailBtn").addEventListener("click", async () => {
-    const slot = document.querySelector("#availSlotSelect").value.split("|");
+    const raw = document.querySelector("#availSlotSelect").value;
+    if (!raw) return;
+    const slot = raw.split("|");
     const parentAvail = [{ start: slot[0], end: slot[1] }];
     try {
       const res = await fetch(`${API_BASE}/api/schedule/availability`, {
@@ -4654,6 +4783,10 @@ function initLandingPage() {
     }
   })();
 
+  // The console's dropdowns are custom glass ones; the landing page's was left as
+  // a bare native select, so the two screens looked like different products.
+  convertSelectToCustom("regAge");
+
   // parent registration
   document.querySelector("#regSubmit").addEventListener("click", async () => {
     const name = document.querySelector("#regName").value.trim();
@@ -4734,6 +4867,143 @@ function mountConsoleFilm() {
   v.play().catch(() => {});  // decoration only -- a refusal costs nothing
 }
 
+/* Glass dropdown used by BOTH the landing page and the console. It lived inside
+   initClinicianHub(), which returns early unless role=clinician -- so the landing
+   page could never reach it and its age select stayed an unstyled native one. */
+const convertSelectToCustom = (selectId) => {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    if (select.dataset.customised === "1") return;  // idempotent: never build twice
+    select.dataset.customised = "1";
+    select.style.display = "none";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-select-wrapper";
+
+    // The trigger must be reachable and operable WITHOUT a mouse. It was a bare
+    // <div>: tabIndex -1, no role, so keyboard and screen-reader users could not
+    // open these dropdowns at all -- and one of them sets the child's age band.
+    const trigger = document.createElement("div");
+    trigger.className = "custom-select-trigger";
+    trigger.tabIndex = 0;
+    trigger.setAttribute("role", "combobox");
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    const label = document.querySelector(`label[for="${selectId}"]`)
+      || select.previousElementSibling;
+    if (label && label.tagName === "LABEL") {
+      if (!label.id) label.id = `${selectId}-label`;
+      trigger.setAttribute("aria-labelledby", label.id);
+    } else {
+      trigger.setAttribute("aria-label", select.getAttribute("aria-label") || selectId);
+    }
+
+    const triggerText = document.createElement("span");
+    const selectedOption = select.options[select.selectedIndex];
+    triggerText.textContent = selectedOption ? selectedOption.textContent : "";
+    trigger.appendChild(triggerText);
+    const arrow = document.createElement("div");
+    arrow.className = "arrow";
+    trigger.appendChild(arrow);
+    wrapper.appendChild(trigger);
+
+    const optionsContainer = document.createElement("div");
+    optionsContainer.className = "custom-options-container";
+    optionsContainer.setAttribute("role", "listbox");
+    optionsContainer.id = `${selectId}-listbox`;
+    trigger.setAttribute("aria-controls", optionsContainer.id);
+
+    const optionEls = [];
+    const choose = (optDiv, opt) => {
+      optionsContainer.querySelectorAll(".custom-option").forEach((el) => {
+        el.classList.remove("selected");
+        el.setAttribute("aria-selected", "false");
+      });
+      optDiv.classList.add("selected");
+      optDiv.setAttribute("aria-selected", "true");
+      select.value = opt.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      triggerText.textContent = opt.textContent;
+      close();
+      trigger.focus();
+    };
+
+    Array.from(select.options).forEach((opt, idx) => {
+      const optDiv = document.createElement("div");
+      optDiv.className = "custom-option";
+      optDiv.setAttribute("role", "option");
+      optDiv.id = `${selectId}-opt-${idx}`;
+      const isSel = idx === select.selectedIndex;
+      if (isSel) optDiv.classList.add("selected");
+      optDiv.setAttribute("aria-selected", isSel ? "true" : "false");
+      optDiv.textContent = opt.textContent;
+      optDiv.dataset.value = opt.value;
+      optDiv.addEventListener("click", (e) => { e.stopPropagation(); choose(optDiv, opt); });
+      optionsContainer.appendChild(optDiv);
+      optionEls.push(optDiv);
+    });
+
+    wrapper.appendChild(optionsContainer);
+    select.parentNode.insertBefore(wrapper, select.nextSibling);
+
+    let active = Math.max(0, select.selectedIndex);
+    const markActive = (i) => {
+      active = (i + optionEls.length) % optionEls.length;
+      optionEls.forEach((el, n) => el.classList.toggle("active", n === active));
+      trigger.setAttribute("aria-activedescendant", optionEls[active].id);
+      optionEls[active].scrollIntoView({ block: "nearest" });
+    };
+    const open = () => {
+      document.querySelectorAll(".custom-select-wrapper").forEach((w) => {
+        if (w !== wrapper) w.classList.remove("open");
+      });
+      wrapper.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      markActive(Math.max(0, select.selectedIndex));
+    };
+    const close = () => {
+      wrapper.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.removeAttribute("aria-activedescendant");
+    };
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      wrapper.classList.contains("open") ? close() : open();
+    });
+
+    trigger.addEventListener("keydown", (e) => {
+      const isOpen = wrapper.classList.contains("open");
+      switch (e.key) {
+        case "Enter":
+        case " ":
+          e.preventDefault();
+          isOpen ? choose(optionEls[active], select.options[active]) : open();
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          isOpen ? markActive(active + 1) : open();
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          isOpen ? markActive(active - 1) : open();
+          break;
+        case "Home":
+          if (isOpen) { e.preventDefault(); markActive(0); }
+          break;
+        case "End":
+          if (isOpen) { e.preventDefault(); markActive(optionEls.length - 1); }
+          break;
+        case "Escape":
+          if (isOpen) { e.preventDefault(); close(); }
+          break;
+        case "Tab":
+          close();
+          break;
+      }
+    });
+  };
+
 function initClinicianHub() {
   if (sessionRole !== "clinician") return;
   document.body.classList.add("clinician-mode");
@@ -4807,9 +5077,9 @@ function initClinicianHub() {
 
                 <label>Child Age / Developmental Stage</label>
                 <select id="cChildAge">
-                  <option value="5">Child (Age 5-7, Year 05)</option>
-                  <option value="11">Teenager (Age 10-12, Year 11)</option>
-                  <option value="15">Adult (Age 14-16, Year 15)</option>
+                  <option value="5">Early childhood (Age 5-7, Year 05)</option>
+                  <option value="11">Pre-teen (Age 10-12, Year 11)</option>
+                  <option value="15">Adolescent (Age 14-16, Year 15)</option>
                 </select>
               </div>
 
@@ -5157,51 +5427,7 @@ function initClinicianHub() {
   });
 
   // Convert native selects to glassmorphic dropdowns
-  const convertSelectToCustom = (selectId) => {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    select.style.display = "none";
-    const wrapper = document.createElement("div");
-    wrapper.className = "custom-select-wrapper";
-    const trigger = document.createElement("div");
-    trigger.className = "custom-select-trigger";
-    const triggerText = document.createElement("span");
-    const selectedOption = select.options[select.selectedIndex];
-    triggerText.textContent = selectedOption ? selectedOption.textContent : "";
-    trigger.appendChild(triggerText);
-    const arrow = document.createElement("div");
-    arrow.className = "arrow";
-    trigger.appendChild(arrow);
-    wrapper.appendChild(trigger);
-    const optionsContainer = document.createElement("div");
-    optionsContainer.className = "custom-options-container";
-    Array.from(select.options).forEach((opt, idx) => {
-      const optDiv = document.createElement("div");
-      optDiv.className = "custom-option";
-      if (idx === select.selectedIndex) optDiv.classList.add("selected");
-      optDiv.textContent = opt.textContent;
-      optDiv.dataset.value = opt.value;
-      optDiv.addEventListener("click", (e) => {
-        e.stopPropagation();
-        optionsContainer.querySelectorAll(".custom-option").forEach(el => el.classList.remove("selected"));
-        optDiv.classList.add("selected");
-        select.value = opt.value;
-        select.dispatchEvent(new Event("change"));
-        triggerText.textContent = opt.textContent;
-        wrapper.classList.remove("open");
-      });
-      optionsContainer.appendChild(optDiv);
-    });
-    wrapper.appendChild(optionsContainer);
-    select.parentNode.insertBefore(wrapper, select.nextSibling);
-    trigger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      document.querySelectorAll(".custom-select-wrapper").forEach(w => {
-        if (w !== wrapper) w.classList.remove("open");
-      });
-      wrapper.classList.toggle("open");
-    });
-  };
+
 
   convertSelectToCustom("cTemperamentProfile");
   convertSelectToCustom("cChildAge");
@@ -5912,6 +6138,10 @@ window.__digiTone = (aggression = 0.7) => {
   };
   return pendingTone;
 };
+// hum controls: app.js is a module, so these are not otherwise reachable from
+// the console for testing
+window.__digiHum = (on = true) => (on ? startAmbientHum() : stopAmbientHum());
+window.__digiHumState = () => ({ running: !!humTimer, gain: humGain ? humGain.gain.value : null });
 window.__digiEye = (e) => { if (current) current.eye = e; };
 window.__digiState = () => ({
   reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
