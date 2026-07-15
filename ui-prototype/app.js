@@ -4715,9 +4715,29 @@ function initLandingPage() {
   });
 }
 
+// The same film that opens the site sits far behind the console, heavily
+// blurred and dimmed, so the two screens read as one space rather than two
+// unrelated apps. Purely decorative: muted, looping, and non-interactive.
+function mountConsoleFilm() {
+  if (document.querySelector(".console-film")) return;
+  const stage = document.createElement("div");
+  stage.className = "console-film";
+  stage.setAttribute("aria-hidden", "true");
+  const v = document.createElement("video");
+  v.src = "./assets/intro.mp4";
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.setAttribute("poster", "./assets/intro-poster.jpg");
+  stage.appendChild(v);
+  document.body.appendChild(stage);
+  v.play().catch(() => {});  // decoration only -- a refusal costs nothing
+}
+
 function initClinicianHub() {
   if (sessionRole !== "clinician") return;
   document.body.classList.add("clinician-mode");
+  mountConsoleFilm();
   clinicianHub.style.display = "flex";
   child.visible = false;
 
