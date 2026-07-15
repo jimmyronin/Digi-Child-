@@ -4,7 +4,7 @@ import anthropic
 import os
 # Using your API key
 print(f"DEBUG: API Key loaded: {os.environ.get('ANTHROPIC_API_KEY')}")
-client = anthropic.Anthropic(api_key="hu4rii8psj0d83494uxsmfj7xzmduu8lrecs7eqrfj14zrb1m6wqbc8pwxf29k")
+client = anthropic.Anthropic(api_key="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")
 
 def query_llm(system_prompt: str, user_input: str) -> str:
     message = client.messages.create(
