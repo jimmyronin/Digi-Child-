@@ -310,3 +310,131 @@ def parse_availability(raw_text, now_iso):
     text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "")
     data = json.loads(text)
     return data.get("windows", [])
+
+
+# ---------------------------------------------------------------------------
+# Agent 1 tool: understand the parent's LIFE SITUATION, not just their hours.
+# "I work until 5 and pick my daughter up from kindergarten at 3" carries
+# employment, caregiving duties, and scheduling constraints the case manager
+# needs to see alongside the raw windows.
+# ---------------------------------------------------------------------------
+_SITUATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "windows": _AVAIL_SCHEMA["properties"]["windows"],
+        "situation": {
+            "type": "object",
+            "properties": {
+                "employment": {"type": "string", "description": "Work situation stated or implied: 'employed, works until 5pm weekdays', 'night shifts', 'unemployed', or '' if not mentioned."},
+                "caregiving": {"type": "string", "description": "Child-related duties: kindergarten/school pickup times, other children, shared custody days, or ''."},
+                "constraints": {"type": "string", "description": "Other constraints affecting scheduling: transportation, second job, court dates, health, or ''."},
+                "summary": {"type": "string", "description": "One plain sentence for the case manager, e.g. 'Employed until 5pm; picks child up from kindergarten at 3pm, so only late afternoons work.'"},
+            },
+            "required": ["employment", "caregiving", "constraints", "summary"],
+            "additionalProperties": False,
+        },
+    },
+    "required": ["windows", "situation"],
+    "additionalProperties": False,
+}
+
+
+def parse_intake(raw_text, now_iso):
+    """
+    Agent 1's full intake understanding: availability windows PLUS the parent's
+    life situation (employment, caregiving duties, constraints). Returns
+    {"windows": [...], "situation": {...}}. Raises on failure so the caller can
+    fall back to the regex parser.
+    """
+    client = _get_client()
+    system = (
+        "You are the Intake Coordinator for a clinical parenting program. From the parent's "
+        "free-text message extract BOTH:\n"
+        "1. Concrete availability windows (ISO 8601).\n"
+        f"   - The current datetime is {now_iso}. Resolve every relative reference against it.\n"
+        "   - Only future windows. Morning = 09:00-12:00, afternoon = 12:00-17:00, evening = 17:00-20:00 "
+        "unless explicit times are given. Local time, no timezone offset.\n"
+        "   - REASON about their life: 'I work until 5' means weekday availability starts ~17:30; "
+        "'I pick my kid up from kindergarten at 3' blocks ~14:30-15:30.\n"
+        "2. Their life situation: employment, caregiving duties, and any other constraint they describe, "
+        "plus a one-sentence summary a clinical case manager can read at a glance. "
+        "Use '' for anything not mentioned -- never invent details."
+    )
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=900,
+        thinking={"type": "disabled"},
+        system=system,
+        messages=[{"role": "user", "content": f'Parent intake message:\n"{raw_text}"'}],
+        output_config={"format": {"type": "json_schema", "schema": _SITUATION_SCHEMA}},
+    )
+    text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "")
+    data = json.loads(text)
+    return {"windows": data.get("windows", []), "situation": data.get("situation", {})}
+
+
+# ---------------------------------------------------------------------------
+# Case-manager consultation: live advice grounded in the same ten-book library
+# Mira reasons from, generated from the ACTUAL session telemetry.
+# ---------------------------------------------------------------------------
+_ADVICE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "advice": {"type": "string", "description": "2-3 sentences of concrete, actionable guidance for the case manager observing this parent-child session right now."},
+        "framework_cited": {"type": "string", "description": "The single most relevant book, e.g. 'The Whole-Brain Child (Siegel & Bryson)'."},
+        "risk": {"type": "string", "enum": ["low", "elevated", "high"], "description": "Current clinical risk read of the interaction."},
+    },
+    "required": ["advice", "framework_cited", "risk"],
+    "additionalProperties": False,
+}
+
+
+def generate_case_advice(metrics, recent_history, tone_flags):
+    """
+    The Live Clinical Advisor: reads the session state, the last turns, and any
+    vocal-tone flags, and returns consultation for the CASE MANAGER (not the
+    parent) grounded in the ten-book library. Raises on failure so the caller
+    can fall back to the rule-based advisor.
+    """
+    client = _get_client()
+    turns = "\n".join(
+        f'- PARENT: "{h.get("parent", "")}" -> CHILD: "{h.get("mira", "")}"'
+        + (f' [TONE: {h.get("toneNote")}]' if h.get("toneNote") else "")
+        for h in (recent_history or [])[-6:]
+    ) or "(no turns yet)"
+    flags = "\n".join(f'- {f}' for f in (tone_flags or [])[-5:]) or "(none)"
+    system = (
+        "You are the Live Clinical Advisor inside a court-ordered parenting simulator. A clinical "
+        "case manager is watching a parent interact with a simulated child. Advise the CASE MANAGER: "
+        "what the telemetry means clinically and what to watch or do next (e.g. when to pause the "
+        "session, what repair behavior to look for, whether vocal tone contradicts the words).\n\n"
+        + LIBRARY +
+        "\n\nCite the one book most responsible for your advice. Be concrete and brief -- this is a "
+        "live console, not an essay."
+    )
+    user = (
+        f"CURRENT SESSION TELEMETRY\n"
+        f"- trust: {metrics.get('trust')}/100, volatility: {metrics.get('volatility')}/100, "
+        f"security: {metrics.get('security')}/100\n"
+        f"- temperament: {metrics.get('temperament')}, consecutive mistreatments: "
+        f"{metrics.get('consecutive_mistreatments', 0)}\n"
+        f"- child age: {metrics.get('child_age', 5)}\n\n"
+        f"RECENT TURNS\n{turns}\n\n"
+        f"VOCAL TONE FLAGS\n{flags}"
+    )
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=500,
+        thinking={"type": "disabled"},
+        system=system,
+        messages=[{"role": "user", "content": user}],
+        output_config={"format": {"type": "json_schema", "schema": _ADVICE_SCHEMA}},
+    )
+    text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "")
+    data = json.loads(text)
+    return {
+        "advice": data.get("advice", ""),
+        "framework_cited": data.get("framework_cited", ""),
+        "risk": data.get("risk", "low"),
+        "source": "claude",
+    }

@@ -54,8 +54,21 @@ def init_db():
             child_age INTEGER
         )
     ''')
+    # column migrations for databases created before these features existed
+    _ensure_column(cursor, "interaction_history", "tone_note", "TEXT")
+    _ensure_column(cursor, "interaction_history", "tone_aggression", "REAL")
+    _ensure_column(cursor, "clinician_session", "parent_name", "TEXT")
+    _ensure_column(cursor, "clinician_session", "parent_situation", "TEXT")
+    _ensure_column(cursor, "clinician_session", "esl", "INTEGER")
     conn.commit()
     conn.close()
+
+
+def _ensure_column(cursor, table, column, coltype):
+    try:
+        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+    except sqlite3.OperationalError:
+        pass  # already exists
 
 def get_state(child_id):
     conn = sqlite3.connect(DB_PATH)
@@ -116,13 +129,16 @@ def save_state(child_id, state):
     conn.commit()
     conn.close()
 
-def log_interaction(child_id, day, location, parent_message, treatment, child_response):
+def log_interaction(child_id, day, location, parent_message, treatment, child_response,
+                    tone_note="", tone_aggression=0.0):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO interaction_history (child_id, day, location, parent_message, treatment, child_response)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (child_id, day, location, parent_message, treatment, child_response))
+        INSERT INTO interaction_history (child_id, day, location, parent_message, treatment,
+                                         child_response, tone_note, tone_aggression)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (child_id, day, location, parent_message, treatment, child_response,
+          tone_note or "", float(tone_aggression or 0.0)))
     conn.commit()
     conn.close()
 
@@ -143,6 +159,34 @@ def get_recent_history(child_id, limit=5):
     history = []
     for row in reversed(rows):
         history.append({"parent": row["parent_message"], "mira": row["child_response"]})
+    return history
+
+def get_history_with_tone(child_id, limit=20):
+    """Clinician-console history: every turn WITH its vocal-tone reading, so
+    tone flags (incongruence, aggression, clarifications) survive into review."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT parent_message, child_response, treatment, tone_note, tone_aggression, timestamp
+        FROM interaction_history
+        WHERE child_id = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+    ''', (child_id, limit))
+    rows = cursor.fetchall()
+    conn.close()
+
+    history = []
+    for row in reversed(rows):
+        history.append({
+            "parent": row["parent_message"],
+            "mira": row["child_response"],
+            "treatment": row["treatment"],
+            "toneNote": row["tone_note"] or "",
+            "toneAggression": row["tone_aggression"] or 0.0,
+            "time": row["timestamp"],
+        })
     return history
 
 def create_session(session_id, parent_id, clinician_id, monitor_id, parent_avail, clinician_avail, monitor_avail, temperament_profile="cooperative", child_age=5):
@@ -180,6 +224,10 @@ def get_session(session_id):
         d["parent_availability"] = json.loads(d["parent_availability"] or "[]")
         d["clinician_availability"] = json.loads(d["clinician_availability"] or "[]")
         d["monitor_availability"] = json.loads(d["monitor_availability"] or "[]")
+        try:
+            d["parent_situation"] = json.loads(d.get("parent_situation") or "{}")
+        except (TypeError, ValueError):
+            d["parent_situation"] = {}
         if d.get("child_age") is None:
             d["child_age"] = 5
         return d
@@ -214,6 +262,10 @@ def list_all_sessions():
         d["parent_availability"] = json.loads(d["parent_availability"] or "[]")
         d["clinician_availability"] = json.loads(d["clinician_availability"] or "[]")
         d["monitor_availability"] = json.loads(d["monitor_availability"] or "[]")
+        try:
+            d["parent_situation"] = json.loads(d.get("parent_situation") or "{}")
+        except (TypeError, ValueError):
+            d["parent_situation"] = {}
         sessions.append(d)
     return sessions
 

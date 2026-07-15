@@ -96,17 +96,58 @@ def _regex_parse(raw_text, now):
     return out
 
 
+def _regex_situation(raw_text):
+    """Demo-mode life-situation reader: keyword scan for employment, caregiving
+    duties, and constraints when Claude isn't available."""
+    low = raw_text.lower()
+    employment = ""
+    caregiving = ""
+    constraints = ""
+
+    if re.search(r"night\s*shift|graveyard|overnight", low):
+        employment = "works night shifts"
+    elif re.search(r"work|job|shift|office|employed", low):
+        m = re.search(r"(?:work|shift|job).{0,25}?(?:until|till|to)\s+(\d{1,2})\s*(am|pm)?", low)
+        employment = f"employed, works until {m.group(1)}{m.group(2) or 'pm'}" if m else "employed"
+    elif re.search(r"unemployed|not working|between jobs|laid off", low):
+        employment = "not currently employed"
+
+    if re.search(r"kindergarten|daycare|day care|preschool", low):
+        m = re.search(r"(?:pick|get|grab).{0,40}?(\d{1,2})\s*(am|pm)?", low)
+        caregiving = "kindergarten/daycare pickup" + (f" around {m.group(1)}{m.group(2) or 'pm'}" if m else "")
+    elif re.search(r"school (?:pick|run|drop)|pick.{0,20}up.{0,20}(?:from )?school", low):
+        caregiving = "school pickup duties"
+    if re.search(r"other (?:kids|children)|two kids|three kids|baby|infant|newborn", low):
+        caregiving = (caregiving + "; " if caregiving else "") + "cares for other children"
+    if re.search(r"custody|visitation", low):
+        caregiving = (caregiving + "; " if caregiving else "") + "shared custody schedule"
+
+    if re.search(r"no car|bus|public transport|can'?t drive|ride", low):
+        constraints = "transportation is limited"
+    if re.search(r"second job|two jobs|other job", low):
+        constraints = (constraints + "; " if constraints else "") + "works a second job"
+    if re.search(r"court|hearing|probation", low):
+        constraints = (constraints + "; " if constraints else "") + "has court obligations"
+
+    bits = [b for b in (employment, caregiving, constraints) if b]
+    summary = ("Parent reports: " + "; ".join(bits) + ".") if bits \
+        else "No life-situation details detected in the intake text."
+    return {"employment": employment, "caregiving": caregiving,
+            "constraints": constraints, "summary": summary}
+
+
 def parse_parent_availability(raw_text):
-    """Chaotic parent text -> ISO windows. Returns (windows, source)."""
+    """Chaotic parent text -> ISO windows PLUS the parent's life situation
+    (employment, caregiving, constraints). Returns (windows, situation, source)."""
     now = datetime.datetime.now().replace(microsecond=0)
     if claude_ai and claude_ai.available():
         try:
-            windows = claude_ai.parse_availability(raw_text, now.isoformat())
-            if windows:
-                return windows, "claude"
+            intake = claude_ai.parse_intake(raw_text, now.isoformat())
+            if intake.get("windows"):
+                return intake["windows"], intake.get("situation") or _regex_situation(raw_text), "claude"
         except Exception as exc:
             print(f"[agent1] Claude parse unavailable ({type(exc).__name__}); regex fallback", flush=True)
-    return _regex_parse(raw_text, now), "regex"
+    return _regex_parse(raw_text, now), _regex_situation(raw_text), "regex"
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +188,7 @@ def propose(session_id, raw_text, window_days=14, duration_hours=1):
     if not session:
         return {"status": "error", "message": "Session not found"}
 
-    parent_windows, parse_source = parse_parent_availability(raw_text)
+    parent_windows, situation, parse_source = parse_parent_availability(raw_text)
 
     now = datetime.datetime.now().replace(microsecond=0)
     time_min = now.isoformat()
@@ -159,8 +200,9 @@ def propose(session_id, raw_text, window_days=14, duration_hours=1):
         duration_hours=duration_hours, max_slots=3,
     )
 
-    # persist parsed parent availability (safe: it's the parent's own input, not a booking)
-    database.update_session(session_id, parent_availability=parent_windows, status="awaiting_approval")
+    # persist parsed parent availability + situation (safe: the parent's own input, not a booking)
+    database.update_session(session_id, parent_availability=parent_windows,
+                            parent_situation=situation, status="awaiting_approval")
 
     return {
         "status": "awaiting_approval" if slots else "no_overlap",
@@ -168,6 +210,7 @@ def propose(session_id, raw_text, window_days=14, duration_hours=1):
         "card": {
             "sessionId": session_id,
             "parentAvailabilitySummary": [w.get("label") or w["start"] for w in parent_windows],
+            "parentSituation": situation,
             "proposedSlots": slots,
             "calendarOverlay": {
                 "parent": parent_windows,

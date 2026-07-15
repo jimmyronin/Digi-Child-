@@ -57,7 +57,12 @@ class Tone(BaseModel):
     pitchVar: float = 0.0     # Hz, pitch variability (sharp spikes = agitation)
     sharpness: float = 0.0    # 0..1 spectral centroid (harsh/clipped delivery)
     wordsPerSec: float = 0.0  # speech rate
+    jitter: float = 0.0       # 0..1 cycle-to-cycle pitch perturbation (vocal strain)
+    shimmer: float = 0.0      # 0..1 cycle-to-cycle amplitude perturbation
+    flux: float = 0.0         # 0..1 spectral flux (how violently the timbre changes)
+    arousal: float = 0.0      # 0..1 overall activation (energy + rate)
     aggression: float = 0.0   # 0..1 combined client-side aggression score
+    esl: bool = False         # parent flagged English as a second language
     source: str = "text"      # "voice" | "text"
 
 class InteractRequest(BaseModel):
@@ -98,6 +103,12 @@ COOL_DOWN_LINES = [
     "*backs away slowly and hides her face* ...",
 ]
 
+# ESL fairness (professor feedback): accents and second-language prosody can
+# read as "tense" to any acoustic model. The FIRST tone flag for an ESL
+# speaker becomes a clarification request instead of a scored mistreatment;
+# the parent gets a pop-up to explain themselves. Keyed by child_id.
+pending_tone_checks = {}
+
 
 
 @app.post("/api/interact")
@@ -119,17 +130,35 @@ async def interact(req: InteractRequest):
     tone = req.tone
     tone_aggr = float(tone.aggression) if tone else 0.0
     voice_input = bool(tone and tone.source == "voice")
+    is_esl = bool(tone and tone.esl)
     performative = voice_input and treatment == "nurturing" and tone_aggr >= 0.62
+    needs_clarification = False
     tone_note = ""
     if voice_input:
         tone_note = (f"loudness {tone.volume:.2f}/1, peak {tone.peak:.2f}/1, "
                      f"vocal sharpness {tone.sharpness:.2f}/1, speech rate {tone.wordsPerSec:.1f} w/s, "
                      f"aggression score {tone_aggr:.2f}/1")
-        if performative:
+        if tone.jitter or tone.shimmer or tone.flux:
+            tone_note += (f", jitter {tone.jitter:.2f}, shimmer {tone.shimmer:.2f}, "
+                          f"spectral flux {tone.flux:.2f}")
+        if performative and is_esl and not pending_tone_checks.get(child_id):
+            # ESL first flag: ask, don't score. The pop-up lets them explain.
+            pending_tone_checks[child_id] = True
+            performative = False
+            needs_clarification = True
+            tone_note += (" -- TONE CHECK (ESL): delivery read as aggressive, but the parent speaks "
+                          "English as a second language; asked to clarify before scoring")
+        elif performative:
             treatment = "harsh"  # the child believes the tone, not the words
             tone_note += " -- INCONGRUENT: warm words delivered in an aggressive voice"
+            if is_esl:
+                tone_note += " (repeated after ESL tone check)"
+            needs_clarification = True  # scored, but the parent may still appeal
         elif treatment == "nurturing" and tone_aggr >= 0.5:
             tone_note += " -- tense undertone"
+            needs_clarification = True  # even genuinely tense people get to explain
+        if treatment == "nurturing" and tone_aggr < 0.5:
+            pending_tone_checks.pop(child_id, None)  # calm turn clears the ESL check
 
     # 2. Governor Logic: Adjust Values
     if treatment == "harsh":
@@ -185,13 +214,15 @@ async def interact(req: InteractRequest):
         governor = {"intervened": True, "reason": reason, "state": "cool_down"}
         import random as _r
         child_line = _r.choice(COOL_DOWN_LINES)
-        log_interaction(child_id, state["day"], req.location, req.message, "governor_intercept", child_line)
+        log_interaction(child_id, state["day"], req.location, req.message, "governor_intercept",
+                        child_line, tone_note=tone_note, tone_aggression=tone_aggr)
         return {
             "childLine": child_line,
             "mood": "withdrawn",
             "action": {"type": "hide", "prop": "none", "spot": "none"},
             "governor": governor,
             "toneRead": tone_note or None,
+            "needsClarification": True,
             "developmentNote": ("GOVERNOR INTERVENTION (" + reason + "): the child has entered a "
                                 "protective withdrawal. Standard responses are suspended until the "
                                 "parent de-escalates -- try a soft voice, validation, and repair. "
@@ -226,7 +257,8 @@ async def interact(req: InteractRequest):
     if monitor_note:
         development_note = monitor_note + "\n\n" + development_note
 
-    log_interaction(child_id, state["day"], req.location, req.message, treatment, child_line)
+    log_interaction(child_id, state["day"], req.location, req.message, treatment,
+                    child_line, tone_note=tone_note, tone_aggression=tone_aggr)
 
     return {
         "childLine": child_line,
@@ -234,6 +266,7 @@ async def interact(req: InteractRequest):
         "action": ai_response.get("action"),
         "governor": governor,
         "toneRead": tone_note or None,
+        "needsClarification": needs_clarification,
         "developmentNote": development_note,
         "values": {
             "trust": state["trust"],
@@ -249,6 +282,122 @@ async def interact(req: InteractRequest):
             "roomTone": "warm"
         }
     }
+
+# ---------------------------------------------------------------------------
+# Tone appeal: flagged parents (ESL or genuinely tense speakers) explain
+# themselves. The explanation goes on the clinical record for the case
+# manager; a clarified tone-only strike is softened by one.
+# ---------------------------------------------------------------------------
+class ToneClarifyReq(BaseModel):
+    childId: str
+    explanation: str = ""
+    recalibrated: bool = False  # parent asserted "I was calm" and reset their baseline
+
+
+@app.post("/api/tone/clarify")
+async def api_tone_clarify(req: ToneClarifyReq):
+    child_id = req.childId
+    state = get_state(child_id)
+    note = "PARENT CLARIFICATION: " + (req.explanation.strip() or "(no text given)")
+    if req.recalibrated:
+        note += " [parent reports calm delivery; personal tone baseline recalibrated]"
+    softened = False
+    if state.get("consecutive_mistreatments", 0) > 0:
+        state["consecutive_mistreatments"] -= 1
+        softened = True
+        note += " -- one tone-based strike softened pending case-manager review"
+        save_state(child_id, state)
+    log_interaction(child_id, state["day"], "clarification", req.explanation.strip() or "(recalibrated)",
+                    "tone_clarification", "", tone_note=note, tone_aggression=0.0)
+    pending_tone_checks.pop(child_id, None)
+    return {"status": "ok", "softened": softened,
+            "message": "Your explanation was added to the session record for your case manager."}
+
+
+# ---------------------------------------------------------------------------
+# Live Clinical Advisor for the case-manager console: consultation grounded in
+# the same ten-book library Mira reasons from. Claude generates it when the
+# session state changes (cached so the 3s poll doesn't spam the API); a
+# rule-based advisor that still cites the books covers demo mode.
+# ---------------------------------------------------------------------------
+advice_cache = {}  # child_id -> {"sig": ..., "advice": {...}}
+
+
+def fallback_case_advice(metrics, tone_flags):
+    """Demo-mode advisor: rule-based, but still grounded in the ten books."""
+    mistreat = metrics.get("consecutive_mistreatments", 0)
+    temperament = metrics.get("temperament", "neutral")
+    has_incongruence = any("INCONGRUENT" in f for f in tone_flags)
+    has_esl_check = any("TONE CHECK (ESL)" in f for f in tone_flags)
+
+    if has_incongruence:
+        return {
+            "advice": ("The parent's words are warm but the vocal delivery is aggressive -- the classic "
+                       "performative pattern. The child responds to tone, not vocabulary. Watch whether the "
+                       "parent can regulate their own state before the next exchange; consider pausing if "
+                       "the incongruence repeats."),
+            "framework_cited": "Parenting from the Inside Out (Siegel & Hartzell)",
+            "risk": "high", "source": "rules",
+        }
+    if temperament == "transgressed" or mistreat >= 2:
+        return {
+            "advice": ("The child has shut down after repeated high-friction turns -- her 'upstairs brain' "
+                       "is offline, so reasoning with her will fail. Watch for the parent to connect before "
+                       "redirecting: soft voice, name the feeling, offer a real choice. If escalation "
+                       "continues, pause the session."),
+            "framework_cited": "The Whole-Brain Child (Siegel & Bryson)",
+            "risk": "high", "source": "rules",
+        }
+    if has_esl_check:
+        return {
+            "advice": ("The tone monitor flagged vocal tension, but this parent speaks English as a second "
+                       "language, so prosody may read hotter than intended. A clarification was requested "
+                       "instead of a scored strike -- review their explanation and weigh the words, the "
+                       "pattern, and the child's response together."),
+            "framework_cited": "Between Parent and Child (Ginott)",
+            "risk": "elevated", "source": "rules",
+        }
+    if temperament == "secure":
+        return {
+            "advice": ("Trust is high and the child is responsive. Reinforce what is working: the parent "
+                       "explaining the 'why' behind instructions and offering choices. This is the window "
+                       "to practice firm-and-kind boundary setting."),
+            "framework_cited": "Positive Discipline (Nelsen)",
+            "risk": "low", "source": "rules",
+        }
+    return {
+        "advice": ("Interaction is within normal parameters. Watch for acknowledgment of the child's "
+                   "feelings before instructions -- acknowledgment earns cooperation, while commands and "
+                   "labels provoke resistance at this developmental stage."),
+        "framework_cited": "How to Talk So Kids Will Listen (Faber & Mazlish)",
+        "risk": "low", "source": "rules",
+    }
+
+
+def get_case_advice(child_id, metrics, history):
+    """Return advisor consultation, regenerating only when the session state
+    actually changes (the console polls every ~3 seconds)."""
+    tone_flags = [h["toneNote"] for h in history
+                  if h.get("toneNote") and ("INCONGRUENT" in h["toneNote"] or "TONE CHECK" in h["toneNote"]
+                                            or "tense undertone" in h["toneNote"]
+                                            or h.get("treatment") == "tone_clarification")]
+    sig = (metrics.get("consecutive_mistreatments", 0), metrics.get("temperament"),
+           len(history), len(tone_flags))
+    cached = advice_cache.get(child_id)
+    if cached and cached["sig"] == sig:
+        return cached["advice"]
+
+    advice = None
+    if claude_ai.available() and history:
+        try:
+            advice = claude_ai.generate_case_advice(metrics, history, tone_flags)
+        except Exception as e:
+            print("Claude advisor error, falling back to rules:", e)
+    if not advice:
+        advice = fallback_case_advice(metrics, tone_flags)
+    advice_cache[child_id] = {"sig": sig, "advice": advice}
+    return advice
+
 
 class CreateSessionReq(BaseModel):
     parent_id: str
@@ -354,6 +503,8 @@ class RegisterReq(BaseModel):
     email: str
     child_age: int = 5
     slots: list  # the parent's chosen windows [{start, end, label}]
+    situation: str = ""  # free text: employment, pickups, anything affecting timing
+    esl: bool = False    # English is a second language -> lenient tone flagging
 
 
 @app.get("/api/register/options")
@@ -399,16 +550,19 @@ async def api_register_parent(req: RegisterReq):
         parent_avail=req.slots, clinician_avail=clin, monitor_avail=mon,
         temperament_profile="cooperative", child_age=req.child_age,
     )
-    # store the parent's display name (column added on demand)
-    import sqlite3 as _s
-    _conn = _s.connect(database.DB_PATH)
-    try:
-        _conn.execute("ALTER TABLE clinician_session ADD COLUMN parent_name TEXT")
-    except _s.OperationalError:
-        pass
-    _conn.commit()
-    _conn.close()
-    database.update_session(session_id, parent_name=req.name.strip(), status="awaiting_approval")
+    # understand the parent's life situation from their own words (Agent 1's
+    # situation reader: Claude when available, keyword scan in demo mode)
+    situation = {}
+    if req.situation.strip():
+        _, situation, _src = agent1.parse_parent_availability(req.situation.strip())
+
+    database.update_session(
+        session_id,
+        parent_name=req.name.strip(),
+        parent_situation=situation,
+        esl=1 if req.esl else 0,
+        status="awaiting_approval",
+    )
 
     return {
         "status": "registered",
@@ -479,6 +633,9 @@ async def api_agent1_review(sessionId: str):
         "checkpoint": True,
         "sessionId": sessionId,
         "parentAvailabilitySummary": [w.get("label") or w.get("start", "") for w in parent_windows],
+        "parentSituation": session.get("parent_situation") or {},
+        "parentName": session.get("parent_name") or "",
+        "esl": bool(session.get("esl")),
         "proposedSlots": slots,
         "calendarOverlay": {
             "parent": parent_windows,
@@ -516,13 +673,27 @@ async def api_session_status(sessionId: str):
     # Also fetch current parent state metrics
     parent_state = dict(database.get_state(session["parent_id"]))
     parent_state["child_age"] = session.get("child_age", 5)
-    history = database.get_recent_history(session["parent_id"], limit=20)
-    
+    history = database.get_history_with_tone(session["parent_id"], limit=20)
+
+    # tone & voice flags for the console (incongruence, ESL checks, clarifications)
+    tone_flags = [
+        {"time": h["time"], "parent": h["parent"], "note": h["toneNote"],
+         "aggression": h["toneAggression"], "treatment": h["treatment"]}
+        for h in history
+        if (h.get("toneNote") and ("INCONGRUENT" in h["toneNote"] or "TONE CHECK" in h["toneNote"]
+                                   or "tense undertone" in h["toneNote"]))
+        or h.get("treatment") in ("tone_clarification", "governor_intercept")
+    ]
+
     return {
         "status": session["status"],
         "paused": ctrl["paused"],
         "metrics": parent_state,
-        "history": history
+        "history": history,
+        "toneFlags": tone_flags,
+        "advice": get_case_advice(session["parent_id"], parent_state, history),
+        "parentSituation": session.get("parent_situation") or {},
+        "esl": bool(session.get("esl")),
     }
 
 @app.post("/api/session/provision")
