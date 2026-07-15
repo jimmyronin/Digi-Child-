@@ -1,25 +1,18 @@
-from child_agent.logic import get_thinking_response
-from fastapi import FastAPI, WebSocket
-from typing import List
+from monitor import MonitorAgent
+from governor import Governor
+# from child_agent.logic import get_thinking_response
 
-app = FastAPI()
+monitor_agent = MonitorAgent()
+conflict_governor = Governor()
 
-# Store active UI connections
-connected_uis: List[WebSocket] = []
+from child_agent.conflict_engine import ConflictGovernor
+from child_agent.brain import MiraAgent
 
-@app.websocket("/ws/control")
-async def control_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    connected_uis.append(websocket)
-    try:
-        while True:
-            # Keep the connection open and listen for heartbeat
-            await websocket.receive_text()
-    except:
-        connected_uis.remove(websocket)
+governor = ConflictGovernor()
+mira = MiraAgent()
 
-async def broadcast_pause_signal(reason: str):
-    """Broadcasts a pause command to all connected UI clients."""
-    payload = {"event": "SESSION_PAUSED", "reason": reason}
-    for connection in connected_uis:
-        await connection.send_json(payload)
+# Now your orchestrator loop uses the real agents
+async def process_parent_input(user_input, state):
+    status = governor.evaluate_escalation(state)
+    response = mira.generate(user_input, status)
+    return response
