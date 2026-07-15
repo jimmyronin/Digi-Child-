@@ -1,3 +1,14 @@
+# backend/child_agent/brain.py
+import sys
+import os
+# Add the parent directory to path so we can import the LLM client
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from llm_provider import query_llm
+
+class MiraAgent:
+    def generate_response(self, input_text, governor_status):
+        system_prompt = f"You are Mira, a child in therapy. Status: {governor_status}."
+        return query_llm(system_prompt, input_text)
 # Grounded in psychological frameworks for higher market value
 FRAMEWORKS = {
     "secure": {
