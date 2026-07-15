@@ -2520,3 +2520,210 @@ body.is-debug-view .crosshair {
 }
 
 
+
+/* ============================================================
+   Tone appeal pop-up: flagged parents (ESL or genuinely tense)
+   explain themselves before/alongside scoring
+   ============================================================ */
+.tone-appeal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 18, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.tone-appeal-card {
+  width: min(440px, 92vw);
+  background: rgba(24, 30, 36, 0.97);
+  border: 1px solid rgba(217, 134, 50, 0.45);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(217, 134, 50, 0.15);
+  animation: appealIn 0.28s ease;
+}
+
+@keyframes appealIn {
+  from { transform: translateY(14px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.tone-appeal-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #f2b06a;
+}
+
+.tone-appeal-card p {
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 12px;
+}
+
+.tone-appeal-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  padding: 10px;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.tone-appeal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tone-appeal-actions button {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--warm, #d98632);
+  color: #14181c;
+}
+
+.tone-appeal-actions button.btn-secondary {
+  background: rgba(23, 143, 134, 0.25);
+  color: #7fd9d2;
+  border: 1px solid rgba(23, 143, 134, 0.5);
+}
+
+.tone-appeal-actions button.btn-ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* ESL toggle in the parent composer actions */
+#eslBtn.esl-active {
+  background: rgba(23, 143, 134, 0.3);
+  color: #7fd9d2;
+  box-shadow: 0 0 10px rgba(23, 143, 134, 0.4);
+}
+
+/* Registration extras: situation textarea + ESL checkbox */
+.landing-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  padding: 10px;
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+.landing-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.landing-check input {
+  width: auto;
+  margin: 1px 0 0;
+  accent-color: var(--teal, #178f86);
+}
+
+/* Parent situation on the Agent 1 approval card */
+.situation-box p {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sit-chip {
+  display: inline-block;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(23, 143, 134, 0.14);
+  border: 1px solid rgba(23, 143, 134, 0.35);
+  color: #9fdcd6;
+}
+
+.sit-chip.esl {
+  background: rgba(217, 134, 50, 0.14);
+  border-color: rgba(217, 134, 50, 0.4);
+  color: #f2b06a;
+}
+
+/* Tone & voice flags panel in the case-manager Monitor tab */
+.tone-flag-line {
+  font-size: 10.5px;
+  line-height: 1.45;
+  padding: 7px 9px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.tone-flag-line strong {
+  display: block;
+  color: #f87171;
+  margin-bottom: 2px;
+}
+
+.tone-flag-line span {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.tone-flag-line.clarify {
+  background: rgba(23, 143, 134, 0.07);
+  border-color: rgba(23, 143, 134, 0.28);
+}
+
+.tone-flag-line.clarify strong { color: #7fd9d2; }
+
+.tone-flag-line.governor {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.tone-flag-line.governor strong { color: #ef4444; }
+
+/* Flag chip on audit-log lines */
+.tone-flag-chip {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #f87171;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.audit-log-line.clarify {
+  border-left: 2px solid rgba(23, 143, 134, 0.6);
+  color: #9fdcd6;
+}
