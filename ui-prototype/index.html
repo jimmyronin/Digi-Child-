@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=12" />
+    <link rel="stylesheet" href="./styles.css?v=13" />
   </head>
   <body>
     <!-- Splash Screen / Loader -->
@@ -106,10 +106,13 @@
       </section>
 
       <!-- Intro film: plays first, then the landing panels rise over it and it
-           stays as the living backdrop. Muted autoplay is the only kind browsers
-           allow; the speaker button unmutes on a real user gesture. -->
+           stays as the living backdrop. It asks to play WITH sound; if the browser
+           refuses unmuted autoplay it starts quiet, pulses the speaker, and takes
+           the first gesture anywhere as consent to bring the sound up. -->
       <div id="introStage" class="intro-stage" style="display: none;">
-        <video id="introVideo" class="intro-video" muted playsinline preload="auto"
+        <!-- No `muted` attribute: we ask for sound first and only fall back to a
+             muted start if the browser refuses (see playIntroFilm). -->
+        <video id="introVideo" class="intro-video" playsinline preload="auto"
                poster="./assets/intro-poster.jpg" aria-label="Digi-Child introduction">
           <source src="./assets/intro.mp4" type="video/mp4" />
         </video>
@@ -218,6 +221,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=81"></script>
+    <script type="module" src="./app.js?v=82"></script>
   </body>
 </html>

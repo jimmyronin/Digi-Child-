@@ -4710,15 +4710,40 @@ function playIntroFilm() {
   setTimeout(handOver, 14000); // hard backstop
 
   const sound = document.querySelector("#introSound");
-  sound?.addEventListener("click", () => {
-    video.muted = !video.muted;
+  const paintSound = () => {
+    if (!sound) return;
     sound.textContent = video.muted ? "🔇" : "🔊";
     sound.setAttribute("aria-label", video.muted ? "Unmute" : "Mute");
+    sound.classList.toggle("needs-tap", video.muted);
+  };
+  sound?.addEventListener("click", () => {
+    video.muted = !video.muted;
+    if (!video.muted) video.volume = 1;
+    paintSound();
   });
 
-  // Autoplay is only permitted while muted; if even that is refused, don't sit
-  // on a frozen poster -- go straight to the panels.
-  video.play().catch(() => handOver());
+  // Sound is the DEFAULT. Browsers block unmuted autoplay unless this visitor has
+  // built up enough engagement with the site, so ask for it and only fall back if
+  // refused -- setting muted=false unconditionally would stop the film playing at
+  // all, which is worse than starting quiet.
+  video.muted = false;
+  video.volume = 1;
+  paintSound();
+  video.play().then(paintSound).catch(() => {
+    video.muted = true;              // retry the only way that is permitted
+    paintSound();
+    video.play().catch(() => handOver());
+    // ...then take the first gesture anywhere as consent and bring the sound up.
+    const unmuteOnGesture = () => {
+      if (handedOver) return;        // film already finished; nothing to unmute
+      video.muted = false;
+      video.volume = 1;
+      paintSound();
+    };
+    ["pointerdown", "keydown", "touchstart"].forEach((ev) =>
+      document.addEventListener(ev, unmuteOnGesture, { once: true, passive: true })
+    );
+  });
   return true;
 }
 
