@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=8" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
   </head>
   <body>
     <!-- Splash Screen / Loader -->
@@ -92,6 +92,7 @@
           <button id="milestoneBtn" type="button">Milestone</button>
           <button id="reportBtn" type="button">Architect Report</button>
           <button id="voiceBtn" type="button" title="Mira speaks her replies out loud">🔊 Voice On</button>
+          <button id="eslBtn" type="button" title="English is my second language — the tone monitor asks before flagging">🌐 ESL Off</button>
           <button id="ageBtn" type="button" style="display: none;">Age Up</button>
         </div>
       </section>
@@ -121,6 +122,9 @@
                 <option value="11">Child track: Age 10–12</option>
                 <option value="15">Child track: Age 14–16</option>
               </select>
+              <label class="landing-label">Tell us about your situation (optional)</label>
+              <textarea id="regSituation" rows="2" placeholder="e.g. I work until 5pm and pick my daughter up from kindergarten at 3 — the intake agent reads this so your case manager understands your schedule."></textarea>
+              <label class="landing-check"><input type="checkbox" id="regEsl" /> English is my second language — the voice monitor will ask before flagging my tone</label>
               <label class="landing-label">Pick up to 3 available session times</label>
               <div id="regSlots" class="reg-slots">Loading available dates…</div>
               <button id="regSubmit" type="button">Register &amp; Request Session</button>
@@ -138,7 +142,6 @@
               <h2>🩺 I'm a Case Manager</h2>
               <p class="landing-desc">Enroll to review parent registrations, approve sessions, and monitor live evaluations from the console.</p>
               <input id="cmName" placeholder="Your name" autocomplete="name" />
-              <input id="cmCode" type="password" placeholder="Clinic access code" />
               <button id="cmEnter" type="button">Enter Case Manager Console</button>
               <p id="cmMsg" class="landing-msg"></p>
               <ul class="landing-points">
@@ -169,6 +172,21 @@
       <!-- Live tone readout after a voice turn -->
       <div id="toneChip" class="tone-chip" style="display: none;"></div>
 
+      <!-- Tone appeal: flagged parents (ESL or genuinely tense) explain themselves -->
+      <div id="toneAppealModal" class="tone-appeal-overlay" style="display: none;">
+        <div class="tone-appeal-card">
+          <h3>🎙 Your voice read as tense</h3>
+          <p id="toneAppealReason">Accents, second languages, and natural speaking styles can read as tense to the monitor. Tell us what you meant — your explanation goes to your case manager.</p>
+          <textarea id="toneAppealText" rows="3" placeholder="e.g. That's just how I talk when I'm concentrating — I wasn't upset with her."></textarea>
+          <div class="tone-appeal-actions">
+            <button id="toneAppealSend" type="button">Send explanation</button>
+            <button id="toneAppealCalm" type="button" class="btn-secondary">I was calm — recalibrate my voice</button>
+            <button id="toneAppealSkip" type="button" class="btn-ghost">Dismiss</button>
+          </div>
+          <p id="toneAppealMsg" class="landing-msg"></p>
+        </div>
+      </div>
+
       <!-- Pause Overlay -->
       <div id="pauseOverlay" class="pause-overlay" style="display: none;">
         <h2>Session Paused</h2>
@@ -185,6 +203,6 @@
         }
       }
     </script>
-    <script type="module" src="./app.js?v=76"></script>
+    <script type="module" src="./app.js?v=77"></script>
   </body>
 </html>

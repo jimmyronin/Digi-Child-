@@ -3336,6 +3336,9 @@ async function handleSubmit(event) {
     hideGovernorBanner();
   }
   if (spokenTone) showToneChip(result.toneRead, spokenTone.aggression);
+  // flagged voice -> appeal pop-up: ESL speakers and genuinely tense people
+  // get to explain themselves before/alongside any scoring
+  if (spokenTone && result.needsClarification) showToneAppealModal(result);
 
   // Mira reacts emotionally to what the parent just said or did
   const govIntercepted = !!(result.governor && result.governor.intervened);
@@ -3395,18 +3398,42 @@ function updateToneBaseline(rawScore) {
   localStorage.setItem("DIGICHILD_TONE_BASE", next.toFixed(3));
 }
 
+// ESL mode: accents and second-language prosody can read hot to any acoustic
+// model, so the monitor asks the parent to explain before scoring a flag.
+function isEslSpeaker() {
+  return localStorage.getItem("DIGICHILD_ESL") === "1";
+}
+
+let lastRawAggression = 0; // pre-baseline score of the latest voice turn (for recalibration)
+
 function computeAggression(m) {
   // floors: ordinary conversational levels score ~0; only excess counts
   const loud = Math.min(1, Math.max(0, m.peak - 0.3) * 1.6);
   const sharp = Math.min(1, Math.max(0, m.sharpness - 0.25) * 1.7);
   const fast = Math.min(1, Math.max(0, m.wordsPerSec - 2.8) / 2.4);
   const spiky = Math.min(1, m.pitchVar / 150);
-  const raw = Math.min(1, loud * 0.42 + sharp * 0.28 + fast * 0.15 + spiky * 0.15);
+  // clinical voice-quality measures (speech-pathology standards): perturbation
+  // and timbre instability read strain/harshness that loudness alone misses
+  const jit = Math.min(1, Math.max(0, (m.jitter || 0) - 0.04) * 8);    // >4% cycle-to-cycle pitch perturbation
+  const shim = Math.min(1, Math.max(0, (m.shimmer || 0) - 0.12) * 4);  // >12% amplitude perturbation
+  const flux = Math.min(1, Math.max(0, (m.flux || 0) - 0.1) * 3);      // violent timbre swings
+  const raw = Math.min(1, loud * 0.32 + sharp * 0.2 + fast * 0.11 + spiky * 0.11
+                         + jit * 0.1 + shim * 0.08 + flux * 0.08);
+  lastRawAggression = raw;
   // personal calibration: subtract how "hot" this speaker/mic normally runs
   const base = getToneBaseline();
   const adjusted = base > 0.3 ? Math.max(0, Math.min(1, raw - (base - 0.3))) : raw;
   updateToneBaseline(raw);
   return adjusted;
+}
+
+// "I was calm" appeal: absorb the last turn into the personal baseline so the
+// same delivery stops reading as tense on this device.
+function recalibrateToneBaseline() {
+  const prev = getToneBaseline();
+  const next = Math.min(0.6, Math.max(prev, lastRawAggression * 0.92));
+  localStorage.setItem("DIGICHILD_TONE_BASE", next.toFixed(3));
+  return next;
 }
 
 function estimatePitch(buf, sr) {
@@ -3504,16 +3531,35 @@ async function startVoiceCapture() {
     if (!text) return;
     const dur = Math.max(0.6, (performance.now() - t0) / 1000);
     const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+    // perturbation measures over consecutive voiced frames (clinical voice
+    // metrics): jitter = pitch instability, shimmer = amplitude instability,
+    // flux = how violently the spectral timbre swings turn-to-turn
+    const perturb = (a) => {
+      if (a.length < 3) return 0;
+      const m = mean(a);
+      if (!m) return 0;
+      let d = 0;
+      for (let i = 1; i < a.length; i++) d += Math.abs(a[i] - a[i - 1]);
+      return d / (a.length - 1) / m;
+    };
     const pm = mean(samples.pitch);
+    const wps = +(text.split(/\s+/).length / dur).toFixed(2);
+    const vol = Math.min(1, mean(samples.rms) * 6);
     const tone = {
-      volume: Math.min(1, mean(samples.rms) * 6),
+      volume: vol,
       peak: Math.min(1, (samples.rms.length ? Math.max(...samples.rms) : 0) * 4),
       pitch: Math.round(pm),
       pitchVar: Math.round(Math.sqrt(mean(samples.pitch.map((p) => (p - pm) ** 2)))),
       sharpness: Math.min(1, mean(samples.cent) / 3200),
-      wordsPerSec: +(text.split(/\s+/).length / dur).toFixed(2),
+      wordsPerSec: wps,
+      jitter: +Math.min(1, perturb(samples.pitch)).toFixed(3),
+      shimmer: +Math.min(1, perturb(samples.rms)).toFixed(3),
+      flux: +Math.min(1, perturb(samples.cent)).toFixed(3),
+      esl: isEslSpeaker(),
       source: "voice",
     };
+    // arousal (activation axis of the circumplex model): energy + speech rate
+    tone.arousal = +Math.min(1, vol * 0.6 + Math.min(1, wps / 4.5) * 0.4).toFixed(2);
     tone.aggression = +computeAggression(tone).toFixed(2);
     pendingTone = tone;
     input.value = text;
@@ -3570,11 +3616,92 @@ function showToneChip(toneRead, aggression) {
   c._hideT = setTimeout(() => { c.style.display = "none"; }, 7000);
 }
 
+/* ============================================================
+   Tone appeal pop-up (professor feedback): when the monitor
+   flags a voice as tense, the parent — ESL speakers and real
+   tense people alike — gets to explain themselves. The
+   explanation goes on the record for the case manager.
+   ============================================================ */
+function showToneAppealModal(result) {
+  const modal = document.querySelector("#toneAppealModal");
+  if (!modal) return;
+  const reason = document.querySelector("#toneAppealReason");
+  const toneRead = result.toneRead || "";
+  if (toneRead.includes("TONE CHECK (ESL)")) {
+    reason.textContent = "Your voice read as tense, but since English is your second language, nothing was scored — accents and second-language rhythm can sound tense to the monitor. Explain what you meant, and your case manager will see it next to the flag.";
+  } else if (toneRead.includes("INCONGRUENT")) {
+    reason.textContent = "Your words were warm, but your voice read as aggressive — the child believes the tone. If your natural speaking style caused this, tell us; your explanation goes to your case manager.";
+  } else {
+    reason.textContent = "The monitor heard tension in your voice. Some people just talk this way — if that's you, say so or recalibrate, and your case manager sees your side too.";
+  }
+  document.querySelector("#toneAppealText").value = "";
+  document.querySelector("#toneAppealMsg").textContent = "";
+  modal.style.display = "flex";
+}
+
+function hideToneAppealModal() {
+  const m = document.querySelector("#toneAppealModal");
+  if (m) m.style.display = "none";
+}
+
+async function sendToneClarification(explanation, recalibrated) {
+  try {
+    await fetch(`${API_BASE}/api/tone/clarify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childId: sessionParentId, explanation, recalibrated }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+document.querySelector("#toneAppealSend")?.addEventListener("click", async () => {
+  const text = document.querySelector("#toneAppealText").value.trim();
+  const msg = document.querySelector("#toneAppealMsg");
+  if (!text) { msg.textContent = "Write a sentence or two first."; return; }
+  msg.textContent = "Sending to your case manager...";
+  const ok = await sendToneClarification(text, false);
+  msg.textContent = ok ? "✅ Added to your session record." : "Could not reach the server.";
+  if (ok) setTimeout(hideToneAppealModal, 1400);
+});
+
+document.querySelector("#toneAppealCalm")?.addEventListener("click", async () => {
+  const msg = document.querySelector("#toneAppealMsg");
+  recalibrateToneBaseline(); // this delivery is my normal — stop flagging it
+  msg.textContent = "Recalibrating to your natural voice...";
+  const note = document.querySelector("#toneAppealText").value.trim() || "Parent reports this is their normal speaking voice.";
+  await sendToneClarification(note, true);
+  msg.textContent = "✅ Baseline updated — your normal voice won't read as tense.";
+  setTimeout(hideToneAppealModal, 1400);
+});
+
+document.querySelector("#toneAppealSkip")?.addEventListener("click", hideToneAppealModal);
+
 document.querySelector("#micBtn")?.addEventListener("click", startVoiceCapture);
 document.querySelector("#voiceBtn")?.addEventListener("click", () => {
   miraVoiceOn = !miraVoiceOn;
   if (!miraVoiceOn) speechSynthesis.cancel();
   document.querySelector("#voiceBtn").textContent = miraVoiceOn ? "🔊 Voice On" : "🔇 Voice Off";
+});
+
+// ESL toggle: mirrors the registration checkbox (and the ?esl=1 launch param)
+// so the tone monitor asks this speaker to clarify before scoring a flag
+function syncEslButton() {
+  const b = document.querySelector("#eslBtn");
+  if (!b) return;
+  const on = isEslSpeaker();
+  b.textContent = on ? "🌐 ESL On" : "🌐 ESL Off";
+  b.classList.toggle("esl-active", on);
+}
+if (new URLSearchParams(window.location.search).get("esl") === "1") {
+  localStorage.setItem("DIGICHILD_ESL", "1");
+}
+syncEslButton();
+document.querySelector("#eslBtn")?.addEventListener("click", () => {
+  localStorage.setItem("DIGICHILD_ESL", isEslSpeaker() ? "0" : "1");
+  syncEslButton();
 });
 
 async function sendToBackend(payload) {
@@ -4485,6 +4612,8 @@ function initLandingPage() {
     const name = document.querySelector("#regName").value.trim();
     const email = document.querySelector("#regEmail").value.trim();
     const age = parseInt(document.querySelector("#regAge").value, 10);
+    const situation = document.querySelector("#regSituation")?.value.trim() || "";
+    const esl = !!document.querySelector("#regEsl")?.checked;
     const picks = [...document.querySelectorAll("#regSlots .reg-cal-cell.selected")].map((c) => JSON.parse(c.dataset.slot));
     const msg = document.querySelector("#regMsg");
     if (!name || !email.includes("@")) { msg.textContent = "Please enter your name and a valid email."; return; }
@@ -4494,12 +4623,14 @@ function initLandingPage() {
       const res = await fetch(`${API_BASE}/api/register/parent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, child_age: age, slots: picks }),
+        body: JSON.stringify({ name, email, child_age: age, slots: picks, situation, esl }),
       });
       const data = await res.json();
       msg.textContent = data.message || "Registered.";
       if (data.status === "registered") {
         document.querySelector("#statusEmail").value = email;
+        // carry the ESL preference into the simulation on this device
+        localStorage.setItem("DIGICHILD_ESL", esl ? "1" : "0");
       }
     } catch {
       msg.textContent = "Could not reach the enrollment service. Please try again.";
@@ -4530,9 +4661,8 @@ function initLandingPage() {
   // case manager entry
   document.querySelector("#cmEnter").addEventListener("click", () => {
     const name = document.querySelector("#cmName").value.trim();
-    const code = document.querySelector("#cmCode").value.trim();
     const msg = document.querySelector("#cmMsg");
-    if (!name || !code) { msg.textContent = "Enter your name and clinic access code."; return; }
+    if (!name) { msg.textContent = "Enter your name to continue."; return; }
     localStorage.setItem("DIGICHILD_CM_NAME", name);
     window.location.search = "?role=clinician";
   });
@@ -4681,12 +4811,27 @@ function initClinicianHub() {
                   </div>
                 </div>
 
-                <!-- Live De-Escalation Advisor Feed -->
+                <!-- Live De-Escalation Advisor Feed (grounded in the ten-book library) -->
                 <div class="section" id="cAdviceSection" style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px;">
                   <span class="section-title" style="font-size: 11px; margin-bottom: 6px;">Live Clinical Advisor</span>
                   <div class="clinical-tip" id="cLiveAdviceBox" style="background: rgba(23, 143, 134, 0.06); border-color: rgba(23, 143, 134, 0.2); margin-bottom: 0;">
                     <span class="icon" id="cLiveAdviceIcon" style="display:flex; align-items:center;"><svg class="header-svg-icon" style="margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg></span>
                     <p id="cLiveAdviceText" style="font-size: 11px;">Awaiting active simulation message...</p>
+                  </div>
+                  <p id="cAdviceCitation" style="font-size: 10px; color: rgba(255,255,255,0.45); margin: 6px 0 0;"></p>
+                </div>
+
+                <!-- Parent situation (understood by Agent 1 at intake) -->
+                <div class="section" id="cSituationSection" style="display:none; margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px;">
+                  <span class="section-title" style="font-size: 11px; margin-bottom: 6px;">Parent Situation</span>
+                  <p id="cSituationText" style="font-size: 11px; margin: 0;"></p>
+                </div>
+
+                <!-- Tone & voice flags: incongruence, ESL checks, clarifications -->
+                <div class="section" id="cToneFlagsSection" style="margin-top: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px;">
+                  <span class="section-title" style="font-size: 11px; margin-bottom: 6px;">Tone &amp; Voice Flags <span id="cToneFlagCount" class="badge" style="display:none;">0</span></span>
+                  <div id="cToneFlagsBox" style="max-height: 160px; overflow-y: auto;">
+                    <p style="font-size: 11px; color: rgba(255,255,255,0.4); margin: 0;">No vocal flags this session.</p>
                   </div>
                 </div>
               </div>
@@ -5129,35 +5274,89 @@ window.__selectSession = async (sid) => {
       const volFill = document.querySelector("#cMetricVolFill");
       if (volFill) volFill.style.width = `${data.metrics.volatility}%`;
 
-      // Update live de-escalation advisor tips
+      // Live Clinical Advisor: consultation generated from the actual session
+      // telemetry, grounded in the ten-book library (Claude, or the
+      // rule-based book-citing fallback in demo mode)
       const adviceText = document.querySelector("#cLiveAdviceText");
       const adviceBox = document.querySelector("#cLiveAdviceBox");
       const adviceIcon = document.querySelector("#cLiveAdviceIcon");
+      const adviceCite = document.querySelector("#cAdviceCitation");
       if (adviceText && adviceBox && adviceIcon) {
-        if (data.metrics.temperament === "transgressed") {
-          adviceText.innerHTML = "<strong>⚠️ TRANSGRESSED:</strong> Child has shut down due to consecutive mistreatments. Offering parent choices (autonomy) is required to re-establish trust.";
+        const adv = data.advice || {};
+        const risk = adv.risk || (data.metrics.temperament === "transgressed" ? "high" : "low");
+        const label = risk === "high" ? "⚠️ HIGH RISK" : risk === "elevated" ? "🟠 ELEVATED" : "✅ STEADY";
+        adviceText.innerHTML = `<strong>${label}:</strong> ${adv.advice || "Awaiting first interaction..."}`;
+        if (adviceCite) adviceCite.textContent = adv.framework_cited
+          ? `📚 Grounded in: ${adv.framework_cited}${adv.source === "claude" ? " · live AI consult" : ""}` : "";
+        if (risk === "high") {
           adviceBox.style.background = "rgba(239, 68, 68, 0.08)";
           adviceBox.style.borderColor = "rgba(239, 68, 68, 0.25)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,0.5)); margin-right:0;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>`;
-        } else if (data.metrics.temperament === "secure") {
-          adviceText.innerHTML = "<strong>✅ SECURE:</strong> Child is highly responsive. Support trust and curiosity by explaining rationale behind instructions.";
-          adviceBox.style.background = "rgba(34, 197, 94, 0.08)";
-          adviceBox.style.borderColor = "rgba(34, 197, 94, 0.25)";
-          adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:#22c55e; filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); margin-right:0;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        } else if (risk === "elevated") {
+          adviceBox.style.background = "rgba(217, 134, 50, 0.08)";
+          adviceBox.style.borderColor = "rgba(217, 134, 50, 0.3)";
+          adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:var(--warm); margin-right:0;" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><path d="M12 8v4M12 16h.01"></path></svg>`;
         } else {
-          adviceText.innerHTML = "<strong>💡 NEUTRAL:</strong> Normal interaction parameters. Avoid harsh tones and focus on logical, conflict-free guidance.";
-          adviceBox.style.background = "rgba(23, 143, 134, 0.08)";
-          adviceBox.style.borderColor = "rgba(23, 143, 134, 0.25)";
+          adviceBox.style.background = "rgba(23, 143, 134, 0.06)";
+          adviceBox.style.borderColor = "rgba(23, 143, 134, 0.2)";
           adviceIcon.innerHTML = `<svg class="header-svg-icon" style="stroke:var(--teal); margin-right:0;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>`;
         }
       }
-      
-      // Update audit logs
+
+      // Parent situation (from Agent 1's intake understanding)
+      const sitSection = document.querySelector("#cSituationSection");
+      const sitText = document.querySelector("#cSituationText");
+      const sit = data.parentSituation || {};
+      if (sitSection && sitText && (sit.summary || data.esl)) {
+        sitSection.style.display = "block";
+        sitText.innerHTML = (sit.summary || "") +
+          (data.esl ? `<br><span style="color:var(--teal);">🌐 English is a second language — tone monitor in lenient mode.</span>` : "");
+      } else if (sitSection) {
+        sitSection.style.display = "none";
+      }
+
+      // Tone & voice flags: what the monitor heard, plus the parent's own
+      // clarifications, permanently on the record for this session
+      const flagBox = document.querySelector("#cToneFlagsBox");
+      const flagCount = document.querySelector("#cToneFlagCount");
+      const flags = data.toneFlags || [];
+      if (flagBox) {
+        if (flags.length) {
+          flagBox.innerHTML = flags.map(f => {
+            const isClarify = f.treatment === "tone_clarification";
+            const isGov = f.treatment === "governor_intercept";
+            const cls = isClarify ? "clarify" : isGov ? "governor" : "flag";
+            const icon = isClarify ? "💬" : isGov ? "🛑" : "⚠️";
+            const title = isClarify ? "Parent clarification" : isGov ? "Governor intercept" : "Tone flag";
+            const aggr = f.aggression ? ` · aggression ${(+f.aggression).toFixed(2)}` : "";
+            return `<div class="tone-flag-line ${cls}">
+              <strong>${icon} ${title}${aggr}</strong>
+              <span>${f.note || f.parent || ""}</span>
+            </div>`;
+          }).join("");
+          if (flagCount) {
+            const scored = flags.filter(f => f.treatment !== "tone_clarification").length;
+            flagCount.textContent = scored;
+            flagCount.style.display = scored ? "inline-block" : "none";
+          }
+        } else {
+          flagBox.innerHTML = `<p style="font-size: 11px; color: rgba(255,255,255,0.4); margin: 0;">No vocal flags this session.</p>`;
+          if (flagCount) flagCount.style.display = "none";
+        }
+      }
+
+      // Update audit logs (tone-flagged turns get a chip the case manager can see)
       const logBox = document.querySelector("#cAuditLogBox");
-      logBox.innerHTML = data.history.map(h => `
-        <div class="audit-log-line parent"><span class="speaker">Parent:</span> ${h.parent}</div>
-        <div class="audit-log-line"><span class="speaker">Mira:</span> ${h.mira}</div>
-      `).join("");
+      logBox.innerHTML = data.history.map(h => {
+        if (h.treatment === "tone_clarification") {
+          return `<div class="audit-log-line clarify"><span class="speaker">💬 Parent clarification:</span> ${h.parent}</div>`;
+        }
+        const flagged = h.toneNote && (h.toneNote.includes("INCONGRUENT") || h.toneNote.includes("TONE CHECK") || h.toneNote.includes("tense undertone"));
+        const chip = flagged ? `<span class="tone-flag-chip" title="${h.toneNote.replace(/"/g, "&quot;")}">⚠ tone</span>` : "";
+        return `
+        <div class="audit-log-line parent"><span class="speaker">Parent:</span> ${h.parent} ${chip}</div>
+        <div class="audit-log-line"><span class="speaker">Mira:</span> ${h.mira}</div>`;
+      }).join("");
       logBox.scrollTop = logBox.scrollHeight;
     }
   } catch (e) {
@@ -5333,12 +5532,27 @@ function renderAgent1ApprovalCard(sessionId, data) {
     </div>
   `;
 
+  const sit = data.parentSituation || {};
+  const sitBits = [
+    sit.employment ? `<span class="sit-chip">💼 ${sit.employment}</span>` : "",
+    sit.caregiving ? `<span class="sit-chip">🧒 ${sit.caregiving}</span>` : "",
+    sit.constraints ? `<span class="sit-chip">⚠️ ${sit.constraints}</span>` : "",
+    data.esl ? `<span class="sit-chip esl">🌐 English is a second language — tone monitor runs in lenient mode</span>` : "",
+  ].filter(Boolean).join(" ");
+  const situationHtml = (sit.summary || sitBits) ? `
+    <div class="card-summary-row situation-box">
+      <label>Parent Situation (understood by Agent 1)</label>
+      <p>${sit.summary || ""}</p>
+      ${sitBits ? `<div class="sit-chips">${sitBits}</div>` : ""}
+    </div>` : "";
+
   card.innerHTML = `
     <h3><svg class="header-svg-icon" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><path d="M12 6v6l4 2"></path></svg>Agent 1 Intake Checkpoint</h3>
     <div class="card-summary-row">
       <label>Parent Availability Summary</label>
       <p>${data.parentAvailabilitySummary || "No description parsed"}</p>
     </div>
+    ${situationHtml}
     <div class="card-summary-row">
       <label>Parse: <strong>${data.sources?.parse || "regex"}</strong> | Streams: <strong>${data.sources?.streams || "mock"}</strong></label>
     </div>
@@ -5625,7 +5839,9 @@ window.__digiTone = (aggression = 0.7) => {
   pendingTone = {
     volume: Math.min(1, 0.3 + aggression * 0.6), peak: Math.min(1, 0.4 + aggression * 0.6),
     pitch: 200, pitchVar: Math.round(30 + aggression * 90), sharpness: Math.min(1, 0.3 + aggression * 0.6),
-    wordsPerSec: 2.5 + aggression * 2.5, aggression, source: "voice",
+    wordsPerSec: 2.5 + aggression * 2.5, jitter: aggression * 0.12, shimmer: aggression * 0.28,
+    flux: aggression * 0.25, arousal: Math.min(1, 0.3 + aggression * 0.7),
+    aggression, esl: isEslSpeaker(), source: "voice",
   };
   return pendingTone;
 };
