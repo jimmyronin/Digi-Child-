@@ -16,3 +16,9 @@ async def process_parent_input(user_input, state):
     status = governor.evaluate_escalation(state)
     response = mira.generate(user_input, status)
     return response
+def broadcast_pause_signal(state=None):
+    """
+    Broadcasts a pause signal across the evaluation system.
+    """
+    print(f"[Orchestrator] Pause signal broadcasted. Current state: {state}")
+    return {"status": "paused", "state": state}

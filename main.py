@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from database import get_state, save_state, log_interaction, get_recent_history
+from database import get_state, save_state, log_interaction, get_recent_history, create_session, get_session, update_session, list_all_sessions
+from fastapi import FastAPI, HTTPException
 import database
 import scheduling
 from uuid import uuid4
@@ -20,7 +21,27 @@ from child_agent.brain import get_age_persona
 
 class LogRequest(BaseModel):
     message: str
+from pydantic import BaseModel, EmailStr
+from typing import List
 
+# Keep your existing LogRequest(BaseModel):
+# class LogRequest(BaseModel):
+#     message: str
+
+# ADD THESE NEW ONBOARDING SCHEMAS:
+class ParentRegisterSchema(BaseModel):
+    name: str
+    email: EmailStr
+    track: str # e.g., "Age 5-7"
+    slots: List[str] # e.g., ["Wed 15: 10am", "Thu 16: 1pm"]
+
+class CaseManagerLoginSchema(BaseModel):
+    name: str
+    access_code: str
+
+class ApproveSessionSchema(BaseModel):
+    session_id: str
+    selected_slot: str
 app = FastAPI(title="Digi-Child Sim API")
 
 @app.post("/api/log")
@@ -396,7 +417,124 @@ async def api_session_report(sessionId: str):
     report.append("==================================================")
     
     return {"status": "ok", "reportText": "\n".join(report)}
+# =====================================================================
+# ONBOARDING FLOW: PARENT REGISTRATION
+# =====================================================================
 
+class ParentRegisterSchema(BaseModel):
+    name: str
+    email: str # Using str to keep imports light, or import EmailStr from pydantic if you prefer
+    track: str # e.g., "Age 5-7"
+    slots: list[str] # e.g., ["Wed 15: 10am", "Thu 16: 1pm"]
+
+class CaseManagerLoginSchema(BaseModel):
+    name: str
+    access_code: str
+
+class ApproveSessionSchema(BaseModel):
+    session_id: str
+    selected_slot: str
+
+@app.post("/api/parent/register")
+async def register_parent(data: ParentRegisterSchema):
+    if len(data.slots) == 0 or len(data.slots) > 3:
+        raise HTTPException(status_code=400, detail="Please pick up to 3 available times.")
+    
+    session_id = data.email
+    
+    # Check if this parent is already registered
+    existing = get_session(session_id)
+    if existing:
+        raise HTTPException(status_code=400, detail="This email is already registered.")
+    
+    # Determine approximate age from the selected track
+    age = 5
+    if "5-7" in data.track:
+        age = 5
+    elif "8" in data.track:
+        age = 8
+
+    # Create the base clinician session
+    create_session(
+        session_id=session_id,
+        parent_id=data.email,
+        clinician_id="unassigned",
+        monitor_id="unassigned",
+        parent_avail=data.slots,
+        clinician_avail=[],
+        monitor_avail=[],
+        temperament_profile="cooperative",
+        child_age=age
+    )
+    
+    # Update the newly added session details
+    update_session(
+        session_id=session_id,
+        parent_name=data.name,
+        status="pending_outreach",
+        parent_situation={"track": data.track}
+    )
+    
+    return {"status": "success", "message": "Registration submitted successfully!"}
+
+
+@app.get("/api/parent/status")
+async def check_parent_status(email: str):
+    session = get_session(email)
+    if not session:
+        raise HTTPException(status_code=404, detail="No registration found for this email.")
+    
+    return {
+        "name": session.get("parent_name"),
+        "email": session.get("parent_id"),
+        "status": session.get("status"), 
+        "scheduled_time": session.get("scheduled_time"),
+        "track": session.get("parent_situation", {}).get("track", "Unknown") if isinstance(session.get("parent_situation"), dict) else "Unknown"
+    }
+
+
+# =====================================================================
+# ONBOARDING FLOW: CASE MANAGER ACTIONS
+# =====================================================================
+
+@app.post("/api/case-manager/login")
+async def login_case_manager(data: CaseManagerLoginSchema):
+    clinic_code = os.getenv("CLINIC_ACCESS_CODE", "SECURE_CODE_123")
+    if data.access_code != clinic_code:
+        raise HTTPException(status_code=401, detail="Invalid clinic access code.")
+    return {"status": "success", "token": "authenticated-session-token"}
+
+
+@app.get("/api/case-manager/pending")
+async def get_pending_registrations():
+    all_sessions = list_all_sessions()
+    
+    pending = []
+    for s in all_sessions:
+        if s.get("status") == "pending_outreach":
+            pending.append({
+                "session_id": s.get("session_id"),
+                "name": s.get("parent_name"),
+                "email": s.get("parent_id"),
+                "track": s.get("parent_situation", {}).get("track", "Unknown") if isinstance(s.get("parent_situation"), dict) else "Unknown",
+                "requested_slots": s.get("parent_availability", [])
+            })
+    return pending
+
+
+@app.post("/api/case-manager/approve")
+async def approve_registration(data: ApproveSessionSchema):
+    session = get_session(data.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Registration session not found.")
+        
+    update_session(
+        session_id=data.session_id,
+        status="scheduled",
+        scheduled_time=data.selected_slot
+    )
+
+    return {"status": "success", "message": f"Session approved for {data.selected_slot}."}
 import uvicorn
 
 if __name__ == "__main__":
