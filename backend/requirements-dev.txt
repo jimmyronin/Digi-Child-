@@ -1,0 +1,5 @@
+# Test-only dependencies. The app itself never imports these.
+-r requirements.txt
+pytest>=8.0
+# fastapi's TestClient is backed by httpx; plain `fastapi` does not pull it in.
+httpx>=0.27
