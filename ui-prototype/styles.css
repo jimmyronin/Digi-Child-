@@ -3070,3 +3070,56 @@ body.clinician-mode textarea:focus {
 @media (prefers-reduced-motion: reduce) {
   .intro-sound-hint { animation: hintIn 500ms ease both; }
 }
+
+/* ============================================================
+   Open dropdown must escape its card.
+   The glass cards carry backdrop-filter, which creates a stacking
+   context -- so an open options list is confined inside its own
+   card and the NEXT card paints over it. Raising the list's own
+   z-index cannot help (it is trapped in that context); the card
+   itself has to be lifted above its siblings.
+   ============================================================ */
+.section.dropdown-open,
+.landing-card.dropdown-open,
+.portal-card.dropdown-open {
+  position: relative;   /* static elements ignore z-index entirely */
+  z-index: 60;
+}
+
+/* The list must also not be clipped by the card's rounded corners. */
+.section.dropdown-open,
+.landing-card.dropdown-open {
+  overflow: visible;
+}
+
+/* ============================================================
+   Portaled dropdown list.
+   While open, the list is moved to <body> and positioned by the
+   trigger's viewport rect. It has to live there because the
+   console nests it in three scroll containers (.panel-col,
+   .hub-viewport, .clinician-hub-body) that CLIP it -- and no
+   z-index escapes an overflow clip. position:fixed alone would
+   not work either: the card's backdrop-filter makes it the
+   containing block for fixed descendants.
+   ============================================================ */
+.custom-options-container.portaled {
+  position: fixed !important;
+  right: auto !important;
+  z-index: 4000;              /* above .clinician-hub (2000) */
+}
+
+/* The visibility rule is a DESCENDANT selector on the wrapper, which stops
+   matching once the list is portaled out -- so drive it from the list itself. */
+.custom-options-container.is-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+}
+
+/* The base rule uses `transition: all`, which animates top/left/width. Once the
+   list is portaled and positioned in viewport coordinates that makes it visibly
+   SLIDE from calc(100% + 4px) -- i.e. from the bottom of the screen -- up to its
+   real position. Only the fade/scale should animate; placement must be instant. */
+.custom-options-container.portaled {
+  transition: opacity 180ms ease, visibility 180ms ease, transform 180ms ease !important;
+}

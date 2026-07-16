@@ -4926,6 +4926,14 @@ function mountConsoleFilm() {
   v.play().catch(() => {});  // decoration only -- a refusal costs nothing
 }
 
+/* Clicking anywhere else closes any open dropdown. Registered once at module
+   scope: it used to live inside initClinicianHub(), so it never ran on the
+   landing page, and it only stripped the wrapper's class -- which would now
+   strand a portaled list visible in <body> forever. It must call close(). */
+document.addEventListener("click", () => {
+  document.querySelectorAll(".custom-select-wrapper.open").forEach((w) => w.__closeSelect?.());
+});
+
 /* Glass dropdown used by BOTH the landing page and the console. It lived inside
    initClinicianHub(), which returns early unless role=clinician -- so the landing
    page could never reach it and its age select stayed an unstyled native one. */
@@ -5012,19 +5020,56 @@ const convertSelectToCustom = (selectId) => {
       trigger.setAttribute("aria-activedescendant", optionEls[active].id);
       optionEls[active].scrollIntoView({ block: "nearest" });
     };
-    const open = () => {
-      document.querySelectorAll(".custom-select-wrapper").forEach((w) => {
-        if (w !== wrapper) w.classList.remove("open");
+    // The open list has to leave the card entirely.
+    // It sits inside three nested scroll containers (.panel-col, .hub-viewport,
+    // .clinician-hub-body all clip), so an absolutely-positioned list is simply
+    // cut off -- no z-index escapes an overflow clip. position:fixed does not help
+    // either, because the card's backdrop-filter makes it the containing block for
+    // fixed descendants. So while open we PORTAL it to <body> and place it by the
+    // trigger's viewport rect, then put it back on close.
+    const place = () => {
+      const r = trigger.getBoundingClientRect();
+      const below = window.innerHeight - r.bottom;
+      const h = Math.min(optionsContainer.scrollHeight, 200);
+      const flip = below < h + 12 && r.top > below; // not enough room: open upward
+      optionsContainer.style.left = `${r.left}px`;
+      optionsContainer.style.width = `${r.width}px`;
+      optionsContainer.style.top = flip ? `${r.top - h - 4}px` : `${r.bottom + 4}px`;
+    };
+
+    const closeAll = () => {
+      document.querySelectorAll(".custom-select-wrapper.open").forEach((w) => {
+        if (w !== wrapper) w.__closeSelect?.();
       });
+    };
+
+    const open = () => {
+      closeAll();
+      document.body.appendChild(optionsContainer);   // escape every clip
+      optionsContainer.classList.add("portaled", "is-open");
       wrapper.classList.add("open");
+      place();
       trigger.setAttribute("aria-expanded", "true");
       markActive(Math.max(0, select.selectedIndex));
+      // markActive() scrollIntoView()s the active row, which can nudge a scroll
+      // container and move the trigger out from under the list -- re-place once
+      // layout has settled.
+      requestAnimationFrame(place);
+      window.addEventListener("scroll", place, true);  // follow the trigger
+      window.addEventListener("resize", place);
     };
+
     const close = () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+      optionsContainer.classList.remove("portaled", "is-open");
+      optionsContainer.removeAttribute("style");
+      if (optionsContainer.parentNode !== wrapper) wrapper.appendChild(optionsContainer);
       wrapper.classList.remove("open");
       trigger.setAttribute("aria-expanded", "false");
       trigger.removeAttribute("aria-activedescendant");
     };
+    wrapper.__closeSelect = close;
 
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -5490,10 +5535,6 @@ function initClinicianHub() {
 
   convertSelectToCustom("cTemperamentProfile");
   convertSelectToCustom("cChildAge");
-
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".custom-select-wrapper").forEach(w => w.classList.remove("open"));
-  });
 
   // Start polling session list
   setInterval(refreshSessionList, 2000);
