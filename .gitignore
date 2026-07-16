@@ -1,8 +1,12 @@
 shared_data/*.json
 shared_data/state.json
+ backend
 .env
 *.db
 *.log
 __pycache__/
 */__pycache__/
 *.py[cod]
+=======
+*.log
+ main

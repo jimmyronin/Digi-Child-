@@ -1,0 +1,84 @@
+This PRD template is tailored for "Digi-Child Sim," the AI-native parenting simulator where the agent evolves from birth to adulthood.
+Build name: Digi-Child Sim (MVP)
+Owner: Naquan,Mitra , Jimmy
+Date: July 5, 2026
+1. PROBLEM
+Aspiring or curious parents/mentors experience a lack of risk-free environments to test the long-term impact of different guidance and communication styles. Because child-rearing is a "one-shot" experience, users lack a feedback loop for their psychological and emotional influence on a developing mind, resulting in anxiety about their parenting efficacy and a lack of understanding regarding how small behavioral inputs compound into adult personality traits.
+Supporting Context
+There is no existing interactive simulation that models personality development based on specific, compounding behavioral feedback.
+Users frequently express a desire to "test" parenting strategies without the real-world stakes of actual child development.
+1a. Opportunity
+Enable 100,000+ users to engage in a hyper-realistic, AI-driven developmental simulation, providing a safe, educational, and addictive environment to master communication and empathy. This captures a share of the growing EdTech and simulation-gaming market by transforming "parenting education" into an interactive, AI-native experience.
+Market Opportunity
+The global EdTech and simulation market is projected to reach over $400B by 2030.
+High demand for AI-native interactive media that offers more than just linear storytelling.
+1b. Users & Needs
+Primary users: Aspiring parents and psychology enthusiasts who value self-improvement and behavioral understanding.
+Secondary users: Educators and psychology students who want to study developmental modeling.
+Key User Needs
+As a primary user, I need to see the "long-term" results of my advice so I can understand my own influence.
+As a primary user, I need the Agent to be emotionally "real" so that my decision-making feels significant.
+2. PROPOSED SOLUTION
+Digi-Child Sim is an AI-native simulator where users "parent" an evolving digital child from birth to pre-adulthood. Users interact with the child through dialogue and guidance, while the system’s "Parent Governor" logic modulates the child’s personality, emotional stability, and intelligence based on the user's input consistency. As a result, users can observe the compounding effect of their parenting style and refine their communication skills in a sandbox environment.
+2a. Value Proposition
+Users who struggle with the "one-shot" nature of guidance and mentorship use Digi-Child Sim, an AI-native development sandbox, to simulate a lifetime of parenting in a compressed timeframe. Unlike static parenting books or linear games, it offers real-time, non-deterministic behavioral evolution, helping users reclaim their own growth by mastering the logic of human development.
+2b. Top 4 MVP Value Props
+The Vitamin: A baseline simulated child that responds to basic input and follows a chronological developmental timeline (birth to age 18).
+PDF
+The Painkiller: Eliminates the "uncertainty" of influence by providing a clear, logical feedback loop between user advice and the child's behavioral outcomes.
+PDF
+The Steroid: The "Emotional Drift" feature—where the child displays distinct "behavioral bugs" or milestones that prove the simulation is "thinking" and reacting to the user’s specific parenting personality.
+PDF
+The Consequence (Transgression): If the user’s input is processed as inconsistent or mistreatment, the child will actively "transgress" in their development, creating a visible degradation in personality and trust.
+2c. Goals & Non-Goals
+Goals
+Create a compelling, multi-stage developmental loop that keeps users engaged through adulthood.
+PDF
+Validate that users can perceive a clear link between their input and the child’s behavioral evolution.
+PDF
+Achieve 500 Daily Active Users (DAU) within the first 30 days of the MVP launch.
+PDF
+Time-Compression Mapping: Execute a full 18-year developmental simulation over a 21-day period, where each day of real-world interaction equals one full year of the child's growth.
+Habit Formation: Utilize the "21-day theory" of habit formation as the core pedagogical backbone for the child’s behavioral solidification.
+Non-Goals
+Multi-child households (MVP is strictly focused on a single-child simulation).
+PDF
+Further Scope: Features such as complex world-building outside the immediate child-parent dyad, or expansive social networks for the child, are deferred to post-MVP versions.
+
+Multi-child households (MVP is strictly focused on a single-child simulation).
+2d. Success Metrics
+Goal
+Signal
+Metric
+Target
+Retention
+Users return for the next "age stage"
+Day-30 Retention
+>20%
+Engagement
+Meaningful interaction depth
+Avg. daily conversation turns
+>15 turns/day
+Learning
+Users observe "drift"
+User feedback on "Impact" reporting
+80% satisfaction
+
+3. REQUIREMENTS
+User Journey 1: Raising the Digi-Child Context: The user is focused on the daily interaction and longitudinal growth of the Agent.
+Sub-journey: Daily Interaction
+[P0] User can input natural language guidance/advice.
+[P0] User can view the child’s current "emotional state" and developmental age.
+[P0] User can trigger a "milestone check" to see how their input has affected the child’s personality.
+[P1] User can receive an "Architect Report" from the Parent Engine explaining the logic behind the child’s behavior.
+Sub-journey: Developmental Transition
+[P0] Child naturally ages and transitions personality traits based on stored history.
+[P1] Child displays "Behavioral Bugs" when the user’s advice is inconsistent over time.
+User Journey 2: Self-Reflection & Analytics Context: The user wants to understand their parenting "DNA" and how they are impacting the simulation.
+Sub-journey: Reviewing Performance
+[P0] User can view a summary of their "Parenting Style" as deduced by the AI.
+[P1] User can compare their simulation outcome with other user archetypes.
+4. APPENDIX
+Architecture: 1-Parent Governor (Core Logic) + 2-Children (Exploration/Architect agents).
+Security: All personality logs and interaction history are stored locally in an air-gapped compatible SQLite database to ensure the "Baby" remains sovereign to the user.
+PDF+ 1
