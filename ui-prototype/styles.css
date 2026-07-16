@@ -3027,3 +3027,46 @@ body.clinician-mode textarea:focus {
 @media (prefers-reduced-motion: reduce) {
   .intro-btn.needs-tap { animation: none; }
 }
+
+/* Shown only when the browser refused unmuted autoplay. It has to be findable at
+   a glance -- the humming is the point of the film, and a small icon in the
+   corner was being missed. Sits centre-screen, over the film, and one tap
+   restarts it with sound. */
+.intro-sound-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(10, 14, 18, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  z-index: 3;
+  animation: hintIn 500ms ease both, hintPulse 2.4s ease-in-out 500ms infinite;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+}
+.intro-sound-hint:hover { background: rgba(23, 143, 134, 0.7); }
+.intro-sound-hint .ish-icon { font-size: 17px; }
+
+@keyframes hintIn {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes hintPulse {
+  0%, 100% { box-shadow: 0 10px 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(217, 134, 50, 0.5); }
+  50%      { box-shadow: 0 10px 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(217, 134, 50, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-sound-hint { animation: hintIn 500ms ease both; }
+}

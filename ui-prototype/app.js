@@ -4695,19 +4695,23 @@ function playIntroFilm() {
   dismissSplashScreen(); // the film IS the splash
 
   let handedOver = false;
-  const handOver = () => {
+  const handOver = (reason = "unknown") => {
     if (handedOver) return;
     handedOver = true;
+    window.__introHandover = { reason, at: +video.currentTime.toFixed(2) };
     stage.classList.add("backdrop"); // scrim up, film recedes
     page.style.display = "flex";
     page.classList.add("over-film");
+    // The film is over, so there is nothing left to unmute -- drop the prompt
+    // rather than leaving a "Tap for sound" button that quietly does nothing.
+    stage.querySelector(".intro-sound-hint")?.remove();
   };
 
-  video.addEventListener("ended", handOver);
-  document.querySelector("#introSkip")?.addEventListener("click", handOver);
+  video.addEventListener("ended", () => handOver("ended"));
+  document.querySelector("#introSkip")?.addEventListener("click", () => handOver("skip"));
   // never strand the user on a black screen if the file 404s or the codec fails
-  video.addEventListener("error", handOver);
-  setTimeout(handOver, 14000); // hard backstop
+  video.addEventListener("error", () => handOver("video-error"));
+  setTimeout(() => handOver("timeout-14s"), 14000); // hard backstop
 
   const sound = document.querySelector("#introSound");
   const paintSound = () => {
@@ -4729,19 +4733,49 @@ function playIntroFilm() {
   video.muted = false;
   video.volume = 1;
   paintSound();
-  video.play().then(paintSound).catch(() => {
-    video.muted = true;              // retry the only way that is permitted
+  // ?forceblock=1 simulates a browser refusing unmuted autoplay. Chrome allows it
+  // once an origin has media engagement, so on a machine that has loaded this site
+  // a few times the fallback stops reproducing -- which is exactly when it breaks
+  // for a first-time visitor.
+  const blocked = queryParams.get("forceblock") === "1";
+  (blocked ? Promise.reject(new Error("forced")) : video.play()).then(paintSound).catch(() => {
+    // Chrome/Safari refuse unmuted autoplay until this origin has earned enough
+    // media engagement, and that cannot be overridden from script. Start muted
+    // (the only permitted kind) so the film still opens the site...
+    video.muted = true;
     paintSound();
-    video.play().catch(() => handOver());
-    // ...then take the first gesture anywhere as consent and bring the sound up.
-    const unmuteOnGesture = () => {
-      if (handedOver) return;        // film already finished; nothing to unmute
+
+    // A real invitation, not just a small pulsing icon in the corner.
+    const hint = document.createElement("button");
+    hint.type = "button";
+    hint.className = "intro-sound-hint";
+    hint.innerHTML = `<span class="ish-icon">🔊</span><span>Tap for sound</span>`;
+    stage.appendChild(hint);
+
+    // If even the muted retry is refused (a transient abort, or a strict policy),
+    // do NOT hand over -- skipping the film entirely over a sound problem is far
+    // worse. The prompt becomes the way in instead, and since a tap is a real
+    // gesture it is guaranteed to play WITH sound. The 14s backstop still covers
+    // a genuinely dead file.
+    video.play().catch(() => {
+      hint.innerHTML = `<span class="ish-icon">▶</span><span>Tap to play with sound</span>`;
+    });
+
+    // The first gesture ANYWHERE counts as consent. Rewind rather than unmuting
+    // mid-film: the humming is in the opening seconds, so unmuting in place
+    // would hand over silence and defeat the point.
+    const enableSound = () => {
+      if (handedOver) return;
       video.muted = false;
       video.volume = 1;
+      if (video.currentTime > 0.4) video.currentTime = 0;
+      video.play().catch(() => {});
       paintSound();
+      hint.remove();
     };
+    hint.addEventListener("click", (e) => { e.stopPropagation(); enableSound(); });
     ["pointerdown", "keydown", "touchstart"].forEach((ev) =>
-      document.addEventListener(ev, unmuteOnGesture, { once: true, passive: true })
+      document.addEventListener(ev, enableSound, { once: true, passive: true })
     );
   });
   return true;
