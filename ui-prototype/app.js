@@ -600,7 +600,6 @@ function playChildSound(type) {
   
   try {
     if (type === "cry" || type === "upset" || type === "scream") {
-      stopAmbientHum(0.25);  // she stops humming the moment she is distressed
       audioCry.currentTime = 0;
       audioCry.play()
         .catch(e => {
@@ -615,21 +614,22 @@ function playChildSound(type) {
           }
         });
     } else if (type === "happy") {
-      // The recorded laugh fired on EVERY happy turn, so a warm conversation
-      // became the same giggle over and over. Her contentment now reads as the
-      // ambient humming resuming instead -- present, but not a repeated sample.
+      // Deliberately silent. The recorded laugh fired on EVERY happy turn, which
+      // made a warm conversation loop the same giggle; ambient humming replaced
+      // it and was no better. Contentment now reads visually only -- her face and
+      // posture carry it, and the room stays quiet.
       audioCry.pause();
-      startAmbientHum();
     }
   } catch (e) {
     console.warn("Audio play failed:", e);
     if (ctx) {
+      // Distress still needs a fallback voice -- it is clinically meaningful.
+      // "happy" has none by design; it must not giggle here either, or the
+      // repeated laugh returns via the error path.
       if (type === "cry" || type === "upset") childWail(ctx, now, 5.2, 0.5);
       else if (type === "scream") {
         childScream(ctx, now);
         childWail(ctx, now + 0.75, 4.2, 0.55);
-      } else if (type === "happy") {
-        childGiggle(ctx, now);
       }
     }
   }
@@ -690,26 +690,9 @@ function childScream(ctx, start) {
   osc.stop(start + 0.72);
 }
 
-function childGiggle(ctx, start) {
-  for (let i = 0; i < 5; i++) {
-    const s = start + i * 0.16;
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    const gain = ctx.createGain();
-    const f = 700 + (i % 2) * 190;
-    osc.frequency.setValueAtTime(f, s);
-    osc.frequency.linearRampToValueAtTime(f * 1.15, s + 0.05);
-    osc.frequency.linearRampToValueAtTime(f * 0.9, s + 0.12);
-    gain.gain.setValueAtTime(0.0001, s);
-    gain.gain.linearRampToValueAtTime(0.22, s + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.01, s + 0.14);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(s);
-    osc.stop(s + 0.16);
-  }
-}
-
+// childGiggle() removed 2026-07-15: nothing called it any more. Her laugh
+// fired on every happy turn AND on a 25-60s idle timer, which is what made
+// her sound like she was laughing on a loop. Contentment is silent now.
 // soft "bonk" when a thrown toy lands on the parent
 function childThud(ctx, start) {
   const osc = ctx.createOscillator();
@@ -723,111 +706,6 @@ function childThud(ctx, start) {
   gain.connect(ctx.destination);
   osc.start(start);
   osc.stop(start + 0.18);
-}
-
-/* ============================================================
-   Ambient humming: a child quietly humming to herself while she
-   plays, so the room is never silent.
-
-   Synthesised rather than looped on purpose. The source clip only
-   holds ~2s of real humming (the rest is room tone), and a 2s loop
-   would repeat far harder than the giggle it replaces. Here each
-   note is chosen at random from a pentatonic scale -- which has no
-   dissonant intervals, so any order sounds musical -- and phrases
-   are separated by irregular breaths, so it never repeats exactly.
-   ============================================================ */
-let humTimer = null;
-let humGain = null;
-
-// Pentatonic (C major): any sequence is consonant, so random never sounds wrong.
-const HUM_SCALE = [523.25, 587.33, 659.25, 783.99, 880.0];
-
-function humNote(ctx, start, freq, dur, level) {
-  // Two detuned oscillators through a low-pass reads as a voice rather than a
-  // test tone; a pure sine sounds like a theremin, not a child.
-  const out = ctx.createGain();
-  out.gain.setValueAtTime(0.0001, start);
-  out.gain.exponentialRampToValueAtTime(level, start + 0.12);   // breathy swell
-  out.gain.setValueAtTime(level, start + dur - 0.16);
-  out.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.setValueAtTime(1100, start);   // closed-mouth "mmm"
-  lp.Q.setValueAtTime(0.7, start);
-
-  // gentle vibrato -- a child cannot hold a pitch perfectly still
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.frequency.setValueAtTime(4.6 + Math.random() * 1.2, start);
-  lfoGain.gain.setValueAtTime(freq * 0.006, start);
-  lfo.connect(lfoGain);
-
-  [0, 1].forEach((i) => {
-    const osc = ctx.createOscillator();
-    osc.type = i ? "sine" : "triangle";
-    osc.frequency.setValueAtTime(freq * (i ? 1.004 : 1), start); // slight detune
-    lfoGain.connect(osc.frequency);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(i ? 0.35 : 0.65, start);
-    osc.connect(g); g.connect(lp);
-    osc.start(start); osc.stop(start + dur + 0.05);
-  });
-
-  lp.connect(out);
-  out.connect(humGain);
-  lfo.start(start); lfo.stop(start + dur + 0.05);
-}
-
-function scheduleHumPhrase() {
-  const ctx = ensureAudio();
-  if (!ctx || !humGain) return;
-  const t = ctx.currentTime + 0.1;
-  const notes = 3 + Math.floor(Math.random() * 3);  // 3-5 note phrase
-  let at = t;
-  let idx = Math.floor(Math.random() * HUM_SCALE.length);
-  for (let i = 0; i < notes; i++) {
-    // step to a neighbouring degree: melodies wander, they don't leap randomly
-    idx = Math.max(0, Math.min(HUM_SCALE.length - 1, idx + (Math.floor(Math.random() * 3) - 1)));
-    const dur = 0.45 + Math.random() * 0.4;
-    humNote(ctx, at, HUM_SCALE[idx], dur, 0.05 + Math.random() * 0.02);
-    at += dur + Math.random() * 0.1;
-  }
-  // irregular breath between phrases so it reads as a person, not a loop
-  const gap = (at - t) + 2.5 + Math.random() * 4;
-  humTimer = setTimeout(scheduleHumPhrase, gap * 1000);
-}
-
-function startAmbientHum() {
-  const ctx = ensureAudio();
-  if (!ctx || humTimer) return;
-  if (!humGain) {
-    humGain = ctx.createGain();
-    humGain.gain.value = 0.0;
-    humGain.connect(ctx.destination);
-  }
-  humGain.gain.cancelScheduledValues(ctx.currentTime);
-  humGain.gain.setValueAtTime(humGain.gain.value, ctx.currentTime);
-  humGain.gain.linearRampToValueAtTime(0.75, ctx.currentTime + 2); // fade in
-  scheduleHumPhrase();
-}
-
-function stopAmbientHum(fade = 0.6) {
-  if (humTimer) { clearTimeout(humTimer); humTimer = null; }
-  const ctx = audioCtx;
-  if (ctx && humGain) {
-    humGain.gain.cancelScheduledValues(ctx.currentTime);
-    humGain.gain.setValueAtTime(humGain.gain.value, ctx.currentTime);
-    humGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + fade);
-  }
-}
-
-// She stops humming while she is upset, and picks it back up once settled --
-// humming through a meltdown would be eerie.
-function syncAmbientHum(mood) {
-  const distressed = ["upset", "resistant", "withdrawn", "guarded"].includes(mood);
-  if (distressed) stopAmbientHum();
-  else if (!humTimer) startAmbientHum();
 }
 
 function detectReaction(message, result) {
@@ -2846,9 +2724,6 @@ const keys = new Set();
 canvas.addEventListener("click", () => {
   if (sessionRole === "clinician" || sessionRole === "landing") return; // No pointer lock in dashboard/landing
   ensureAudio(); // unlock audio playback on first user gesture
-  // Browsers only allow audio after a gesture, so this is the earliest the room
-  // can have sound. She hums unless she is already distressed.
-  syncAmbientHum(state.mood);
   if (currentId === "party") playPartySound(true);
   if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
 });
@@ -3468,7 +3343,6 @@ async function handleSubmit(event) {
     ageUp();
   }
   state.mood = result.mood;
-  syncAmbientHum(state.mood); // she hums when settled, falls quiet when upset
   state.childLine = result.childLine;
   // Claude's structured action drives her body; keyword matching is only the
   // offline fallback. A local meltdown overrides both -- she's beyond requests.
@@ -4244,11 +4118,12 @@ function updateFrame(dt, t) {
     if (goodMood) {
       tH = t < smileSpikeUntil ? 0.92 : 0.35;
       tS = 0; tA = 0; tAa = 0.14;
+      // A spontaneous grin every 25-60s, but SILENT. This used to giggle out
+      // loud on that timer, which is what made her sound like she was laughing
+      // in the background on a loop. The smile alone carries the contentment.
       if (!walking && t > nextGiggleAt) {
         nextGiggleAt = t + 25 + rnd(Math.floor(t)) * 35;
         smileSpikeUntil = t + 3.0;
-        const ac = ensureAudio();
-        if (ac) childGiggle(ac, ac.currentTime);
       }
     } else {
       // upset: she scowls / sulks up at you
@@ -6238,10 +6113,6 @@ window.__digiTone = (aggression = 0.7) => {
   };
   return pendingTone;
 };
-// hum controls: app.js is a module, so these are not otherwise reachable from
-// the console for testing
-window.__digiHum = (on = true) => (on ? startAmbientHum() : stopAmbientHum());
-window.__digiHumState = () => ({ running: !!humTimer, gain: humGain ? humGain.gain.value : null });
 window.__digiEye = (e) => { if (current) current.eye = e; };
 window.__digiState = () => ({
   reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
