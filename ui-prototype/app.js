@@ -2944,7 +2944,7 @@ function attachPropToChild(path, opts = {}) {
       const hand = vrm.humanoid.getNormalizedBoneNode(opts.bone || "rightHand");
       if (hand) {
         target = hand;
-        localPos.set(0, 0, 0); // flush in hand
+        localPos.set(0.03, 0.01, 0.04); // Default offset from wrist (rightHand bone) into the palm/fingers
         localRot.set(0, 0, 0);
         
         // Adjust default offsets depending on model
