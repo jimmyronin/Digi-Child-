@@ -2985,6 +2985,49 @@ function attachPropToChild(path, opts = {}) {
 }
 
 /* ============================================================
+   Finger grip. A prop attaches to the rightHand bone, but the
+   fingers were never posed -- so the object sat against a flat,
+   open hand and it looked like she was holding it with her arm.
+   This curls the finger + thumb bones around it so she grips
+   with her hand. Eased, so the fingers open again when she puts
+   the prop down. Tunable live via window.__digiGrip / __digiGripAmt.
+   ============================================================ */
+let gripForce = 0;   // eased 0..1 grip strength
+let gripPin = -1;    // >=0 pins the grip for tuning; -1 = follow gripForce
+const GRIP = {
+  // finger flexion is rotation about Z in the VRM normalized skeleton; the sign
+  // differs per hand because the two hands' fingers point opposite ways.
+  fingerSign: -1,
+  proximal: 0.95, intermediate: 1.15, distal: 0.6,
+  // the thumb wraps OVER the object -- mostly Y (opposition) with a little Z
+  thumbSign: 1, thumbY: 0.75, thumbZ: 0.35,
+  // ease the whole hand a touch so the palm cups toward the object
+  handCup: 0.2,
+};
+
+function curlHand(hb, side, amt) {
+  if (!hb) return;
+  const S = side === "left" ? "left" : "right";
+  const fSign = GRIP.fingerSign * (S === "left" ? -1 : 1);
+  const tSign = GRIP.thumbSign * (S === "left" ? -1 : 1);
+  const g = (n) => hb.getNormalizedBoneNode(n);
+  const setZ = (b, z) => { if (b) b.rotation.set(0, 0, z); };
+  const setr = (b, x, y, z) => { if (b) b.rotation.set(x, y, z); };
+
+  for (const f of ["Index", "Middle", "Ring", "Little"]) {
+    setZ(g(S + f + "Proximal"), fSign * GRIP.proximal * amt);
+    setZ(g(S + f + "Intermediate"), fSign * GRIP.intermediate * amt);
+    setZ(g(S + f + "Distal"), fSign * GRIP.distal * amt);
+  }
+  // thumb bone naming differs across VRM versions -- try both, whichever exists
+  const thumbBase = g(S + "ThumbMetacarpal") || g(S + "ThumbProximal");
+  const thumbMid = g(S + "ThumbProximal") && g(S + "ThumbMetacarpal") ? g(S + "ThumbProximal") : g(S + "ThumbIntermediate");
+  setr(thumbBase, 0, tSign * GRIP.thumbY * amt, tSign * GRIP.thumbZ * amt);
+  setr(thumbMid, 0, tSign * GRIP.thumbY * 0.8 * amt, 0);
+  setr(g(S + "ThumbDistal"), 0, tSign * GRIP.thumbY * 0.6 * amt, 0);
+}
+
+/* ============================================================
    LLM-driven embodiment: the backend returns a structured action
    (type / prop / spot) chosen by Claude to match whatever the
    conversation describes -- this executor makes Mira actually do it.
@@ -3220,6 +3263,45 @@ function handleDynamicChatActions(userMsg, childMsg) {
       return;
     }
   }
+
+  // GENERAL physical commands -- run last, so a location scenario ("read a book")
+  // wins, but a plain imperative ("come here", "sit down", "jump", "give me a
+  // hug", "put that down") still makes her DO it in any location. This is the only
+  // physical embodiment in demo mode, where the offline brain returns no action.
+  handleGeneralCommand(userMsg);
+}
+
+// Map a parent's spoken command to one of Mira's real physical actions. Returns
+// true if she acted. Only fires on the PARENT's words, honours negation
+// ("don't jump"), and uses gestures that already exist in performChildAction.
+function handleGeneralCommand(userMsg) {
+  const cmd = " " + (userMsg || "").toLowerCase().replace(/[.!?,]/g, " ") + " ";
+  if (/\b(don'?t|do not|didn'?t|won'?t|never|no need to|instead of|why (would|did|are))\b/.test(cmd)) return false;
+  const act = (type, prop, spot) => (performChildAction({ type, prop: prop || "none", spot: spot || "none" }), true);
+
+  // pick up / hold a named object
+  if (/\b(pick up|pick it up|pick that up|grab|hold|carry|bring me)\b/.test(cmd)) {
+    const prop = /\bbook|story\b/.test(cmd) ? "book"
+      : /\b(toy car|car|truck|kart)\b/.test(cmd) ? "toy_car"
+      : /\bcookie\b/.test(cmd) ? "cookie"
+      : /\b(lolly|lollipop|lollypop)\b/.test(cmd) ? "lollypop"
+      : /\bapple\b/.test(cmd) ? "apple"
+      : /\bbanana\b/.test(cmd) ? "banana" : null;
+    if (prop) return act("hold_prop", prop);
+  }
+  if (/\b(put (it|that|them|those)?\s*down|drop (it|that|them)|put (it |that |them )?away|let go|tidy up|clean up|pack away)\b/.test(cmd)) return act("drop_prop");
+  if (/\b(come here|come to me|come over|come closer|come back|come to (mommy|mama|mom|daddy|dad|papa|me))\b/.test(cmd)) return act("come_to_parent");
+  if (/\b(give me a hug|hug me|come.{0,12}hug|cuddle|come.{0,12}cuddle|hold me)\b/.test(cmd)) return act("come_to_parent"); // she walks in close
+  if (/\b(sit down|sit here|have a seat|take a seat|sit please|please sit)\b/.test(cmd) || /\bsit\b/.test(cmd)) return act("sit");
+  if (/\b(stand up|get up|stand|on your feet|up you get)\b/.test(cmd)) return act("stand");
+  if (/\b(jump|hop|jump up)\b/.test(cmd)) return act("jump");
+  if (/\b(dance|boogie|show me a dance)\b/.test(cmd)) return act("dance");
+  if (/\b(spin|twirl|turn around|turn round|do a twirl)\b/.test(cmd)) return act("spin");
+  if (/\b(clap|clap your hands|give me a clap)\b/.test(cmd)) return act("clap");
+  if (/\b(wave|say hi|say hello|say bye|wave to|wave goodbye|wave hello)\b/.test(cmd)) return act("wave");
+  if (/\b(hide|go hide|hide and seek|peekaboo|peek a boo)\b/.test(cmd)) return act("hide");
+  if (/\b(run around|go play|go run|run and play|play outside|go and play)\b/.test(cmd)) return act("run_play");
+  return false;
 }
 
 let sessionExchanges = 0;
@@ -3558,16 +3640,27 @@ function speakAsMira(line, mood) {
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const band = state.band || "";
-  const base = band.includes("14") ? 1.15 : band.includes("10") ? 1.3 : 1.5;
+  // A young child's voice is high AND a little slower/less fluent than an adult's.
+  // The 5-7 band was 1.5 before, which still read as a small woman; push it up near
+  // the top of the range and slow the delivery so it lands as a little kid. The
+  // older bands stay progressively lower and quicker.
+  const young = !band.includes("14") && !band.includes("10");   // the Age 5-7 track
+  const base = band.includes("14") ? 1.2 : band.includes("10") ? 1.45 : 1.85;
+  const rateBase = young ? 0.9 : band.includes("10") ? 0.97 : 1.0;
   const m = mood || state.mood || "";
-  if (m === "happy" || m === "playful" || m === "curious") { u.pitch = Math.min(2, base + 0.2); u.rate = 1.05; }
-  else if (m === "upset" || m === "resistant") { u.pitch = Math.min(2, base + 0.3); u.rate = 1.12; }
-  else if (m === "withdrawn" || m === "guarded") { u.pitch = base; u.rate = 0.8; u.volume = 0.6; }
-  else { u.pitch = base + 0.1; u.rate = 0.98; }
+  if (m === "happy" || m === "playful" || m === "curious") { u.pitch = Math.min(2, base + 0.1); u.rate = rateBase + 0.08; }
+  else if (m === "upset" || m === "resistant") { u.pitch = Math.min(2, base + 0.15); u.rate = rateBase + 0.14; } // higher & faster when whiny
+  else if (m === "withdrawn" || m === "guarded") { u.pitch = Math.max(1, base - 0.2); u.rate = rateBase - 0.12; u.volume = 0.6; } // small, quiet
+  else { u.pitch = base; u.rate = rateBase; }
   const pick = () => {
     const voices = speechSynthesis.getVoices();
-    const v = voices.find((v) => /child|kid|zira|jenny|aria|samantha|female/i.test(v.name) && v.lang.startsWith("en"))
-      || voices.find((v) => v.lang.startsWith("en"));
+    const en = voices.filter((v) => v.lang.startsWith("en"));
+    // Prefer voices that read as young/female; explicitly avoid the obviously adult
+    // male ones (david, mark, george...) which no amount of pitch saves.
+    const v = en.find((v) => /child|kid|girl/i.test(v.name))
+      || en.find((v) => /zira|jenny|aria|ava|samantha|susan|female|natasha|clara/i.test(v.name))
+      || en.find((v) => !/david|mark|george|guy|male|daniel|fred|alex|thomas|james/i.test(v.name))
+      || en[0];
     if (v) u.voice = v;
     speechSynthesis.speak(u);
   };
@@ -4295,6 +4388,15 @@ function updateFrame(dt, t) {
     eb(hb.getNormalizedBoneNode("leftLowerArm"), LlX, LlY, LlZ);
     eb(hb.getNormalizedBoneNode("rightLowerArm"), RlX, RlY, RlZ);
     eb(hb.getNormalizedBoneNode("rightHand"), RhX, RhY, RhZ);
+
+    // Curl the fingers around a held prop (books are two-handed). Not while she
+    // is waving -- the wave already animates the right hand.
+    const wantGrip = (childAttachedProp && t >= waveUntil) ? 1 : 0;
+    gripForce += (wantGrip - gripForce) * Math.min(1, dt * 8);
+    const gAmt = gripPin >= 0 ? gripPin : gripForce;
+    const twoHanded = !!childAttachedProp && childAttachedProp.name.toLowerCase().includes("book");
+    curlHand(hb, "right", gAmt);
+    curlHand(hb, "left", twoHanded ? gAmt : 0);
     // legs: only drive them when standing (sitting pose is set elsewhere)
     if (childPose === "stand") {
       eb(hb.getNormalizedBoneNode("leftUpperLeg"), LUpLegX, 0, 0);
@@ -6101,6 +6203,7 @@ if (activeSessionId) {
 // dev helpers for testing reactions from the console
 window.__digiReact = (type) => triggerReaction(type);
 window.__digiAct = (type, prop = "none", spot = "none") => performChildAction({ type, prop, spot });
+window.__digiCmd = (msg) => handleGeneralCommand(msg);  // test parent-command -> action mapping
 window.__digiCalib = (m) => computeAggression(m); // test the tone scorer from the console
 // simulate a voice turn without a microphone: attach a synthetic tone to the next message
 window.__digiTone = (aggression = 0.7) => {
@@ -6114,6 +6217,11 @@ window.__digiTone = (aggression = 0.7) => {
   return pendingTone;
 };
 window.__digiEye = (e) => { if (current) current.eye = e; };
+// grip tuning: __digiGrip({proximal:1.1, fingerSign:-1, ...}) live-edits the curl;
+// __digiGripAmt(1) pins a full grip for inspection, __digiGripAmt(-1) releases.
+// tune the finger grip live, e.g. __digiGrip({proximal: 0.9, intermediate: 1.1})
+window.__digiGrip = (o = {}) => Object.assign(GRIP, o);
+window.__digiGripAmt = (v = -1) => { gripPin = v; };  // pin a grip amount (1) to preview, (-1) to release
 window.__digiState = () => ({
   reaction: reaction ? { ...reaction, now: clock.elapsedTime } : null,
   expr: { ...expr },
