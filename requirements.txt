@@ -1,0 +1,8 @@
+fastapi==0.109.2
+uvicorn==0.27.0
+pydantic==2.6.1
+anthropic>=0.18.0
+# Live Google Calendar (Agent 1). Optional: the app runs in demo mode without these.
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.2.0
