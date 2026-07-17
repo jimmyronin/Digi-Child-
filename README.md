@@ -105,8 +105,5 @@ Digi-Child Sim is an interactive, local-first simulation. The system tracks deve
   "habits": [],
   "consecutive_mistreatments": 0,
   "history": []
-}# Digi-Child-
- main
-=======
-# Digi-Child-
- 4da87248006b29ccd35425640df3c4bde6358c40
+}
+ 
